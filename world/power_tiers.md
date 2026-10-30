@@ -48,7 +48,7 @@ Levels run 1 to 70; each tier spans 10 levels: `tier = ceil(level / 10)`. Level 
 
 | Tier | Name | Levels | Approx. count | Stats (typical range) |
 |---|---|---|---|---|
-| 0 | Unwritten | 0 | about 37,003,000 | 15 to 30 |
+| 0 | Unwritten | 0 | about 37,003,000 | 15 to 35 |
 | 1 | Inscribed | 1 to 10 | 900,000 | 25 to 45 |
 | 2 | Bound | 11 to 20 | 85,000 | 40 to 60 |
 | 3 | Vaunted | 21 to 30 | 11,000 | 55 to 75 |

@@ -62,7 +62,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Domain:** light, prophecy, guidance, hidden things.
 - **Symbol:** shuttered lantern. **Cult:** the Lantern Orders.
 - **Temperament:** cryptic. Every prophecy has a price. Rarely states a position.
-- **Wants:** publicly, nothing. See `world/secret/` if released.
+- **Wants:** publicly, nothing.
 - **Oath:** Kept Light. **Favoured affinities:** Light, Space. **Favoured classes:** Cantor, Wayfinder.
 
 ### Drovash, the Laughing Thief

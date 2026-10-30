@@ -27,7 +27,7 @@ Caldrenne is roughly 2,400 km east to west and 1,800 km north to south.
 |---|---|---|
 | Halewick | Hale Plains | Capital; the Great Assize-Hall |
 | Kaulgard | Ironmarch Hills | Forge-capital; the Anvil Court |
-| Saltmere | Southern Coast | Largest port; seat of the Seven Houses |
+| Saltmere | Southern Coast | Largest port; seat of the seven Harbor-Houses |
 | Halcyr | Candle Peaks | Monastery-city; the Hall of Unspoken Lamps |
 | Sorrowfield | Barrow-Lands | Convent seat; the Field of Ten Thousand Cairns |
 | The Tallyhouse of Brannock | Ford Reaches | Neutral registry of the Reaches |
@@ -47,5 +47,5 @@ Population about 2,400. A river-crossing town on the **Rooks' Road** at the meet
 - **Economy:** tolls, grain, Rift loot sold to Tallyhouse buyers.
 - **Tier presence:** one Tier 3 (Tallyhouse Registrar Hale Dunmore), several Tier 2, about 40 Tier 1. Residents of the Ford Reaches are at most Tier 3; anyone stronger arrives only through an authored story beat.
 - **Tension:** the Sunken Stair has produced two clears and one disappearance in the past season.
-- **Nearby travel:** Brannock Tallyhouse 1 day; the Long Wall 4 days; Saltmere 9 days by road; Kaulgard 14 days.
+- **Nearby travel:** the Tallyhouse of Brannock 1 day; the Long Wall 4 days; Saltmere 9 days by road; Kaulgard 14 days.
 - **Rift rule of thumb:** the Sunken Stair is a Tier 1 rift at floors 1 to 3 and Tier 2 below.
