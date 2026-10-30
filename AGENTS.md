@@ -34,6 +34,7 @@ Shared rules come from AI-Master-Instructions and load through CLAUDE.md (`.clau
 - Write the failing test first for every ENG requirement and put the requirement ID in the test name and commit message.
 - `docs/SPEC.md` and `docs/roadmap.md` are approved scope: build them without asking, and record each assumption in `docs/DECISIONS.md` with Status "Assumed". Anything outside them follows WS-02.
 - Dependencies named in SPEC section 3 are approved. Ask before any other (SAFE-03) and record it in DECISIONS.
+- Whenever `docs/BUILD_PLAN.md` or `docs/roadmap.md` changes, render it with `python3 scripts/render_plan.py <file>.html`, republish it to the plan artifact (https://claude.ai/artifact/HkerL2UNT7oeQcFPW2dZmy; from another session pass that URL as `url`) and give the owner the link in the same reply (D-018).
 - After each milestone, report requirements satisfied, deferred and known defects, and save a playtest transcript to `docs/playtests/` if it touched the narrator loop.
 
 ## Overrides
