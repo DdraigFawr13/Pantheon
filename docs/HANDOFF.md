@@ -4,7 +4,7 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1.5 thin narrator loop (D-029) is built on branch `thin-narrator-loop`, stacked on M1a (PR #9, unmerged). It waits on the owner's API key and first play.
+M1.5 thin narrator loop (D-029) is merged, with M1a (PRs #9, #10). It waits on the owner's API key and first play.
 
 ## Just done
 
@@ -24,7 +24,7 @@ M1.5 thin narrator loop (D-029) is built on branch `thin-narrator-loop`, stacked
 
 1. Owner adds `ANTHROPIC_API_KEY` to `.env` and runs `start.bat`. The adapter has not yet called the real Claude API; the first run checks that.
 2. Owner reports whether it is fun. Tune `world/data/rewards.yaml`, or move to Sonnet 5.5, from that.
-3. Merge PR #9, then this branch's PR. Then M1b, per `docs/BUILD_PLAN.md`.
+3. Then M1b, per `docs/BUILD_PLAN.md`, on a fresh branch from `main`.
 
 ## Open questions
 
