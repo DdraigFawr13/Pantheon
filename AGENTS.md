@@ -9,7 +9,7 @@ Shared rules come from AI-Master-Instructions and load through CLAUDE.md (`.clau
 1. `docs/HANDOFF.md`: current state and next step.
 2. `docs/DECISIONS.md`: settled rules. Don't reopen them.
 3. `docs/LESSONS.md`: entries for the area you are about to work in.
-4. `docs/SPEC.md`: requirement IDs (section 2) and working agreements (section 5). Then `docs/roadmap.md` for the current milestone and only the `docs/architecture.md` sections it needs.
+4. `docs/SPEC.md`: requirement IDs (section 2) and working agreements (section 5). Then `docs/roadmap.md` and `docs/BUILD_PLAN.md` for the current milestone, and only the `docs/architecture.md` sections it needs.
 5. `world/`: open a file only when the task needs its content; the loader and tests need only frontmatter.
 
 ## Local checks (run before pushing)
