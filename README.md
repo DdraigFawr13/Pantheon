@@ -24,6 +24,7 @@ An open-ended, AI-narrated LitRPG. The player controls one life in a medieval fa
 | `prompts/narrator.md` | Runtime system prompt template for the in-game narrator |
 | `world/` | Canon: world bible (public lore) |
 | `world/secret/` | Canon: narrator-only lore, released through reveal gates |
+| `world/sealed/` | Sealed canon the owner does not read (WLD-04) |
 | `src/`, `tests/`, `data/` | Code, tests, runtime saves (git-ignored) |
 
 ## Status

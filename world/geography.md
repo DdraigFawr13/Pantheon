@@ -32,7 +32,7 @@ Caldrenne is roughly 2,400 km east to west and 1,800 km north to south.
 | Sorrowfield | Barrow-Lands | Convent seat; the Field of Ten Thousand Cairns |
 | The Tallyhouse of Brannock | Ford Reaches | Neutral registry of the Reaches |
 | **Cinder Ford** | Ford Reaches | Starting town (see below) |
-| **The Sunken Stair** | Ford Reaches | Active Delve beneath a collapsed mill |
+| **The Sunken Stair** | Ford Reaches | Active rift beneath a collapsed mill |
 | The Rooks' Road | Ford Reaches | Trade road; contested tolls |
 | Greywater Shrine | Ford Reaches | Mixed shrine; seven altars, one cracked |
 | The Long Wall | Hale-Ironmarch border | A fortified line, half-staffed |
@@ -44,8 +44,8 @@ Caldrenne is roughly 2,400 km east to west and 1,800 km north to south.
 Population about 2,400. A river-crossing town on the **Rooks' Road** at the meeting point of Hale, Ironmarch, and Harbor influence.
 
 - **Government:** a reeve appointed by Hale, resented by the Ironmarch caravan-masters.
-- **Economy:** tolls, grain, Delve loot sold to Tallyhouse buyers.
-- **Tier presence:** one Tier 3 (Tallyhouse Registrar Hale Dunmore), several Tier 2, about 40 Tier 1.
+- **Economy:** tolls, grain, Rift loot sold to Tallyhouse buyers.
+- **Tier presence:** one Tier 3 (Tallyhouse Registrar Hale Dunmore), several Tier 2, about 40 Tier 1. Residents of the Ford Reaches are at most Tier 3; anyone stronger arrives only through an authored story beat.
 - **Tension:** the Sunken Stair has produced two clears and one disappearance in the past season.
 - **Nearby travel:** Brannock Tallyhouse 1 day; the Long Wall 4 days; Saltmere 9 days by road; Kaulgard 14 days.
-- **Delve rule of thumb:** the Sunken Stair is a Tier 1 Delve at floors 1 to 3 and Tier 2 below.
+- **Rift rule of thumb:** the Sunken Stair is a Tier 1 rift at floors 1 to 3 and Tier 2 below.

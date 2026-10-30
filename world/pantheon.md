@@ -13,6 +13,8 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 
 **The Vessel clause:** since the Severance, no god may act directly in the mortal realm. A god acts only through an Oathbearer who consents. Therefore every god wants more Oathbearers, higher-tier Oathbearers, and Oathbearers who obey.
 
+**Petitions:** a god speaks to its sworn through Vessels (consenting mortal mouthpieces) and omens. Besides Oaths, Trials and Breaches, each god sends its sworn small petitions: a task, a refusal, an offering. Granting one raises Standing with that god; ignoring one lowers it a little.
+
 **Refilling the Seat:** a new holder must be endorsed by **5 of the 7** Hands. Current positions (public knowledge, may shift):
 
 | Position | Gods |
@@ -29,7 +31,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** two-pan scales. **Cult:** the Assize.
 - **Temperament:** exacting, fair, unforgiving of breach.
 - **Wants:** the Pact restored and re-sworn. Order that binds even gods.
-- **Oath:** Open Hand. **Calling affinity:** Cantor, Warden.
+- **Oath:** Open Hand. **Favoured affinities:** Binding, Mind. **Favoured classes:** Cantor, Warden.
 
 ### Kaul, the Iron Father
 
@@ -37,7 +39,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** hammer on anvil. **Cult:** the Ironwrit.
 - **Temperament:** blunt, honorable by his own code, contemptuous of waste.
 - **Wants:** strength tested and a world that does not rot from ease. Leans toward Veshra's order.
-- **Oath:** Held Line. **Calling affinity:** Blade-sworn, Warden.
+- **Oath:** Held Line. **Favoured affinities:** Iron, Flame. **Favoured classes:** Blade-sworn, Warden.
 
 ### Ysmere, the Tidemother
 
@@ -45,7 +47,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** spiral shell. **Cult:** the Turning.
 - **Temperament:** vast, warm, indifferent to individuals.
 - **Wants:** motion and renewal. Distrusts anything that cannot change.
-- **Oath:** Turning Tide. **Calling affinity:** Wayfinder, Hearthwright.
+- **Oath:** Turning Tide. **Favoured affinities:** Tide, Life. **Favoured classes:** Wayfinder, Hearthwright.
 
 ### Maru-Ghen, the Quiet Harvest
 
@@ -53,7 +55,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** sickle and seed. **Cult:** the Ashen Convent.
 - **Temperament:** patient, gentle, immovable.
 - **Wants:** orderly endings. Opposes undeath absolutely. Sides with Veshra on restoring the Pact.
-- **Oath:** Last Rest. **Calling affinity:** Gravewalker, Hearthwright.
+- **Oath:** Last Rest. **Favoured affinities:** Death, Stone. **Favoured classes:** Gravewalker, Hearthwright.
 
 ### Ilvane, the Lantern
 
@@ -61,7 +63,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** shuttered lantern. **Cult:** the Lantern Orders.
 - **Temperament:** cryptic. Every prophecy has a price. Rarely states a position.
 - **Wants:** publicly, nothing. See `world/secret/` if released.
-- **Oath:** Kept Light. **Calling affinity:** Cantor, Wayfinder.
+- **Oath:** Kept Light. **Favoured affinities:** Light, Space. **Favoured classes:** Cantor, Wayfinder.
 
 ### Drovash, the Laughing Thief
 
@@ -69,7 +71,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** coin with a hole. **Cult:** the Underlanes, informally.
 - **Temperament:** charming, ruthless about contracts he writes himself.
 - **Wants:** the Hands unbound. Believes the Pact was a cage. The public villain of the Severance story.
-- **Oath:** Fair Wager. **Calling affinity:** Wager-bound, Wayfinder.
+- **Oath:** Fair Wager. **Favoured affinities:** Shadow, Wind. **Favoured classes:** Wager-bound, Wayfinder.
 
 ### Hurrow, the Antlered
 
@@ -77,7 +79,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** antlers. **Cult:** clan hunt-moots.
 - **Temperament:** remote, patient, predatory.
 - **Wants:** walls torn down; balance of hunter and hunted. Opposes the Pact as human enclosure of the wild.
-- **Oath:** Long Hunt. **Calling affinity:** Wildkin, Wayfinder.
+- **Oath:** Long Hunt. **Favoured affinities:** Beast, Growth. **Favoured classes:** Wildkin, Wayfinder.
 
 ## Rivalries
 

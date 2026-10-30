@@ -17,17 +17,19 @@ The eighth Seat in the divine council stands empty. Whoever fills it, or whether
 
 ## The Ledger
 
-Anyone who swears an Oath gains the **Ledger**: a private, inward record visible to the mind on request. The Ledger shows Name, Calling, Tier, Level, stats, skills, Oaths, and Standing with gods and factions. Oathbearers describe it as *reading a page written in their own handwriting that they do not remember writing*. About 1 in 40 people is ever offered an Oath. The rest are the **Unwritten** (Tier 0).
+Anyone who swears an Oath gains the **Ledger**: a private, inward record visible to the mind on request. The Ledger shows Name, people, class, profession, Tier, Level, stats, affinities, skills, titles, Oaths, and Standing with gods and factions. Oathbearers describe it as *reading a page written in their own handwriting that they do not remember writing*. About 1 in 40 people is ever offered an Oath. The rest are the **Unwritten** (Tier 0).
 
 Ledgers cannot be read by others. Rank is inferred from behavior, reputation, and the **Tallyhouse** registry, which certifies tiers for contracts and bounties.
 
-## Delves
+## Rifts
 
-Across Caldrenne, ground, ruin, and sometimes open air tear into stairs that descend to sealed, shifting dungeons called **Delves**. Delves hold monsters, treasure, and trials. They are old, and they grow. Scholars disagree about why. Delvers register at a Tallyhouse, and the Ledger records their kills and clears.
+Across Caldrenne, ground, ruin, and sometimes open air tear open into **rifts**: stairs that descend to sealed, shifting dungeons. Rifts hold monsters, treasure, shards and trials. They are old, and they grow. Scholars disagree about why. Rifters register at a Tallyhouse, and the Ledger records their kills and clears.
 
 ## Calendar and tone
 
-- Present year: **1,140 AS** (After the Severance). A year has twelve months and four seasons.
+- Present year: **1,140 AS** (After the Severance). A year has twelve months of 30 days, four seasons of three months, and five uncounted **Blank Days** at year's end that no Ledger records. The play begins on 1 Seedtide 1,140 AS.
+- Months: **Spring:** Firstthaw, Mudmonth, Seedtide. **Summer:** Greenmonth, Highsun, Longday. **Autumn:** Haymonth, Reaping, Leaffall. **Winter:** Frostcoming, Deepwinter, Lastdark.
+- Week: seven days, one for each Hand: Veshday, Kaulday, Ysday, Maruday, Ilday, Drovday, Hurday.
 - Travel: 25 km per day on foot, 50 km per day mounted on good roads, 1,000 km per day by sea in fair wind (convoy average).
 - Technology: plate and mail, crossbows, siege engines, printing absent, hand-copied books, alchemy limited and Oath-gated.
 - Tone: grounded and grand. Consequences are real. Power has a price. Politics matters as much as combat. The world does not wait for the player.
