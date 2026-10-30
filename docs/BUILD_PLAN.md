@@ -121,7 +121,7 @@ Ordered so each step is testable alone.
 
 ## M2: Narrator loop (3 to 4 sessions)
 
-1. `llm/`: `LLMClient` protocol, `MockClient` replaying recorded transcripts, Anthropic adapter with timeouts, backoff and jitter (OPS-01, OPS-03), prompt caching on layers 1 and 2 (OPS-04), per-turn token logging (MEM-04). Provider switch (D-020): the same adapter talks to a local Ollama server through its Anthropic-compatible API (`base_url` in `config.toml`); Ollama lacks prompt caching, `count_tokens` and `tool_choice`, so the budgeter estimates tokens itself and the loop never forces a tool.
+1. `llm/`: `LLMClient` protocol, `MockClient` replaying recorded transcripts, Anthropic adapter with timeouts, backoff and jitter (OPS-01, OPS-03), prompt caching on layers 1 and 2 (OPS-04), per-turn token logging (MEM-04). Provider switch (D-020): the same adapter talks to a local Ollama server through its Anthropic-compatible API (`base_url` in `config.toml`); Ollama lacks prompt caching, `count_tokens` and `tool_choice`, so the budgeter estimates tokens itself and the loop never forces a tool. Ollama's context is set on the server, not per request (D-027); the adapter raises an error when Ollama reports far fewer input tokens than the budgeter sent, so a truncated prompt never narrates.
 2. `engine/tools.py`: every tool in `docs/architecture.md` section 6 as a Pydantic schema with engine validation; unknown tools rejected (ENG-02).
 3. `narrator/assemble.py`: layers 1 to 3 and 8 in fixed order; recent turns as messages (NAR-01). Layer 3 is a curated view of state (no raw roll logs, no off-scene NPCs, nothing gated), not a full dump (D-022).
 4. `narrator/loop.py`: the turn loop in architecture section 3: per-call retry cap, forced-prose round, fallback turn, short commit transaction (NAR-06, NAR-07, OPS-03).
@@ -137,7 +137,7 @@ Ordered so each step is testable alone.
 ## M2.5: Phone page (1 session)
 
 - FastAPI app on the owner's Windows PC (D-021): one page with the prose stream (SSE), a text box, suggested-action buttons, and the status panel (HTMX partial) rendered from state. No accounts; reachable on home Wi-Fi and through Tailscale only.
-- `start.bat` one-click launcher (starts Ollama if configured, then the game) and a short setup guide: install uv, Ollama and Tailscale, allow the port in Windows Firewall.
+- `start.bat` one-click launcher (starts Ollama with `OLLAMA_CONTEXT_LENGTH=32768` if configured (D-027), then the game) and a short setup guide: install uv, Ollama and Tailscale, allow the port in Windows Firewall.
 
 **Acceptance:** roadmap M2.5. **You test:** play the opening on your phone, at home and once over Tailscale.
 

@@ -159,3 +159,9 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Accepted (2026-10-30)
 - **Decision:** Claude Code cloud sessions push to the branch name the harness assigns, which can repeat across PRs. After a merge the branch is cut again from the latest `main` before new work, so no merged history is reused. This meets GIT-01's intent; it is not an override.
 - **Why:** PRs #1 to #6 shared one branch name (audit item 13). The harness assigns the name; recording the practice stops a later session from treating it as a GIT-01 breach.
+
+## D-027 Ollama runs with a 32,768-token context
+
+- **Status:** Assumed (2026-10-30)
+- **Decision:** When the narrator uses Ollama (D-020), the server starts with `OLLAMA_CONTEXT_LENGTH=32768`, set by `start.bat`. The M2 adapter treats a reported input-token count far below its own estimate as a truncated prompt and fails the call; the turn then takes the NAR-07 fallback. The first local model to test is `qwen3:8b`.
+- **Why:** the owner's check on 2026-10-30 showed `qwen3:8b` at 100 % GPU on the RX 6700 XT through Vulkan, at the 4,096-token default. Ollama's docs say the default is 4k below 24 GiB of VRAM, and the Anthropic-compatible API has no per-request context option (docs.ollama.com/context-length, /api/anthropic-compatibility, read 2026-10-30). Pantheon's prompt is about 26,000 tokens (a 6,000-token canon prefix plus the 20,000-token MEM-04 budget), so the default would cut most of it. 32,768 tokens covers that with room for the reply. Memory estimate: about 4.5 GiB of fp16 KV cache at 32,768 tokens for `qwen3:8b`, so about 10 GB in total, inside 12 GB; the owner confirms with `ollama ps`.
