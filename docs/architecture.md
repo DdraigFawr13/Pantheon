@@ -115,7 +115,7 @@ Layers 1 and 2 form the cache prefix; the cache breakpoint sits at the end of la
 
 **Events record outcomes.** `check_resolved` stores the dice, modifiers, total and outcome; `xp_gained` stores the amount the engine set. Replay never calls the RNG. A timeline keeps the `rules_version` it was created under; changing rules affects new timelines, and old ones upgrade only through an explicit upgrader.
 
-Event types (initial): `check_resolved`, `xp_gained`, `level_up`, `trial_begun`, `trial_resolved`, `oath_offered`, `oath_sworn`, `oath_conflict_raised`, `oath_conflict_resolved`, `oath_breached`, `standing_changed`, `flag_set`, `item_changed`, `currency_changed`, `effect_applied`, `scar_gained`, `downed`, `last_breath`, `died`, `reckoning`, `time_advanced`, `clock_advanced`, `npc_introduced`, `location_introduced`, `hook_registered`, `hook_resolved`, `beat_fired`, `secret_released`, `actions_suggested`, `tool_call_dropped`.
+Event types (initial): `check_resolved`, `xp_gained`, `level_up`, `trial_begun`, `trial_resolved`, `class_evolved`, `stat_point_allocated`, `skill_offered`, `skill_learned`, `skill_used`, `skill_evolved`, `shard_absorbed`, `fragments_fused`, `affinity_raised`, `loot_granted`, `title_granted`, `profession_xp_gained`, `item_crafted`, `oath_offered`, `oath_sworn`, `oath_conflict_raised`, `oath_conflict_resolved`, `oath_breached`, `burden_tested`, `petition_sent`, `petition_resolved`, `bounty_accepted`, `bounty_completed`, `standing_changed`, `rumour_recorded`, `flag_set`, `item_changed`, `currency_changed`, `effect_applied`, `injury_gained`, `downed`, `last_breath`, `died`, `reckoning`, `time_advanced`, `clock_advanced`, `npc_introduced`, `location_introduced`, `hook_registered`, `hook_resolved`, `beat_fired`, `secret_released`, `actions_suggested`, `tool_call_dropped`.
 
 ## 6. Tool contracts (narrator to engine)
 
@@ -123,10 +123,15 @@ All arguments are validated by Pydantic. Unknown tools are rejected. Where the n
 
 | Tool | Arguments | Engine behavior |
 |---|---|---|
-| `request_check` | `stat`, `skill?`, `base_dc` (10/15/20/25), `challenge_tier`, `approach` (`force`/`other`), `stakes`, `overcome?` | Rolls per ENG-04/05; ENG-05 auto-fail applies only to `approach: force`; validates the `overcome` parts it can (Standing, Artifact tier, Ally tier); returns roll, modifiers, outcome, `check_id` |
+| `request_check` | `stat`, `skill?`, `difficulty` (`routine`/`hard`/`severe`/`heroic`), `challenge_tier`, `approach` (`force`/`other`), `stakes`, `overcome?` | Rolls d100 per ENG-04/05; ENG-05 auto-fail applies only to `approach: force`; validates the `overcome` parts it can (Standing, Artifact tier, Ally tier); returns chance, roll, outcome, `check_id` |
+| `use_skill` | `skill_id`, `target?`, `overspend?` | Checks the skill is known, unblanked and off cooldown, and that the pool can pay (overspend up to 50 % if allowed); deducts the cost; rolls for Injury after an overspend; may chain a `request_check` |
+| `grant_loot` | `source` (`rift_floor:<id>`, `rift_core:<id>`, `foe:<id>`, `cache:<id>`) | Rolls shards, fragments and items from the source's loot table; the narrator never picks shard rarity |
 | `apply_effect` | `target`, `kind` (`damage`/`heal`/`condition`), `source` (`check_id` or named hazard), `reason` | Size from the source check's outcome and the effect table; bounds-checks; returns new values; HP 0 emits `downed` |
 | `grant_xp` | `kind` (for example `minor`, `major`, `milestone`), `reason` | Amount from the XP table; per-turn cap; returns level state |
-| `adjust_standing` | `entity` (god/faction/npc), `kind` (`slight`/`notable`/`grave`), `direction` (`+`/`-`), `reason` | Delta from the Standing table; clamps to [-100, 100] |
+| `adjust_standing` | `entity` (god/faction/npc), `kind` (`slight`/`notable`/`grave`), `direction` (`+`/`-`), `witness` (`npc:<id>`/`evidence:<item>`/`record:<office>`/`none`), `reason` | Delta from the Standing table; clamps to [-100, 100]; with `witness: none` records a rumour instead (D-013) |
+| `grant_title` | `title_id`, `witness`, `reason` | Validates the title's condition against state; needs a witness |
+| `send_petition` | `god`, `ask`, `due_condition` | Registers a petition as a hook; granting or ignoring it adjusts Standing |
+| `test_burden` | `oath_id`, `situation`, `kept` (bool) | Records the narrator's judgement; `kept: false` applies the Breach |
 | `adjust_inventory` | `item`, `quantity` (+/-), `reason` | Narrator chooses the item and count (ENG-09); rejects removing what is not held and counts above the per-turn bound |
 | `adjust_currency` | `amount` (+/-), `reason` | Narrator chooses the amount; rejects overdraft and gains above the bound for the character's tier |
 | `advance_time` | `span` (`minutes`/`hours`/`rest`/`day`/`days`), `count?`, `reason` | Advances the calendar; ticks time-driven clocks, Oath timers and daily Boons |
@@ -136,22 +141,26 @@ All arguments are validated by Pydantic. Unknown tools are rejected. Where the n
 | `introduce_npc` | `name`, `role`, `tier`, `disposition` | Rejects duplicates and tier above region cap |
 | `introduce_location` | `name`, `region`, `description` | Registers for retrieval |
 | `offer_oath` | `god`, `oath_id` | Checks prerequisites and oath conflicts |
-| `resolve_oath_conflict` | `conflict_id`, `choice` (`honor:<oath>`/`seek_trial`/`accept_breach`) | Applies Breach penalties from `world/power_tiers.md` |
-| `begin_trial` | `kind`, `description`, `stakes` | Only legal at a tier threshold (level multiple of 10) |
-| `resolve_trial` | `trial_id`, `tithe` (`years`/`memory`/`relationship`/`name`), `tithe_detail` | Outcome from the trial's recorded checks, not from the narrator; applies Tithe and Scar |
-| `mark_hostile_round` | `reason` | While Downed, adds a Last Breath mark; three marks is death or Reckoning per config |
+| `resolve_oath_conflict` | `conflict_id`, `choice` (`honor:<oath>`) | Breaches the other Oath (blessing suspended, Standing -20) per `world/power_tiers.md` |
+| `begin_trial` | `kind`, `description`, `witness`, `stakes` | Only legal at a tier threshold (level multiple of 10) |
+| `resolve_trial` | `trial_id` | Outcome (Ascend, Setback, Breaking) from the trial's recorded checks, not from the narrator; Ascend unlocks the player's evolution choice |
+| `mark_hostile_exchange` | `reason` | While Downed, adds a Last Breath mark; three marks is death or Reckoning per config |
 | `record_beat` | `beat_id`, `outcome` | Marks an arc beat consumed |
 | `suggest_actions` | `actions`: 3 to 5 of `{label, violent: bool, cost: str?}` | Rejects sets without a non-violent action and an action with a cost (NAR-03); the UI renders them |
+
+### Player commands (UI to engine, no narrator)
+
+Choices that belong to the player go straight from the UI to the engine and are logged as events like any other: `allocate_point(stat)`, `pick_skill(offer_id, choice)`, `absorb_shard(shard_id, target_skill?)`, `fuse_fragments(kind)`, `choose_evolution(option_id)`, `craft(recipe_id, inputs)`, `choose_class` and `choose_profession` at awakening. The narrator learns the result through the state snapshot.
 
 ## 7. Reveal gates
 
 `reveal_gate` is a boolean expression over engine state, for example:
 
 ```
-tier >= 3 and standing.ilvane >= 40 and flags.delves_closed >= 1
+tier >= 3 and standing.ilvane >= 40 and flags.rifts_closed >= 1
 ```
 
-The evaluator shall use a restricted expression grammar (comparison, `and`, `or`, `not`, dotted state paths; a bare path is true when its value is set and truthy). No `eval`. Released secrets are recorded as `secret_released` events so they remain released after a fork.
+The evaluator shall use a restricted expression grammar (comparison, `and`, `or`, `not`, parentheses, dotted state paths; a bare path is true when its value is set and truthy). No `eval`. Released secrets are recorded as `secret_released` events so they remain released after a fork.
 
 ## 8. Timeline forks
 

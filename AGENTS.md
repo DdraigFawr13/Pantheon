@@ -28,7 +28,8 @@ Shared rules come from AI-Master-Instructions and load through CLAUDE.md (`.clau
 - The engine owns every number; the narrator proposes changes through typed tool calls and the engine accepts or rejects them (ENG-01, ENG-02). Narrator prose never states a number the engine did not return that turn (NAR-04).
 - `src/pantheon/engine/` never imports `narrator`, `llm` or `ui`; a test enforces it (SPEC section 4).
 - `world/` is canon and read-only. Edit it only when asked, with a `canon:` commit prefix (WLD-03). List gaps in `docs/canon_gaps.md`; never fill them silently.
-- Text from `world/secret/` never appears in a prompt, log line or fixture except a test of the reveal gate (NAR-02).
+- Text from `world/secret/` and `world/sealed/` never appears in a prompt, log line or fixture except a test of the reveal gate (NAR-02).
+- Sealed canon (`world/sealed/`, `src/pantheon/sealed/`) is not shown to the owner: describe it only by file name and outline item; a reviewer agent checks every change (WLD-04).
 - No model identifier or API key in source; they come from `config.toml` or the environment (OPS-02).
 - Write the failing test first for every ENG requirement and put the requirement ID in the test name and commit message.
 - `docs/SPEC.md` and `docs/roadmap.md` are approved scope: build them without asking, and record each assumption in `docs/DECISIONS.md` with Status "Assumed". Anything outside them follows WS-02.

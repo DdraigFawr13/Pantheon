@@ -12,14 +12,16 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 
 ## M1: Engine core (ENG-01 to ENG-11, OPS-05)
 
-- Character model: stats, derived HP, level, tier, skills (rank cap by tier).
-- Dice with seeded RNG; `request_check` resolution per `world/power_tiers.md`.
+- Character model per `world/power_tiers.md`: people, class, profession, stats and free points, HP/mana/stamina, affinities, skills (rarity, rank, caps), shards, titles, Injuries.
+- Dice with seeded RNG; d100 `request_check` resolution (ENG-04, ENG-05).
+- Class offers, evolutions and Ascension Trials as data; shard absorb and fusion; overspend and Injury.
 - Event log of resolved outcomes, snapshots, replay, fork (copies turns and summaries); schema and rules versions.
-- In-world calendar and `advance_time`; reward tables for XP, Standing and damage kinds.
+- In-world calendar and `advance_time`; reward and loot tables for XP, Standing, damage and shards, tuned to D-014 pacing.
+- Combat exchanges with enemy intents, Downed and Last Breath, Reckonings.
 - XP curve and Ascension gating.
 - CLI commands to roll checks and inspect state, without any LLM.
 
-**Acceptance:** replay equivalence holds under `hypothesis`; seeded determinism test passes; tier-delta rules covered at deltas -4 to +4; engine coverage at least 90 %.
+**Acceptance:** replay equivalence holds under `hypothesis`; seeded determinism test passes; tier-gap rules covered at gaps -4 to +4; d100 outcome bands covered at their edges; engine coverage at least 90 %.
 
 ## M2: Narrator loop (NAR-01 to NAR-07, OPS-01 to OPS-04)
 
@@ -31,6 +33,12 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 
 **Acceptance:** a 10-turn scripted playtest completes with no engine invariant violations; rejected tool calls are surfaced and retried at most twice; no unsupplied numeric outcomes in prose across the scripted run; a `MockClient` outage produces a fallback turn and no lost events.
 
+## M2.5: Phone page
+
+- Minimal web page served locally: prose stream, text input, suggested actions, status panel rendered from state (D-015).
+
+**Acceptance:** the opening plays end to end on a phone browser on the local network.
+
 ## M3: Memory (MEM-01 to MEM-04)
 
 - Scene and chapter summarization with stored results.
@@ -39,6 +47,15 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 - Reveal-gate evaluator and secret-release events (NAR-02).
 
 **Acceptance:** a 60-turn playtest keeps input context at or below the configured budget; the test that scans assembled prompts for unreleased secret strings passes; the narrator recalls a fact introduced in turn 3 at turn 55.
+
+## M3.5: First content pass (first playable version)
+
+- The Sunken Stair as the first rift (data template: floors, tier, affinity, loot tables, core).
+- Tier 1 class skill lists and the Level 10 evolution options for the 8 base classes; profession recipes for the first-version professions.
+- One rival (D-013), Tallyhouse bounty board, the Unwritten path, god petitions, witnessed deeds and rumours.
+- The sealed affinity's first trace (WLD-04).
+
+**Acceptance:** a playtest reaches Tier 2 from a new timeline; the sealed reviewer and the reveal-gate reachability test pass; the owner's playtest notes are recorded.
 
 ## M4: Branching structure
 

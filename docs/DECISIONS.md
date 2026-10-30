@@ -39,3 +39,63 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Accepted (2026-10-30)
 - **Decision:** Audit items 2 to 12 and 20 to 22 are applied to `docs/SPEC.md` (ENG-06, ENG-08 to ENG-11, NAR-03, NAR-04, NAR-07, pytest-cov, import test), `docs/architecture.md` sections 3 to 10, `prompts/narrator.md`, `config.example.toml` and `docs/roadmap.md`. Canon gaps (items 13 to 19) are listed in `docs/canon_gaps.md`, not filled.
 - **Why:** owner asked for the audit fixes to be made. Item 9 (model unavailable) follows the recommendation, an engine-rendered fallback turn (NAR-07), so GAME-03 needs no override.
+
+## D-007 Design rounds 2026-10-30
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** The owner settled the design through five form rounds (round 1, review and round 2, two superseded final pages, round 3, final plan). Links are in `docs/HANDOFF.md`. Entries D-008 to D-016 record the outcome; the canon text is in `world/`.
+- **Why:** planning-interview skill; one home per fact (SRC-01).
+
+## D-008 Power system: a LitRPG System with d100 checks
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** The Ledger is a LitRPG System: base classes (the 8 former Callings) that evolve at each Ascension Trial; five stats with class gains and 1 free point per level; health, mana and stamina; 15 basic and 5 rare affinities whose rank caps skill rank; skills with rarity (Common to Divine) and rank; skill and affinity shards from rifts; professions; titles. Checks are d100 (ENG-04). Removed: Strain, the Tithe of years, lifespan and age costs, Scars, and the Arts/Mantle/Miracle/Verse/Domain ladder. Rules: `world/power_tiers.md`.
+- **Why:** the owner wanted a richer but simpler, Primal Hunter-style base with shards and rifts, no costs paid in time, and room for god-level power. The two earlier designs (Strain-based, lifespan-based) were rejected. The par-relative stat edge keeps same-tier checks fair at every tier (a plain stat term reached 93 % at Tier 7).
+
+## D-009 Overspending risks a permanent Injury
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Mana or stamina may go up to 50 % below zero; afterwards a d100 roll at 2 % per 1 % overspent gives a permanent Injury, curable only by Rare+ Life skills or high-grade alchemy.
+- **Why:** owner's round 3 note. Gives Life and alchemy a purpose.
+
+## D-010 Affinities, gods and Oaths
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Basic: Flame, Frost, Tide, Storm, Wind, Stone, Iron, Growth, Beast, Light, Shadow, Life, Death, Mind, Song. Rare: Binding, Space, Blood, Spirit, and one sealed. Each god favours two (Veshra Binding/Mind, Kaul Iron/Flame, Ysmere Tide/Life, Maru-Ghen Death/Stone, Ilvane Light/Space, Drovash Shadow/Wind, Hurrow Beast/Growth). An Oath is a blessing (+1 affinity rank, one perk) with one Burden; a Breach suspends the blessing and costs 20 Standing until atoned. Oaths at Tiers 1, 2, 4 and 6. Any class may swear any Oath; favoured classes get +5 with that god's affinities. Each god will offer 2 to 3 Oaths (after the first version). Sub-affinities later.
+- **Why:** owner's answers (round 3: more affinities; final plan: Fate replaced by Space).
+
+## D-011 Peoples, professions, rifts
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Five peoples born of Caldrenne (Humans, Riftborn, Fenfolk, Saltborn, Stonekin), each with an innate affinity, a trait and +3 to a stat; no race levels. Fifteen professions in gathering, crafting and service groups; one at awakening, a second at Tier 3. Delves are renamed rifts everywhere (Delve Tide is now the Rift Tide; flag `rifts_closed`).
+- **Why:** owner's answers (round 3 and final plan).
+
+## D-012 Sealed canon
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** The hidden second magic is a sealed rare affinity in `world/sealed/` (WLD-04). Approved outline: a different logic from Oath magic, granted by no god and not tracked by the Ledger the way Oaths are; usable by the player eventually, with or without an Oath; never paid in mana, stamina, time or lifespan, with its own engine-tracked cost; never simply stronger than Oath magic at the same tier; may touch Standing and at most one existing secret thread; may not contradict public canon, break content limits or change the endings; a first trace in the Ford Reaches early in play, not takeable in the first version. A reviewer agent checks content instead of the owner. Sealed entries use neutral ids and the flags `unwritten_path`, `sealed_a_trace_ready` and `sealed_a_trace_seen`, all set by the engine or authored beats.
+- **Why:** owner chose "secrets I never read", outline approval, sealed folders, and folding the hidden magic into the affinities.
+
+## D-013 Story rules adopted from the design pass
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** (1) The rival swears the Oath the player refused in the opening. (2) Standing for public deeds and some titles needs a witness; unwitnessed deeds become rumours. (3) Gods send small petitions through Vessels. (4) The Unwritten grow through shards, gear, allies and reputation; their skill cap is their highest affinity rank and their affinity cap is 3.
+- **Why:** owner agreed to each proposal.
+
+## D-014 Pacing, time and death
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Tier 2 in about 8 hours of play; each later tier about 1.5 times the last (XP rewards scale with tier; numbers are engine data tuned in M1). A session covers about a week in-world. Clocks advance one segment per season, plus one more when neglected for a season. Reckonings escalate and the fourth death is final. Age is recorded (start 16 to 30) with no mechanics. Combat runs in exchanges with enemy intents shown; deeper tactics come right after the first version.
+- **Why:** owner's answers in rounds 1 to 3.
+
+## D-015 First version scope and phone play
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** First playable version (through M3.5): the Ford Reaches, Tier 0 to Tier 2, the opening, bounties, crafting and professions, one rival, the first rift, the Unwritten path, the sealed affinity's first trace. A minimal phone web page arrives at M2.5. After: tactical combat, sub-affinities, full Oath list, codex and journal, romance (Standing plus flags), companions, holdings, prophecy, images (off until the owner sets a monthly cap).
+- **Why:** owner's keep list and final plan.
+
+## D-016 Content limits
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Allowed: romance, off-screen sexual content, torture, slavery and debt-bondage, real-world religious parallels. Not allowed: harm to children, body horror.
+- **Why:** owner's round 1 answer.
