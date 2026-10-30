@@ -11,6 +11,7 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 - 2026-10-30 Integrated AI-Master-Instructions; audit and fixes merged (PR #1).
 - 2026-10-30 Design rounds finished and approved (D-007 to D-016).
 - 2026-10-30 PR #2 merged. Canon batch: `world/power_tiers.md` rewritten as the d100 System; peoples, economy and calendar drafted; Delves renamed rifts; sealed affinity added under `world/sealed/` and checked by a reviewer agent; random opening gods (D-017); SPEC (ENG-04/05/07, WLD-04), architecture tools, narrator prompt and roadmap (M2.5, M3.5) updated.
+- 2026-10-30 Whole-repo audit written to `docs/audit/2026-10-30-repo-audit.md` (29 items, 3 block M0 as planned: `.gitignore` `data/`, sealed README frontmatter, unset gate flags). No fixes applied yet.
 
 ## Next
 
