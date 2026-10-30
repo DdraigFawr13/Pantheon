@@ -167,7 +167,7 @@ tier >= 3 and standing.ilvane >= 40 and flags.rifts_closed >= 1
 
 The evaluator shall use a restricted expression grammar (comparison, `and`, `or`, `not`, parentheses, dotted state paths; a bare path is true when its value is set and truthy). No `eval`. Released secrets are recorded as `secret_released` events so they remain released after a fork.
 
-**Flag registry.** A gate may read only state fields (`tier`, `level`, `standing.<id>`, where a god's id is its name in lower case with `_` for `-`, for example `ilvane`, `maru_ghen`) and flags listed in `world/data/flags.yaml` or `world/sealed/data/flags.yaml` (D-023). Each entry gives the flag's `kind` (`bool` or `counter`), who sets it (`engine`, `beat` or `narrator`) and, for narrator flags, an `accept` rule the engine checks. Counters only go up. The M0 test fails on a gate path that is in neither list, so no gate depends on a flag nothing sets.
+**Flag registry.** A gate may read only state fields (`tier`, `level`, `standing.<id>`, where a god's id is its name in lower case with `_` for `-`, for example `ilvane`, `maru_ghen`) and flags listed in `world/data/flags.yaml` or `world/sealed/data/flags.yaml` (D-024). Each entry gives the flag's `kind` (`bool` or `counter`), who sets it (`engine`, `beat` or `narrator`) and, for narrator flags, an `accept` rule the engine checks. Counters only go up. The M0 test fails on a gate path that is in neither list, so no gate depends on a flag nothing sets.
 
 ## 8. Timeline forks
 

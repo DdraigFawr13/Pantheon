@@ -11,7 +11,7 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 - 2026-10-30 Integrated AI-Master-Instructions; audit and fixes merged (PR #1).
 - 2026-10-30 Design rounds finished and approved (D-007 to D-016).
 - 2026-10-30 PR #2 merged. Canon batch: `world/power_tiers.md` rewritten as the d100 System; peoples, economy and calendar drafted; Delves renamed rifts; sealed affinity added under `world/sealed/` and checked by a reviewer agent; random opening gods (D-017); SPEC (ENG-04/05/07, WLD-04), architecture tools, narrator prompt and roadmap (M2.5, M3.5) updated.
-- 2026-10-30 Whole-repo audit (`docs/audit/2026-10-30-repo-audit.md`) and its fixes in PR #7: the three M0 blockers (D-023: flag registry in `world/data/flags.yaml` and `world/sealed/data/flags.yaml`, README rule, `/data/` ignore), design fixes (D-024), branch-name practice (D-025), canon corrections and gaps G-10 to G-22. Sealed and secret changes passed the reviewer agent.
+- 2026-10-30 Whole-repo audit (`docs/audit/2026-10-30-repo-audit.md`) and its fixes in PR #7: the three M0 blockers (D-024: flag registry in `world/data/flags.yaml` and `world/sealed/data/flags.yaml`, README rule, `/data/` ignore), design fixes (D-025), branch-name practice (D-026), canon corrections and gaps G-10 to G-22. Sealed and secret changes passed the reviewer agent.
 
 ## Next
 
@@ -38,4 +38,4 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-025 in `docs/DECISIONS.md` (D-022 Assumed).
+- 2026-10-30 D-007 to D-026 in `docs/DECISIONS.md` (D-022 Assumed).

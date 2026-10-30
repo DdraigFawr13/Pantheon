@@ -1,4 +1,4 @@
-# Flag registry, sealed part (canon data, D-023, WLD-04).
+# Flag registry, sealed part (canon data, D-024, WLD-04).
 # The flags that only sealed canon names. Public flags live in world/data/flags.yaml; a key is
 # listed in one file only. Same format as that file. Sealed flags are set by the engine or by
 # authored beats, never by the narrator (D-012).

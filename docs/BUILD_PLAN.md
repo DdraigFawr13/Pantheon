@@ -42,7 +42,7 @@ world/
     professions.yaml   15 professions; recipes for the first-version ones
     titles.yaml        titles: condition, bonus, witness needed
     rewards.yaml       XP, Standing, damage and loot tables by tier (G-08)
-    flags.yaml         flag registry: kind, who sets it, accept rule (D-023)
+    flags.yaml         flag registry: kind, who sets it, accept rule (D-024)
     rifts/sunken_stair.yaml
   sealed/              sealed lore and sealed/data/ tables (WLD-04)
   secret/              secret lore
@@ -74,13 +74,13 @@ tests/        mirrors src/; fixtures/ holds recorded MockClient transcripts
 
 1. `uv init`, `pyproject.toml` with the package layout (Windows-safe paths and line endings, D-021), ruff, mypy (`--strict` on `engine/`), pytest, pytest-cov.
 2. `config.py`: load `config.toml` and environment (OPS-02); fail clearly when a model id is missing only for commands that need one.
-3. `world/schemas.py` + `loader.py`: parse every `world/**/*.md` frontmatter except `README.md` (id, type from a closed list, visibility, tags, reveal_gate) and every `world/data/*.yaml` and `world/sealed/data/*.yaml` against Pydantic models (WLD-01, WLD-02, D-023).
+3. `world/schemas.py` + `loader.py`: parse every `world/**/*.md` frontmatter except `README.md` (id, type from a closed list, visibility, tags, reveal_gate) and every `world/data/*.yaml` and `world/sealed/data/*.yaml` against Pydantic models (WLD-01, WLD-02, D-024).
 4. `world/gates.py`: the restricted reveal-gate grammar (comparison, and, or, not, parentheses, dotted paths, bare truthy paths); no `eval`.
 5. `storage/db.py`: SQLite in WAL mode, `meta.schema_version`, the tables in `docs/architecture.md` section 5.
 6. CLI: `pantheon new` creates a timeline with a seed and rules version (ENG-10), and draws the opening's two gods from the seed (D-017).
 7. Tests: every world file loads; a malformed fixture fails the schema; every reveal gate (secret and sealed) parses and every path in it is a registered flag or a state field (NAR-02); no `README.md` is in the lore index; a sealed-type file outside `world/sealed/`, or the reverse, fails the load (WLD-04); the engine import-boundary test.
 8. CI: add the uv, ruff, mypy and pytest steps to the existing `check` job with the `efficient-github-actions` skill (CI-06). Add one `windows-latest` job that runs `uv run pytest` on pushes to `main` only, not on PRs, so Windows bugs (D-021) show up without doubling PR minutes.
-9. Canon batch 2 (`canon:`): first `world/data/` tables for affinities, peoples, Oaths, professions (names only, from canon). `flags.yaml` already exists (D-023); the loader adopts its format.
+9. Canon batch 2 (`canon:`): first `world/data/` tables for affinities, peoples, Oaths, professions (names only, from canon). `flags.yaml` already exists (D-024); the loader adopts its format.
 
 **Acceptance:** roadmap M0. **You test:** nothing to play; read the M0 report.
 

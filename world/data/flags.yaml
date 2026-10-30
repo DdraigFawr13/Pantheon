@@ -1,4 +1,4 @@
-# Flag registry (canon data, D-023).
+# Flag registry (canon data, D-024).
 # Every flag that a reveal gate, an authored beat or a canon file names is listed here or in
 # world/sealed/data/flags.yaml. The engine rejects `set_flag` for a registered key unless its
 # set_by is "narrator" and its accept rule holds. The narrator may also set unregistered keys
