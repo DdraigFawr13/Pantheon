@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
@@ -32,6 +33,16 @@ class Simulation:
         self.damaged_by: set[str] = set()
         self.xp_this_turn = 0
         self.suggested = False
+        self.exempt_from_limits = False
+        self.call_counts: Counter[str] = Counter()
+
+    def count_call(self, name: str, limit: int) -> None:
+        """Refuse a narrator call past its per-turn limit (D-031)."""
+        if self.exempt_from_limits:
+            return
+        if self.call_counts[name] >= limit:
+            raise Rejected(f"{name} has reached its limit this turn")
+        self.call_counts[name] += 1
 
     def emit(self, type_: str, payload: dict[str, Any]) -> None:
         apply_event(self.state, type_, payload)

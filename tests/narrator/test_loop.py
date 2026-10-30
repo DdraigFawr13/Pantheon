@@ -95,10 +95,10 @@ def test_d031_a_turn_rolls_then_narrates_the_outcome_then_records_it() -> None:
     assert outcome.state.checks_made == 1 and len(outcome.state.suggested) == 3
     assert (outcome.tokens_in, outcome.tokens_cached, outcome.tokens_out) == (20, 10, 4)
     referee, narrator, scribe = client.calls
-    assert [t["name"] for t in referee["tools"]] == ["request_check"] and referee["fast"]
-    assert narrator["tools"] is None and not narrator["fast"]
+    assert referee["fast"] and not narrator["fast"]
+    assert referee["tools"] == narrator["tools"] == scribe["tools"]  # A constant list keeps the cache valid.
     assert "The engine has decided" in str(narrator["messages"][-1]["content"])
-    assert "suggest_actions" in {t["name"] for t in scribe["tools"]} and scribe["fast"]
+    assert scribe["fast"]
 
 
 def test_d031_a_plain_question_rolls_nothing() -> None:
@@ -130,7 +130,7 @@ def test_d030_actions_are_requested_when_the_scribe_skips_them() -> None:
     hook = tools(call("register_hook", description="h", due_condition="later"))
     outcome, client = run([NONE, LLMReply(text=PROSE), hook, LLMReply(), SUGGEST])
     assert outcome.state.suggested
-    assert [t["name"] for t in client.calls[-1]["tools"]] == ["suggest_actions"]
+    assert "suggest_actions" in str(client.calls[-1]["messages"][-1]["content"])
 
 
 def test_d030_a_scribe_that_refuses_leaves_the_prose_standing() -> None:
@@ -138,14 +138,33 @@ def test_d030_a_scribe_that_refuses_leaves_the_prose_standing() -> None:
     assert outcome.narration == PROSE and not outcome.is_fallback
 
 
-def test_only_suggest_actions_is_offered_before_the_dual_offer_is_answered() -> None:
+def test_only_suggest_actions_counts_before_the_dual_offer_is_answered() -> None:
     unresolved = GameState(opening_gods=["kaul", "hurrow"], stats={"vigor": 20, "agility": 20}, created=True)
     grant = tools(call("request_check", stat="vigor", difficulty="routine", challenge_tier=0))
     client = MockClient([LLMReply(text=PROSE), grant, SUGGEST])
     outcome = take_turn(client, WORLD, RULES, unresolved, RngStreams.from_seed(1).state(), [], "Hello?", 1)
-    assert client.calls[0]["tools"] is None
-    assert [t["name"] for t in client.calls[1]["tools"]] == ["suggest_actions"]
+    assert "not available" in str(client.calls[2]["messages"][-1]["content"])
     assert [t for t, _ in outcome.events] == ["actions_suggested"]
+
+
+def test_d031_bracketed_game_text_is_not_refereed() -> None:
+    state, rng = sworn_state()
+    client = MockClient([LLMReply(text=PROSE), SUGGEST])
+    outcome = take_turn(client, WORLD, RULES, state, rng, [], "[I swear. Narrate the aftermath.]", 1)
+    assert outcome.narration == PROSE and outcome.state.checks_made == 0
+
+
+def test_d031_tool_calls_in_the_prose_step_do_not_count() -> None:
+    outcome, client = run(
+        [NONE, tools(call("grant_xp", kind="major", reason="x")), LLMReply(text=PROSE), SUGGEST]
+    )
+    assert outcome.narration == PROSE and outcome.state.xp == 0
+    assert "prose only" in str(client.calls[2]["messages"][-1]["content"])
+
+
+def test_d031_a_turn_with_no_actions_clears_the_old_ones() -> None:
+    outcome, _ = run([NONE, LLMReply(text=PROSE), LLMReply(text="No."), LLMReply(text="No.")])
+    assert outcome.state.suggested == []
 
 
 def test_nar06_rejections_retry_at_most_twice_then_drop_and_log() -> None:
@@ -208,11 +227,12 @@ def test_d031_prose_that_repeats_an_earlier_turn_is_retried() -> None:
     assert "repeats earlier narration" in str(client.calls[2]["messages"][-1]["content"])
 
 
-def test_d031_xp_is_offered_only_after_a_check() -> None:
-    _, talking = run([NONE, LLMReply(text=PROSE), SUGGEST])
-    assert "grant_xp" not in {t["name"] for t in talking.calls[2]["tools"]}
-    _, tested = run([CHECK, LLMReply(text=PROSE), SUGGEST])
-    assert "grant_xp" in {t["name"] for t in tested.calls[2]["tools"]}
+def test_d031_xp_counts_only_after_a_check() -> None:
+    grant = call("grant_xp", kind="minor", reason="x")
+    talking, _ = run([NONE, LLMReply(text=PROSE), tools(grant, *SUGGEST.tool_calls)])
+    assert talking.state.xp == 0
+    tested, _ = run([CHECK, LLMReply(text=PROSE), tools(grant, *SUGGEST.tool_calls)])
+    assert tested.state.xp == 25
 
 
 def test_d031_history_grows_then_resets() -> None:

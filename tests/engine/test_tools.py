@@ -269,6 +269,7 @@ def test_standing_needs_a_witness_and_clamps() -> None:
     assert unseen.data["rumour"] is True and "kaul" not in sim.state.standing
     args = {"entity": "kaul", "kind": "grave", "direction": "-", "witness": "npc:hale", "reason": "seen"}
     for _ in range(10):
+        sim = next_turn(sim)
         assert apply_tool(sim, "adjust_standing", args).accepted
     assert sim.state.standing["kaul"] == -100
 
@@ -308,10 +309,27 @@ def test_nar03_suggest_actions_rules(actions: list[dict[str, Any]], ok: bool) ->
     assert sim.suggested is ok
 
 
-def test_d031_the_oath_menu_is_not_duplicated_in_suggestions() -> None:
-    actions = [{"label": "Swear to Veshra", "cost": "a Burden"}, {"label": "Run"}, {"label": "Hide"}]
-    assert not apply_tool(fresh(), "suggest_actions", {"actions": actions}).accepted
-    assert apply_tool(sworn(), "suggest_actions", {"actions": actions}).accepted
+def test_d031_oath_choices_are_filtered_from_suggestions_until_the_offer_is_answered() -> None:
+    actions = [{"label": "Swear to Veshra", "cost": "a Burden"}, {"label": "Ask why"}, {"label": "Hide"}]
+    sim = fresh()
+    assert apply_tool(sim, "suggest_actions", {"actions": actions}).accepted
+    assert [a.label for a in sim.state.suggested] == ["Ask why", "Hide"]
+    after = sworn()
+    assert apply_tool(after, "suggest_actions", {"actions": actions}).accepted
+    assert len(after.state.suggested) == 3
+
+
+def test_d031_narrator_hooks_and_standing_have_a_turn_limit() -> None:
+    sim = sworn()  # The engine's own opening hooks do not spend the allowance.
+    for number in range(2):
+        assert apply_tool(
+            sim, "register_hook", {"description": f"h{number}", "due_condition": "later"}
+        ).accepted
+    assert not apply_tool(sim, "register_hook", {"description": "h9", "due_condition": "later"}).accepted
+    args = {"entity": "kaul", "kind": "slight", "direction": "+", "witness": "npc:a", "reason": "x"}
+    assert apply_tool(sim, "adjust_standing", args).accepted
+    assert apply_tool(sim, "adjust_standing", args).accepted
+    assert not apply_tool(sim, "adjust_standing", args).accepted
 
 
 def test_d031_healing_needs_a_wound() -> None:

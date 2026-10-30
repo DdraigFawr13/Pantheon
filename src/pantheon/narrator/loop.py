@@ -15,7 +15,7 @@ from typing import Any
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import EventRecord, GameState
 from pantheon.engine.timeline import Rules, Simulation
-from pantheon.engine.tools import ToolResult, apply_tool, tool_definition
+from pantheon.engine.tools import ToolResult, apply_tool, tool_definitions
 from pantheon.llm.client import LLMClient, LLMReply, LLMUnavailable
 from pantheon.narrator import fallback
 from pantheon.narrator.assemble import assemble
@@ -97,6 +97,8 @@ class _Turn:
         self.log: list[str] = []
         self.outcomes: list[str] = []
         self.recent: list[str] = []
+        # The template renders tools before the history, so a changing list empties the model's cache (D-031).
+        self.tools = tool_definitions()
 
     def call(
         self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None, *, fast: bool = False
@@ -139,13 +141,12 @@ class _Turn:
 
     def referee(self, messages: list[dict[str, Any]]) -> None:
         """Roll before any prose exists, so the story has to follow the dice (ENG-02, ENG-04)."""
-        tools = [tool_definition("request_check")]
         trial = [
             *messages[:-1],
             {"role": "user", "content": f"{messages[-1]['content']}\n\n{_REFEREE_PROMPT}"},
         ]
         for _ in range(self.max_retries + 1):
-            reply = self.call(trial, tools, fast=True)
+            reply = self.call(trial, self.tools, fast=True)
             if not reply.tool_calls:
                 return
             results = self.run_tools(reply, {"request_check"})
@@ -167,9 +168,11 @@ class _Turn:
     def narrate(self, messages: list[dict[str, Any]]) -> str | None:
         """Prose with no tools, checked before anyone sees it. None means use the fallback text (NAR-07)."""
         for _ in range(self.max_retries + 1):
-            reply = self.call(messages, None)
+            reply = self.call(messages, self.tools)
             text = strip_action_list(reply.text).strip()
             problems = ["the reply is empty"] if not text else prose_problems(text, self.allowed)
+            if reply.tool_calls:
+                problems.append("this step is prose only, with no tool calls")
             if repeats_earlier_turn(text, self.recent):
                 problems.append(
                     "it repeats earlier narration; answer what the player just did with new events"
@@ -196,9 +199,8 @@ class _Turn:
             {"role": "assistant", "content": [{"type": "text", "text": narration}]},
             {"role": "user", "content": _SCRIBE_PROMPT if len(names) > 1 else _SUGGEST_PROMPT},
         ]
-        tools = [tool_definition(name) for name in names]
         for _ in range(rounds):
-            reply = self.call(messages, tools, fast=True)
+            reply = self.call(messages, self.tools, fast=True)
             if not reply.tool_calls:
                 break
             messages += [
@@ -209,7 +211,7 @@ class _Turn:
                 return
         if not self.sim.suggested and len(names) > 1:
             messages.append({"role": "user", "content": _SUGGEST_PROMPT})
-            reply = self.call(messages, [tool_definition("suggest_actions")], fast=True)
+            reply = self.call(messages, self.tools, fast=True)
             self.run_tools(reply, {"suggest_actions"})
 
 
@@ -236,7 +238,7 @@ def take_turn(
     narration: str | None = None
     try:
         # Until the player answers the Dual Offer the scene is only talk, so there is nothing to roll.
-        if state.offer_resolved:
+        if state.offer_resolved and not player_input.startswith("["):  # Bracketed text is the game speaking.
             run.referee(messages)
         narration = run.narrate(messages)
         if narration is not None:
@@ -246,6 +248,8 @@ def take_turn(
             run.scribe(messages, narration, names, max_rounds)
     except LLMUnavailable as exc:
         run.log.append(f"model unavailable: {exc}")
+    if narration is not None and not sim.suggested:
+        sim.emit("actions_suggested", {"actions": []})  # Old actions would no longer fit this scene.
     return TurnOutcome(
         narration=narration if narration is not None else fallback.render(sim),
         is_fallback=narration is None,

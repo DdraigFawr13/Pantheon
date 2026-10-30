@@ -25,6 +25,8 @@ from pantheon.engine.state import STANDING_MAX, STANDING_MIN, Action, xp_to_next
 from pantheon.engine.timeline import Rejected, Simulation
 
 MAX_REJECTION_DETAIL = 3
+MAX_STANDING_PER_TURN = 2
+MAX_HOOKS_PER_TURN = 2
 _FLAG_KEY = re.compile(r"^story\.[a-z][a-z0-9_.]*$")
 _DIGIT = re.compile(r"\d")
 _OATH_CHOICE = re.compile(r"\b(swear|accept|refuse)\b", re.I)
@@ -244,6 +246,7 @@ def _grant_xp(sim: Simulation, args: GrantXp) -> dict[str, Any]:
 
 
 def _adjust_standing(sim: Simulation, args: AdjustStanding) -> dict[str, Any]:
+    sim.count_call("adjust_standing", MAX_STANDING_PER_TURN)
     if args.witness == "none":
         sim.emit("rumour_recorded", {"text": f"{args.entity}: {args.reason}"})
         return {
@@ -272,6 +275,7 @@ def _set_flag(sim: Simulation, args: SetFlag) -> dict[str, Any]:
 def _register_hook(sim: Simulation, args: RegisterHook) -> dict[str, Any]:
     if any(h.description == args.description for h in sim.state.hooks):
         raise Rejected("that hook is already registered")
+    sim.count_call("register_hook", MAX_HOOKS_PER_TURN)
     hook_id = len(sim.state.hooks) + 1
     sim.emit(
         "hook_registered",
@@ -288,14 +292,16 @@ def _register_hook(sim: Simulation, args: RegisterHook) -> dict[str, Any]:
 
 def _suggest_actions(sim: Simulation, args: SuggestActions) -> dict[str, Any]:
     actions = args.actions
-    if not 3 <= len(actions) <= 5:
+    minimum = 3
+    if not sim.state.offer_resolved:  # The game's menu already offers swearing and refusing.
+        actions = [a for a in actions if not _OATH_CHOICE.search(a.label)]
+        minimum = 1
+    if not minimum <= len(actions) <= 5:
         raise Rejected("offer 3 to 5 actions")
     if all(a.violent for a in actions):
         raise Rejected("at least one action must be non-violent")
-    if not any(a.cost for a in actions):
+    if not any(a.cost for a in args.actions):
         raise Rejected("at least one action must name a visible cost or risk in its cost field")
-    if not sim.state.offer_resolved and any(_OATH_CHOICE.search(a.label) for a in actions):
-        raise Rejected("the game's menu offers swearing and refusing; suggest questions and bargains instead")
     if any(_DIGIT.search(a.label + (a.cost or "")) for a in actions):
         raise Rejected("action labels and costs must not contain digits; the engine owns the numbers")
     sim.emit("actions_suggested", {"actions": [Action(**a.model_dump()).model_dump() for a in actions]})
@@ -330,6 +336,7 @@ def resolve_offer(sim: Simulation, choice: str) -> dict[str, Any]:
         result = {"sworn": oath.id, "level": 1, "affinity": oath.affinity, "affinity_rank": rank}
     sim.emit("flag_set", {"key": "opening.dual_offer_resolved", "value": True, "reason": "the Dual Offer"})
     rival_oath = oaths[gods[rival_god].first_oath]
+    sim.exempt_from_limits = True
     for god_id in ordered:
         name = gods[god_id].name
         verb = "answer to the Oath" if god_id == choice else "response to being refused"
@@ -349,6 +356,7 @@ def resolve_offer(sim: Simulation, choice: str) -> dict[str, Any]:
             source_choice=f"Dual Offer: {choice}",
         ),
     )
+    sim.exempt_from_limits = False
     return result
 
 
