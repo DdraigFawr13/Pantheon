@@ -94,17 +94,17 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Decision:** First playable version (through M3.5): the Ford Reaches, Tier 0 to Tier 2, the opening, bounties, crafting and professions, one rival, the first rift, the Unwritten path, the sealed affinity's first trace. A minimal phone web page arrives at M2.5. After: tactical combat, sub-affinities, full Oath list, codex and journal, romance (Standing plus flags), companions, holdings, prophecy, images (off until the owner sets a monthly cap).
 - **Why:** owner's keep list and final plan.
 
-## D-017 The opening's two gods are drawn at random
-
-- **Status:** Accepted (2026-10-30)
-- **Decision:** At timeline creation the engine draws two of the seven gods from the timeline's seed and records an `opening_gods_drawn` event; each offers its first Oath. The rival swears the refused god's Oath (D-013). A config setting may fix the pair for tests.
-- **Why:** owner wants restarts to open different paths. Seeded, so replays and forks stay deterministic (ENG-03).
-
 ## D-016 Content limits
 
 - **Status:** Accepted (2026-10-30)
 - **Decision:** Allowed: romance, off-screen sexual content, torture, slavery and debt-bondage, real-world religious parallels. Not allowed: harm to children, body horror.
 - **Why:** owner's round 1 answer.
+
+## D-017 The opening's two gods are drawn at random
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** At timeline creation the engine draws two of the seven gods from the timeline's seed and records an `opening_gods_drawn` event; each offers its first Oath. The rival swears the refused god's Oath (D-013). A config setting may fix the pair for tests.
+- **Why:** owner wants restarts to open different paths. Seeded, so replays and forks stay deterministic (ENG-03).
 
 ## D-018 Plan changes are shown to the owner as an artifact
 
@@ -141,3 +141,27 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Assumed (2026-10-30)
 - **Decision:** (1) The loader skips `README.md` files; every other Markdown file under `world/` must carry frontmatter. (2) The import-boundary test also keeps `memory` and `storage` out of `engine/`, stricter than SPEC section 4. (3) pytest treats warnings as errors. (4) CI runs one Linux job on every PR; the Windows job runs only from "Run workflow" (Tier 3), since Windows runners cost more and the game's Windows use is checked on the owner's PC. (5) Names-only data tables in `world/data/` (gods, affinities, Oaths, classes, peoples, professions) are canon and are checked against the prose.
 - **Why:** M0 needed these choices to pass its acceptance criteria; none changes a requirement.
+
+## D-024 Flag registry, loader exclusions and the sealed-path guard
+
+- **Status:** Accepted (2026-10-30; owner: "fix the three M0 blockers, then do whatever you recommend")
+- **Decision:** (1) Every flag that a reveal gate, beat or canon file names is listed in `world/data/flags.yaml`, or in `world/sealed/data/flags.yaml` for sealed flags, with its `kind` (`bool` or `counter`), who sets it (`engine`, `beat`, `narrator`) and, for narrator flags, an `accept` rule. Gates read only registered flags and state fields (NAR-02). The narrator may set other keys only under `story.`, true or false. (2) Destroying a rift's core is `grant_loot` from `rift_core:<id>` after a successful check; it emits `rift_closed`, which counts `flags.rifts_closed`. (3) The loader fails when the sealed type and the `world/sealed/` path disagree (WLD-04). The loader enforces (1) and (3), and `tests/world/test_flags.py` checks every gate path. README files and the root-only `/data/` ignore are already in D-023 and PR #8.
+- **Why:** audit `docs/audit/2026-10-30-repo-audit.md` items 1 to 3 and 11: six gate flags had no setter, so three secrets could never release; the sealed README would fail the M0 load; canon tables would have been silently ignored by git.
+
+## D-025 Second-pass audit fixes to the design
+
+- **Status:** Accepted (2026-10-30; same owner instruction as D-024)
+- **Decision:** Applied audit items 4, 6 to 10, 12 and 18 (item 17, Windows CI, is settled by D-023 point 4) to `docs/SPEC.md`, `docs/architecture.md`, `docs/BUILD_PLAN.md`, `docs/KICKOFF_PROMPT.md`, `config.example.toml` and `scripts/render_plan.py`. In short: every reply that will be recorded passes the NAR-04 validator, and the fallback text replaces prose that still fails; `advance_clock` stays (canon allows it, `world/factions.md`) but must cite a `check_id` or `beat_id` the clock's data lists, one segment, at most once per clock per in-world day; `burden_tested` keeps the narrator's `situation` and the UI shows it; `base_url` is in the example config (D-020).
+- **Why:** each rule the engine was asked to enforce must be computable from state (ENG-02), and each consequence visible to the player (GAME-04).
+
+## D-026 Cloud sessions reuse the harness branch name
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Claude Code cloud sessions push to the branch name the harness assigns, which can repeat across PRs. After a merge the branch is cut again from the latest `main` before new work, so no merged history is reused. This meets GIT-01's intent; it is not an override.
+- **Why:** PRs #1 to #6 shared one branch name (audit item 13). The harness assigns the name; recording the practice stops a later session from treating it as a GIT-01 breach.
+
+## D-027 Ollama runs with a 32,768-token context
+
+- **Status:** Assumed (2026-10-30)
+- **Decision:** When the narrator uses Ollama (D-020), the server starts with `OLLAMA_CONTEXT_LENGTH=32768`, set by `start.bat`. The M2 adapter treats a reported input-token count far below its own estimate as a truncated prompt and fails the call; the turn then takes the NAR-07 fallback. The first local model to test is `qwen3:8b`.
+- **Why:** the owner's check on 2026-10-30 showed `qwen3:8b` at 100 % GPU on the RX 6700 XT through Vulkan, at the 4,096-token default. Ollama's docs say the default is 4k below 24 GiB of VRAM, and the Anthropic-compatible API has no per-request context option (docs.ollama.com/context-length, /api/anthropic-compatibility, read 2026-10-30). Pantheon's prompt is about 26,000 tokens (a 6,000-token canon prefix plus the 20,000-token MEM-04 budget), so the default would cut most of it. 32,768 tokens covers that with room for the reply. Memory estimate: about 4.5 GiB of fp16 KV cache at 32,768 tokens for `qwen3:8b`, so about 10 GB in total, inside 12 GB; the owner confirms with `ollama ps`.

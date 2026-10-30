@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Stat = Literal["vigor", "agility", "intellect", "resolve", "presence"]
 _ID = r"^[a-z][a-z0-9_]*$"
@@ -59,6 +59,26 @@ class Professions(_Strict):
 
     def all(self) -> tuple[str, ...]:
         return self.gathering + self.crafting + self.service
+
+
+class Flag(_Strict):
+    """One entry of the flag registry (world/data/flags.yaml, world/sealed/data/flags.yaml; D-024)."""
+
+    key: str = Field(pattern=r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$")
+    kind: Literal["bool", "counter"]
+    set_by: Literal["engine", "beat", "narrator"]
+    when: str = Field(min_length=1)
+    accept: str | None = None
+
+    @model_validator(mode="after")
+    def _narrator_flags_need_a_rule(self) -> Flag:
+        if self.set_by == "narrator" and not self.accept:
+            raise ValueError(f"flag {self.key}: set_by narrator needs an accept rule the engine checks")
+        return self
+
+
+class FlagRegistry(_Strict):
+    flags: tuple[Flag, ...]
 
 
 class GameData(_Strict):

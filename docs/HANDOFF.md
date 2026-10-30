@@ -4,25 +4,28 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M0 (scaffold) done on branch `ccr-7b10b8f3-92eyt1`, PR pending. Next: M1 (engine core) per `docs/BUILD_PLAN.md`.
+M0 (scaffold) merged (PR #8). Audit fixes in PR #7. Next: M1 (engine core) per `docs/BUILD_PLAN.md`.
 
 ## Just done
 
 - 2026-10-30 Integrated AI-Master-Instructions; audit and fixes merged (PR #1).
 - 2026-10-30 Design rounds finished and approved (D-007 to D-016).
 - 2026-10-30 PR #2 merged. Canon batch: `world/power_tiers.md` rewritten as the d100 System; peoples, economy and calendar drafted; Delves renamed rifts; sealed affinity added under `world/sealed/` and checked by a reviewer agent; random opening gods (D-017); SPEC (ENG-04/05/07, WLD-04), architecture tools, narrator prompt and roadmap (M2.5, M3.5) updated.
+- 2026-10-30 Owner's GPU check: Ollama 0.40.13 uses Vulkan on the RX 6700 XT; `qwen3:8b` ran at 100 % GPU (37 of 37 layers, 5.6 GB at a 4,096-token context, about 68 tokens/s on one short prompt) with coherent replies. `moondream` gave garbage on a text-only prompt; `qwen3:8b` did not. Local models are viable; narration quality is judged in M2.
+- 2026-10-30 Whole-repo audit (`docs/audit/2026-10-30-repo-audit.md`) and its fixes in PR #7: the three M0 blockers (D-024: flag registry in `world/data/flags.yaml` and `world/sealed/data/flags.yaml`, enforced by the loader and `tests/world/test_flags.py`; sealed type and path guard), design fixes (D-025), branch-name practice (D-026), canon corrections and gaps G-10 to G-22. Sealed and secret changes passed the reviewer agent.
 
 - 2026-10-30 M0: uv project, package layout, world loader and reveal-gate grammar, names-only data tables, SQLite store, `pantheon new` with the seeded opening-god draw; 51 tests, engine coverage 100 %, CI runs ruff, mypy and pytest.
 
 ## Next
 
-1. Merge the M0 PR, then start M1a (d100 checks) on a fresh branch from `main`.
-2. Owner's PC: AMD Radeon RX 6700 XT, 12 GB (2026-10-30). Not on Ollama's Windows ROCm list; Vulkan may work. Before the M2 model test the owner runs `ollama run qwen3:8b` then `ollama ps`; 100 % GPU means local models are viable.
+1. Merge PR #7, then start M1a (d100 checks) on a fresh branch from `main`.
+2. Before M2, the owner raises Ollama's context to 32,768 tokens (D-027) and re-runs `ollama ps` to read the CONTEXT and SIZE columns.
 
 ## Open questions
 
-- Does Ollama use the RX 6700 XT through Vulkan? Owner checks with `ollama ps` (cloud sessions cannot reach a Windows machine).
+- Does `qwen3:8b` at a 32,768-token context still fit in 12 GB at 100 % GPU? Estimate: about 10 GB. Owner checks with `ollama ps`, because cloud sessions cannot reach the PC.
 - Reward, loot and evolution numbers are engine data to tune in M1 (canon gap G-08).
+- Owner confirms the PR #7 canon corrections (sea travel 100 km per day, Tier 0 stat range 15 to 35) and answers gaps G-10 to G-20 before the M3.5 content batches need them (`docs/canon_gaps.md`).
 
 ## Plan page (D-018)
 
@@ -38,4 +41,4 @@ M0 (scaffold) done on branch `ccr-7b10b8f3-92eyt1`, PR pending. Next: M1 (engine
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-023 in `docs/DECISIONS.md` (D-022, D-023 Assumed).
+- 2026-10-30 D-007 to D-027 in `docs/DECISIONS.md` (D-022, D-023, D-027 Assumed).

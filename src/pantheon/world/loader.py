@@ -13,7 +13,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from pantheon.world.gates import GateError, Node, parse
-from pantheon.world.schemas import GameData
+from pantheon.world.schemas import Flag, FlagRegistry, GameData
 
 
 class CanonError(ValueError):
@@ -50,11 +50,20 @@ class LoreEntry:
     path: Path
 
 
+@dataclass(frozen=True)
+class RegisteredFlag:
+    key: str
+    kind: str
+    set_by: str
+    sealed: bool
+
+
 @dataclass
 class World:
     root: Path
     lore: list[LoreEntry] = field(default_factory=list)
     data: GameData | None = None
+    flags: dict[str, RegisteredFlag] = field(default_factory=dict)
 
     def by_id(self, entry_id: str) -> LoreEntry:
         return next(e for e in self.lore if e.id == entry_id)
@@ -95,6 +104,9 @@ def load_world(root: Path) -> World:
         if path.name == "README.md":
             continue
         entry = load_entry(path)
+        in_sealed = path.relative_to(root).parts[0] == "sealed"
+        if in_sealed != (entry.type == "sealed-lore"):
+            raise CanonError(f"{path}: type sealed-lore and the sealed/ folder must go together (WLD-04)")
         if entry.id in seen:
             raise CanonError(f"{path}: duplicate id {entry.id!r} (also in {seen[entry.id]})")
         seen[entry.id] = path
@@ -103,7 +115,52 @@ def load_world(root: Path) -> World:
         raise CanonError(f"{root}: no canon files found")
     if (root / "data").is_dir():
         world.data = load_data(root / "data")
+    for folder, sealed in ((root / "data", False), (root / "sealed" / "data", True)):
+        if (folder / "flags.yaml").is_file():
+            for flag in load_flags(folder / "flags.yaml", sealed=sealed):
+                if flag.key in world.flags:
+                    raise CanonError(f"{folder / 'flags.yaml'}: flag {flag.key!r} is registered twice")
+                world.flags[flag.key] = flag
     return world
+
+
+def load_flags(path: Path, *, sealed: bool) -> list[RegisteredFlag]:
+    """Read one part of the flag registry. Sealed flags are set by the engine or beats only (D-012)."""
+    try:
+        registry = FlagRegistry.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+    except (OSError, yaml.YAMLError, ValidationError) as exc:
+        raise CanonError(f"{path}: {exc}") from exc
+    keys = [f.key for f in registry.flags]
+    duplicates = sorted({k for k in keys if keys.count(k) > 1})
+    if duplicates:
+        raise CanonError(f"{path}: duplicate flag keys {duplicates}")
+    if sealed and any(f.set_by == "narrator" for f in registry.flags):
+        raise CanonError(f"{path}: sealed flags are set by the engine or authored beats, never the narrator")
+    return [_registered(f, sealed) for f in registry.flags]
+
+
+def _registered(flag: Flag, sealed: bool) -> RegisteredFlag:
+    return RegisteredFlag(flag.key, flag.kind, flag.set_by, sealed)
+
+
+STATE_FIELDS = ("tier", "level")
+
+
+def gate_path_problems(world: World) -> list[str]:
+    """Gate paths that are neither a registered flag nor a state field (NAR-02, D-024)."""
+    gods = set(world.data.god_ids()) if world.data else set()
+    problems = []
+    for entry in world.lore:
+        for path in sorted(entry.gate.paths() if entry.gate else ()):
+            head, _, rest = path.partition(".")
+            ok = (
+                path in STATE_FIELDS
+                or (head == "flags" and rest in world.flags)
+                or (head == "standing" and rest in gods)
+            )
+            if not ok:
+                problems.append(f"{entry.path.name}: {path}")
+    return problems
 
 
 _TABLES = ("gods", "affinities", "oaths", "classes", "peoples", "professions")

@@ -27,7 +27,7 @@ Requirement IDs are stable. Reference them in commits and tests.
 ### 2.2 Narrator (NAR)
 
 - **NAR-01** The narrator prompt shall be assembled from layers in a fixed order (section 4 of `docs/architecture.md`) to keep the canon prefix cache-stable.
-- **NAR-02** The narrator shall receive secret lore only when the engine evaluates the entry's `reveal_gate` as satisfied. Secret entries not yet released shall not appear in the prompt.
+- **NAR-02** The narrator shall receive secret lore only when the engine evaluates the entry's `reveal_gate` as satisfied. Secret entries not yet released shall not appear in the prompt. Every path in a `reveal_gate` shall be a flag in the flag registry (`world/data/flags.yaml`, `world/sealed/data/flags.yaml`) or a state field, so that every gate can open.
 - **NAR-03** Each turn shall offer 3 to 5 suggested actions through the `suggest_actions` tool and shall accept free text. The engine shall reject a set without at least one non-violent suggestion and at least one with a visible cost or risk.
 - **NAR-04** Narrator prose shall not contain numeric outcomes (damage, XP, chances, rolls) except values returned by the engine in the same turn. A runtime validator shall reject prose that breaks this; the rejection counts toward NAR-06. The status panel shall be rendered by the UI from state, not written by the narrator.
 - **NAR-05** Every significant choice shall register at least one downstream hook in the consequence ledger (`register_hook`). The engine shall surface due hooks to the narrator as prompt material.
@@ -43,10 +43,10 @@ Requirement IDs are stable. Reference them in commits and tests.
 
 ### 2.4 World data (WLD)
 
-- **WLD-01** Lore files shall be Markdown with YAML frontmatter: `id`, `type`, `visibility` (`public` or `secret`), `tags`, and optional `reveal_gate`.
+- **WLD-01** Lore files shall be Markdown with YAML frontmatter: `id` (unique across `world/`), `type` (from the closed list in the loader schema), `visibility` (`public` or `secret`), `tags`, and optional `reveal_gate`. A file named `README.md` is a folder note, not lore: the loader skips it, and it never enters the lore index or a prompt.
 - **WLD-02** Files under `world/` are canon and read-only at runtime. Runtime world changes shall be stored in the timeline's state overlay.
 - **WLD-03** Changes to canon files shall be flagged in the commit message with the prefix `canon:`.
-- **WLD-04** Sealed canon (`world/sealed/`, later `src/pantheon/sealed/`) is not read by the owner. An independent reviewer agent shall check each change against public canon and the approved outline (D-012), a test shall prove each sealed `reveal_gate` parses and is reachable, and commits, PRs and docs shall describe sealed changes only by file name and outline item.
+- **WLD-04** Sealed canon (`world/sealed/`, later `src/pantheon/sealed/`) is not read by the owner. An independent reviewer agent shall check each change against public canon and the approved outline (D-012), a test shall prove each sealed `reveal_gate` parses and is reachable, the loader shall fail when a file under `world/sealed/` lacks `type: sealed-lore` or a file elsewhere has it, and commits, PRs and docs shall describe sealed changes only by file name and outline item.
 
 ### 2.5 Operations (OPS)
 
@@ -71,18 +71,7 @@ Requirement IDs are stable. Reference them in commits and tests.
 
 ## 4. Layout to create
 
-```
-src/pantheon/
-  engine/        # rules, dice, tiers, checks, events, state (no LLM imports)
-  narrator/      # prompt assembly, tool-call loop, validators
-  memory/        # summaries, retrieval, context budgeting
-  world/         # loader for world/*.md, reveal-gate evaluator
-  llm/           # LLMClient protocol, Anthropic adapter, MockClient
-  ui/cli/        # M1 to M3 interface
-  ui/web/        # M5 interface
-tests/
-data/            # saves (git-ignored)
-```
+The package layout is in `docs/BUILD_PLAN.md` ("Package layout"). Saves go in `data/` at the repository root (git-ignored).
 
 The `engine/` package shall not import from `narrator/`, `llm/`, or `ui/`. Enforce with a pytest that walks the imports under `engine/` (no extra dependency).
 

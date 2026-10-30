@@ -33,7 +33,7 @@ The Seat can be filled by one who has **closed enough clauses** to carry the Bin
 
 1. **Re-bind:** the Heir becomes Noth's successor and restores the Pact entire. Order returns. Gods are bound again. Mortal freedoms narrow.
 2. **Unbind:** the Heir ends the Pact. Rifts close permanently. The gods become free, unbound, and unconstrained. Mortals lose the Ledger; the world becomes ordinary and perilous.
-3. **Rewrite:** the Heir authors new clauses, with mortals as signatories and not as collateral. Requires the support of at least 5 Hands, a Sovereign witness, and a Tithe of the Heir's Name. The hardest path.
+3. **Rewrite:** the Heir authors new clauses, with mortals as signatories and not as collateral. Requires the support of at least 5 Hands, a Sovereign witness, and the surrender of the Heir's Name. The hardest path.
 
 ## Partial reveals
 

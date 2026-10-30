@@ -1,0 +1,16 @@
+# Flag registry, sealed part (canon data, D-024, WLD-04).
+# The flags that only sealed canon names. Public flags live in world/data/flags.yaml; a key is
+# listed in one file only. Same format as that file. Sealed flags are set by the engine or by
+# authored beats, never by the narrator (D-012).
+#
+# kind:   bool (false until set) or counter (whole number from 0; it only goes up)
+# set_by: engine (from an event) or beat (an authored beat's effect)
+flags:
+  - key: sealed_a_trace_ready
+    kind: bool
+    set_by: engine
+    when: "the first bounty_completed event in the Ford Reaches (world/sealed/sealed_a.md, Engine flags)"
+  - key: sealed_a_trace_seen
+    kind: bool
+    set_by: beat
+    when: "the trace beat fires (record_beat), not narrator prose; the beat stays due until it fires (world/sealed/sealed_a.md, Engine flags; world/sealed/trace_a.md)"

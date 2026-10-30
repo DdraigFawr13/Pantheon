@@ -1,0 +1,32 @@
+# Flag registry (canon data, D-024).
+# Every flag that a reveal gate, an authored beat or a canon file names is listed here or in
+# world/sealed/data/flags.yaml. The engine rejects `set_flag` for a registered key unless its
+# set_by is "narrator" and its accept rule holds. The narrator may also set unregistered keys
+# under "story." (true or false only); no reveal gate or beat may read those.
+# The M0 gate test checks that every path in a reveal_gate is a registered flag or a state field.
+#
+# kind:   bool (false until set) or counter (whole number from 0; it only goes up)
+# set_by: engine (from an event), beat (an authored beat's effect), narrator (`set_flag`)
+flags:
+  - key: rifts_closed
+    kind: counter
+    set_by: engine
+    when: "+1 on each rift_closed event: a rift's core is destroyed (world/power_tiers.md, Shards and rifts)"
+  - key: prophecy_bought
+    kind: counter
+    set_by: narrator
+    when: "+1 when the player buys a prophecy from the Lantern Orders (world/factions.md)"
+    accept: "at most +1 per turn, and only in a turn that has a coin spend (adjust_currency below 0)"
+  - key: met_drovash_vessel
+    kind: bool
+    set_by: narrator
+    when: "the player meets a Vessel who speaks for Drovash (world/pantheon.md, Petitions)"
+    accept: "only after an npc_introduced event whose role is vessel:drovash"
+  - key: unwritten_path
+    kind: bool
+    set_by: engine
+    when: "the opening resolves with no oath_sworn event (world/protagonist_seed.md)"
+  - key: opening.dual_offer_resolved
+    kind: bool
+    set_by: engine
+    when: "the opening's two Oath offers are accepted, refused or bargained away (world/protagonist_seed.md)"

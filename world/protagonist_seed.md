@@ -42,8 +42,8 @@ The Sunken Stair collapses under a team of Rifters. The player, working at the e
 
 **Which gods speak is random.** When a timeline is created, the engine draws two of the seven Hands from the timeline's seed (21 possible pairs) and records the draw as an event. Each drawn god offers its first Oath from `world/power_tiers.md`, in its own voice, for example:
 
-- **Veshra's Weighing Voice** offers the **Open Hand**: the player will always be able to tell when others lie, and must never lie in return.
-- **Drovash's Laughing Voice** offers the **Fair Wager**: the player may reroll a failed check each day, and must honor any wager they accept.
+- **Veshra's Weighing Voice** offers the **Open Hand**: the player will sense a knowing falsehood in spoken words, and must never knowingly lie or break a sworn word.
+- **Drovash's Laughing Voice** offers the **Fair Wager**: the player may reroll one failed check per day, and must honor any wager they accept and never cheat the unaware.
 
 The same seed always draws the same pair, so a replay with a new seed can open a different path. `config.toml` may fix the pair for testing.
 
@@ -53,4 +53,4 @@ The player may accept one, refuse both, or try to bargain. The two gods dislike 
 
 **Required engine events from the opening:** `opening_gods_drawn` (at timeline creation), `oath_offered` (two), `oath_sworn` (zero or one), `flag_set: opening.dual_offer_resolved`, `hook_registered` (at least two: one for each god's response).
 
-**Narrator guidance:** the scene shall end with the player standing in the rubble of the Stair, a Ledger open in the mind for the first time, an NPC rescuer present (Registrar Hale Dunmore or an Ironmarch caravan-master), and one clear short-term goal. No more than one major reveal in the first 5 turns.
+**Narrator guidance:** the scene shall end with the player standing in the rubble of the Stair, a Ledger open in the mind for the first time if an Oath was sworn, an NPC rescuer present (Registrar Hale Dunmore or an Ironmarch caravan-master), and one clear short-term goal. No more than one major reveal in the first 5 turns.

@@ -30,7 +30,7 @@ Across Caldrenne, ground, ruin, and sometimes open air tear open into **rifts**:
 - Present year: **1,140 AS** (After the Severance). A year has twelve months of 30 days, four seasons of three months, and five uncounted **Blank Days** at year's end that no Ledger records. The play begins on 1 Seedtide 1,140 AS.
 - Months: **Spring:** Firstthaw, Mudmonth, Seedtide. **Summer:** Greenmonth, Highsun, Longday. **Autumn:** Haymonth, Reaping, Leaffall. **Winter:** Frostcoming, Deepwinter, Lastdark.
 - Week: seven days, one for each Hand: Veshday, Kaulday, Ysday, Maruday, Ilday, Drovday, Hurday.
-- Travel: 25 km per day on foot, 50 km per day mounted on good roads, 1,000 km per day by sea in fair wind (convoy average).
+- Travel: 25 km per day on foot, 50 km per day mounted on good roads, 100 km per day by sea in fair wind (convoy average).
 - Technology: plate and mail, crossbows, siege engines, printing absent, hand-copied books, alchemy limited and Oath-gated.
 - Tone: grounded and grand. Consequences are real. Power has a price. Politics matters as much as combat. The world does not wait for the player.
 
