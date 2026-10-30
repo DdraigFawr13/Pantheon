@@ -105,3 +105,9 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Accepted (2026-10-30)
 - **Decision:** Allowed: romance, off-screen sexual content, torture, slavery and debt-bondage, real-world religious parallels. Not allowed: harm to children, body horror.
 - **Why:** owner's round 1 answer.
+
+## D-018 Plan changes are shown to the owner as an artifact
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Every change to `docs/BUILD_PLAN.md` or `docs/roadmap.md` is rendered by `scripts/render_plan.py` and republished to one standing artifact (https://claude.ai/artifact/HkerL2UNT7oeQcFPW2dZmy), linked in the same reply. The repo files stay the source of truth; the page is a view.
+- **Why:** owner's instruction, 2026-10-30. The owner reviews from a phone; a rendered page is easier to read than Markdown in a diff.

@@ -22,6 +22,10 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 - Approve PyYAML (M0), anthropic (M2), uvicorn and jinja2 (M2.5)? Recommended: yes; each is the standard choice for its job.
 - Reward, loot and evolution numbers are engine data to tune in M1 (canon gap G-08).
 
+## Plan page (D-018)
+
+- https://claude.ai/artifact/HkerL2UNT7oeQcFPW2dZmy: republish whenever the plan or roadmap changes.
+
 ## Design forms (owner's answers live in each page's database)
 
 - Round 1: https://claude.ai/artifact/JSEqjnAXHhNCrWkR4fXdwQ
@@ -32,4 +36,4 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-016 in `docs/DECISIONS.md`.
+- 2026-10-30 D-007 to D-018 in `docs/DECISIONS.md`.
