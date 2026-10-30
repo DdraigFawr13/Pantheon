@@ -1,6 +1,6 @@
 # Build plan: M0 to M3.5 (first playable version)
 
-Status: Proposed (2026-10-30). This plan breaks the approved roadmap (`docs/roadmap.md`) into ordered tasks. The requirements live in `docs/SPEC.md`; the rules in `world/power_tiers.md`; the design decisions in `docs/DECISIONS.md` (D-001 to D-017). This file links to them and does not repeat them.
+Status: Accepted (2026-10-30; owner: "go with your recommendations"). This plan breaks the approved roadmap (`docs/roadmap.md`) into ordered tasks. The requirements live in `docs/SPEC.md`; the rules in `world/power_tiers.md`; the design decisions in `docs/DECISIONS.md` (D-001 to D-021). This file links to them and does not repeat them.
 
 Session estimates are estimates (REP-01), assuming 1 session is about 2 to 3 hours of agent work.
 
@@ -71,7 +71,7 @@ tests/        mirrors src/; fixtures/ holds recorded MockClient transcripts
 
 ## M0: Scaffold (1 session)
 
-1. `uv init`, `pyproject.toml` with the package layout, ruff, mypy (`--strict` on `engine/`), pytest, pytest-cov.
+1. `uv init`, `pyproject.toml` with the package layout (Windows-safe paths and line endings, D-021), ruff, mypy (`--strict` on `engine/`), pytest, pytest-cov.
 2. `config.py`: load `config.toml` and environment (OPS-02); fail clearly when a model id is missing only for commands that need one.
 3. `world/schemas.py` + `loader.py`: parse every `world/**/*.md` frontmatter (id, type, visibility, tags, reveal_gate) and every `world/data/*.yaml` against Pydantic models (WLD-01, WLD-02).
 4. `world/gates.py`: the restricted reveal-gate grammar (comparison, and, or, not, parentheses, dotted paths, bare truthy paths); no `eval`.
@@ -118,7 +118,7 @@ Ordered so each step is testable alone.
 
 ## M2: Narrator loop (3 to 4 sessions)
 
-1. `llm/`: `LLMClient` protocol, `MockClient` replaying recorded transcripts, Anthropic adapter with timeouts, backoff and jitter (OPS-01, OPS-03), prompt caching on layers 1 and 2 (OPS-04), per-turn token logging (MEM-04). Provider switch (D-020, Proposed): the same adapter talks to a local Ollama server through its Anthropic-compatible API (`base_url` in `config.toml`); Ollama lacks prompt caching, `count_tokens` and `tool_choice`, so the budgeter estimates tokens itself and the loop never forces a tool.
+1. `llm/`: `LLMClient` protocol, `MockClient` replaying recorded transcripts, Anthropic adapter with timeouts, backoff and jitter (OPS-01, OPS-03), prompt caching on layers 1 and 2 (OPS-04), per-turn token logging (MEM-04). Provider switch (D-020): the same adapter talks to a local Ollama server through its Anthropic-compatible API (`base_url` in `config.toml`); Ollama lacks prompt caching, `count_tokens` and `tool_choice`, so the budgeter estimates tokens itself and the loop never forces a tool.
 2. `engine/tools.py`: every tool in `docs/architecture.md` section 6 as a Pydantic schema with engine validation; unknown tools rejected (ENG-02).
 3. `narrator/assemble.py`: layers 1 to 3 and 8 in fixed order; recent turns as messages (NAR-01).
 4. `narrator/loop.py`: the turn loop in architecture section 3: per-call retry cap, forced-prose round, fallback turn, short commit transaction (NAR-06, NAR-07, OPS-03).
@@ -133,9 +133,10 @@ Ordered so each step is testable alone.
 
 ## M2.5: Phone page (1 session)
 
-- FastAPI app on the local network: one page with the prose stream (SSE), a text box, suggested-action buttons, and the status panel (HTMX partial) rendered from state. No accounts; binds to the LAN only.
+- FastAPI app on the owner's Windows PC (D-021): one page with the prose stream (SSE), a text box, suggested-action buttons, and the status panel (HTMX partial) rendered from state. No accounts; reachable on home Wi-Fi and through Tailscale only.
+- `start.bat` one-click launcher (starts Ollama if configured, then the game) and a short setup guide: install uv, Ollama and Tailscale, allow the port in Windows Firewall.
 
-**Acceptance:** roadmap M2.5. **You test:** play the opening on your phone.
+**Acceptance:** roadmap M2.5. **You test:** play the opening on your phone, at home and once over Tailscale.
 
 ## M3: Memory (2 to 3 sessions)
 

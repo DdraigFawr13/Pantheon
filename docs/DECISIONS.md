@@ -120,6 +120,12 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 
 ## D-020 Local models through Ollama
 
-- **Status:** Proposed (2026-10-30)
+- **Status:** Accepted (2026-10-30)
 - **Decision:** Support a local Ollama server as a second narrator backend by pointing the Anthropic SDK at Ollama's Anthropic-compatible API (no new dependency). Choose the default narrator after a side-by-side scripted test in M2.
 - **Why:** owner asked about free models. Ollama is MIT-licensed and runs models at no per-turn cost, but needs a capable machine (about 16 GB RAM for 8B models; about 24 GB of GPU memory for the 24 to 27B models reported to narrate well) and lacks prompt caching, `count_tokens` and `tool_choice` (docs.ollama.com/api/anthropic-compatibility).
+
+## D-021 The game runs on the owner's Windows gaming PC
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** The game (and Ollama, per D-020) runs on the owner's Windows gaming PC, started by a one-click `start.bat`. The phone reaches the page over home Wi-Fi first; Tailscale (free personal plan) adds access away from home without exposing anything to the public internet, so the page needs no login. Python code must run on Windows as well as Linux (CI and cloud sessions).
+- **Why:** owner chose their PC and asked to go with the recommendations. Cloud sessions cannot attach to a Windows computer, so on-PC checks (GPU, playtests) are done by the owner or a local Claude Code session.

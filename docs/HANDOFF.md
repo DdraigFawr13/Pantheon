@@ -14,12 +14,12 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 
 ## Next
 
-1. Owner answers where the game runs (their computer or a paid host) and what hardware it has; this decides D-020.
-2. Start M0 on a new branch.
+1. Start M0 on a new branch.
+2. Owner reads GPU model and video memory from Task Manager (Performance, GPU) before the M2 model test.
 
 ## Open questions
 
-- Where does the game run for phone play, and does that machine have a GPU? Needed for D-020 (Ollama) and M2.5.
+- GPU model and video memory of the owner's PC (cloud sessions cannot read a Windows machine).
 - Reward, loot and evolution numbers are engine data to tune in M1 (canon gap G-08).
 
 ## Plan page (D-018)
@@ -36,4 +36,4 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-020 in `docs/DECISIONS.md` (D-020 Proposed).
+- 2026-10-30 D-007 to D-021 in `docs/DECISIONS.md`.
