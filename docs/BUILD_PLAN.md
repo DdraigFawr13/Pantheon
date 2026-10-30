@@ -19,10 +19,10 @@ Session estimates are estimates (REP-01), assuming 1 session is about 2 to 3 hou
 |---|---|---|---|
 | pydantic v2, rich, pytest, pytest-cov, hypothesis, ruff, mypy | SPEC section 3 | M0 | Approved |
 | fastapi | SPEC section 3 "Second UI"; needed early for the phone page (D-015); server-sent events written by hand | M2.5 | Approved |
-| uvicorn | The server that runs FastAPI | M2.5 | **Needs approval** (SAFE-03) |
-| PyYAML | Parse YAML frontmatter (WLD-01) and data tables | M0 | **Needs approval** (SAFE-03) |
-| anthropic | First LLM adapter (OPS-01) | M2 | **Needs approval** (SAFE-03) |
-| jinja2 | Server-rendered HTML for the phone page | M2.5 | **Needs approval** (SAFE-03) |
+| uvicorn | The server that runs FastAPI | M2.5 | Approved (D-019) |
+| PyYAML | Parse YAML frontmatter (WLD-01) and data tables | M0 | Approved (D-019) |
+| anthropic | LLM adapter for both Anthropic and Ollama (OPS-01, D-020) | M2 | Approved (D-019) |
+| jinja2 | Server-rendered HTML for the phone page | M2.5 | Approved (D-019) |
 
 HTMX loads from a pinned CDN script on the phone page; no build step.
 
@@ -118,7 +118,7 @@ Ordered so each step is testable alone.
 
 ## M2: Narrator loop (3 to 4 sessions)
 
-1. `llm/`: `LLMClient` protocol, `MockClient` replaying recorded transcripts, Anthropic adapter with timeouts, backoff and jitter (OPS-01, OPS-03), prompt caching on layers 1 and 2 (OPS-04), per-turn token logging (MEM-04).
+1. `llm/`: `LLMClient` protocol, `MockClient` replaying recorded transcripts, Anthropic adapter with timeouts, backoff and jitter (OPS-01, OPS-03), prompt caching on layers 1 and 2 (OPS-04), per-turn token logging (MEM-04). Provider switch (D-020, Proposed): the same adapter talks to a local Ollama server through its Anthropic-compatible API (`base_url` in `config.toml`); Ollama lacks prompt caching, `count_tokens` and `tool_choice`, so the budgeter estimates tokens itself and the loop never forces a tool.
 2. `engine/tools.py`: every tool in `docs/architecture.md` section 6 as a Pydantic schema with engine validation; unknown tools rejected (ENG-02).
 3. `narrator/assemble.py`: layers 1 to 3 and 8 in fixed order; recent turns as messages (NAR-01).
 4. `narrator/loop.py`: the turn loop in architecture section 3: per-call retry cap, forced-prose round, fallback turn, short commit transaction (NAR-06, NAR-07, OPS-03).
@@ -126,7 +126,8 @@ Ordered so each step is testable alone.
 6. Character creation from `world/protagonist_seed.md` and `world/peoples.md`; the opening scene with the two drawn gods (D-017); the rival set up from the refused Oath (D-013).
 7. Tallyhouse bounty board as data (hooks and beats) with witnessed Standing and rumours.
 8. CLI play with streaming prose and a status panel rendered from state.
-9. Before any live-model playtest: an estimate of its cost from your configured model's prices, for your approval (SAFE-04).
+9. Before any live-model playtest: an estimate of its cost from your configured model's prices, for your approval (SAFE-04). Ollama runs cost nothing per turn.
+10. Side-by-side check: the same 10-turn scripted scenario on Claude and on your chosen Ollama model, scored for tool-call compliance and the NAR-03 and NAR-04 validators, so the default narrator is picked on evidence (D-020).
 
 **Acceptance:** roadmap M2 (10-turn scripted playtest against `MockClient`; rejections retried at most twice; no unsupplied numbers; outage gives a fallback turn). **You test:** play the opening in the terminal, or wait for M2.5.
 

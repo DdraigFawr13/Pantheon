@@ -14,12 +14,12 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 
 ## Next
 
-1. Owner approves four dependencies (PyYAML, anthropic, uvicorn, jinja2) listed in `docs/BUILD_PLAN.md`.
+1. Owner answers where the game runs (their computer or a paid host) and what hardware it has; this decides D-020.
 2. Start M0 on a new branch.
 
 ## Open questions
 
-- Approve PyYAML (M0), anthropic (M2), uvicorn and jinja2 (M2.5)? Recommended: yes; each is the standard choice for its job.
+- Where does the game run for phone play, and does that machine have a GPU? Needed for D-020 (Ollama) and M2.5.
 - Reward, loot and evolution numbers are engine data to tune in M1 (canon gap G-08).
 
 ## Plan page (D-018)
@@ -36,4 +36,4 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-018 in `docs/DECISIONS.md`.
+- 2026-10-30 D-007 to D-020 in `docs/DECISIONS.md` (D-020 Proposed).
