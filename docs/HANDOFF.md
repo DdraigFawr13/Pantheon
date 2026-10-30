@@ -14,12 +14,12 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 
 ## Next
 
-1. Owner approves four dependencies (PyYAML, anthropic, uvicorn, jinja2) listed in `docs/BUILD_PLAN.md`.
-2. Start M0 on a new branch.
+1. Start M0 on a new branch.
+2. Owner reads GPU model and video memory from Task Manager (Performance, GPU) before the M2 model test.
 
 ## Open questions
 
-- Approve PyYAML (M0), anthropic (M2), uvicorn and jinja2 (M2.5)? Recommended: yes; each is the standard choice for its job.
+- GPU model and video memory of the owner's PC (cloud sessions cannot read a Windows machine).
 - Reward, loot and evolution numbers are engine data to tune in M1 (canon gap G-08).
 
 ## Plan page (D-018)
@@ -36,4 +36,4 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-018 in `docs/DECISIONS.md`.
+- 2026-10-30 D-007 to D-021 in `docs/DECISIONS.md`.
