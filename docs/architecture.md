@@ -56,11 +56,14 @@ def take_turn(timeline, player_input):
             reply = llm.complete(system, messages, tools=TOOL_SCHEMAS)  # OPS-03 retries inside
             if not reply.tool_calls:
                 problems = validators.prose(reply.text, sim.numbers_returned())  # NAR-04
-                if problems and rejections["prose"] < MAX_RETRIES:
-                    rejections["prose"] += 1
-                    messages += [reply, rejection(problems)]
-                    continue
-                break
+                if not problems:
+                    break
+                if rejections["prose"] >= MAX_RETRIES:
+                    reply = fallback.render(sim)             # NAR-07: never record invalid prose
+                    break
+                rejections["prose"] += 1
+                messages += [reply, rejection(problems)]
+                continue
             results = []
             for call in reply.tool_calls:
                 if rejections[call.key] >= MAX_RETRIES:
@@ -73,6 +76,8 @@ def take_turn(timeline, player_input):
             messages += [reply, results]
         else:
             reply = llm.complete(system, messages, tools=None)  # force prose, no tools
+            if validators.prose(reply.text, sim.numbers_returned()):
+                reply = fallback.render(sim)                 # the forced round is checked too
     except LLMUnavailable:
         reply = fallback.render(sim)                         # NAR-07, engine text only
     with timeline.transaction() as tx:                       # short, atomic (OPS-03)
@@ -82,11 +87,11 @@ def take_turn(timeline, player_input):
     return reply.text, timeline.state().status_panel()
 ```
 
-In words: the orchestrator works on an uncommitted simulation of the state, so model calls never hold a database write lock. Each loop iteration sends the conversation to the model. Tool calls are applied to the simulation; each distinct call may be rejected at most twice before it is dropped and the failure is logged. Prose with no tool calls is checked for unsupplied numbers. If the round cap is reached while the model is still calling tools, one last call without tools forces prose. If the model is unavailable after OPS-03 retries, the engine renders a plain fallback turn. Only then are the events and the turn written in one short transaction; a crash before it leaves the log untouched. Summaries are produced after the commit and stored; a failed summary is retried at the next boundary.
+In words: the orchestrator works on an uncommitted simulation of the state, so model calls never hold a database write lock. Each loop iteration sends the conversation to the model. Tool calls are applied to the simulation; each distinct call may be rejected at most twice before it is dropped and the failure is logged. Every reply that will be recorded is checked for unsupplied numbers (NAR-04): prose that fails after the retries, and a forced-prose reply that fails, are replaced by the engine's fallback text, so invalid prose never enters the chronicle. If the round cap is reached while the model is still calling tools, one last call without tools forces prose. If the model is unavailable after OPS-03 retries, the engine renders a plain fallback turn. Only then are the events and the turn written in one short transaction; a crash before it leaves the log untouched. Summaries are produced after the commit and stored; a failed summary is retried at the next boundary.
 
 ## 4. Prompt layers (fixed order)
 
-| # | Layer | Source | Cached | Where | Approx. budget |
+| # | Layer | Source | Cached | Where | Budget (ceiling) |
 |---|---|---|---|---|---|
 | 1 | Narrator rules | `prompts/narrator.md` | Yes | system | 2,500 tokens |
 | 2 | Canon core | `world/00_overview.md`, `power_tiers.md`, `pantheon.md` | Yes | system | 9,000 tokens |
@@ -97,7 +102,7 @@ In words: the orchestrator works on an uncommitted simulation of the state, so m
 | 7 | Recent turns | Last 6 turns verbatim | No | messages | 6,000 tokens |
 | 8 | Player input | Current turn | No | messages | 500 tokens |
 
-Layers 1 and 2 form the cache prefix; the cache breakpoint sits at the end of layer 2, so every instruction (including the output format) is above it. Layers 3 to 8 total approximately 16,000 tokens, within the MEM-04 target of 20,000. On disk, layers 1 and 2 are about 17 KB today (estimate: ~4.3k tokens); check it against the provider's minimum cacheable prefix when the adapter is built.
+Layers 1 and 2 form the cache prefix; the cache breakpoint sits at the end of layer 2, so every instruction (including the output format) is above it. Layers 3 to 8 total approximately 16,000 tokens, within the MEM-04 target of 20,000. Measured 2026-10-30: the layer 1 and 2 files are 23,946 bytes on disk (estimate at 4 characters per token: about 6,000 tokens, under the 11,500-token ceiling); check it against the provider's minimum cacheable prefix when the adapter is built.
 
 ## 5. Data model (SQLite)
 
@@ -115,7 +120,7 @@ Layers 1 and 2 form the cache prefix; the cache breakpoint sits at the end of la
 
 **Events record outcomes.** `check_resolved` stores the dice, modifiers, total and outcome; `xp_gained` stores the amount the engine set. Replay never calls the RNG. A timeline keeps the `rules_version` it was created under; changing rules affects new timelines, and old ones upgrade only through an explicit upgrader.
 
-Event types (initial): `opening_gods_drawn`, `check_resolved`, `xp_gained`, `level_up`, `trial_begun`, `trial_resolved`, `class_evolved`, `stat_point_allocated`, `skill_offered`, `skill_learned`, `skill_used`, `skill_evolved`, `shard_absorbed`, `fragments_fused`, `affinity_raised`, `loot_granted`, `title_granted`, `profession_xp_gained`, `item_crafted`, `oath_offered`, `oath_sworn`, `oath_conflict_raised`, `oath_conflict_resolved`, `oath_breached`, `burden_tested`, `petition_sent`, `petition_resolved`, `bounty_accepted`, `bounty_completed`, `standing_changed`, `rumour_recorded`, `flag_set`, `item_changed`, `currency_changed`, `effect_applied`, `injury_gained`, `downed`, `last_breath`, `died`, `reckoning`, `time_advanced`, `clock_advanced`, `npc_introduced`, `location_introduced`, `hook_registered`, `hook_resolved`, `beat_fired`, `secret_released`, `actions_suggested`, `tool_call_dropped`.
+Event types (initial): `opening_gods_drawn`, `check_resolved`, `xp_gained`, `level_up`, `trial_begun`, `trial_resolved`, `class_evolved`, `stat_point_allocated`, `skill_offered`, `skill_learned`, `skill_used`, `skill_evolved`, `shard_absorbed`, `fragments_fused`, `affinity_raised`, `loot_granted`, `title_granted`, `profession_xp_gained`, `item_crafted`, `oath_offered`, `oath_sworn`, `oath_conflict_raised`, `oath_conflict_resolved`, `oath_breached`, `burden_tested`, `petition_sent`, `petition_resolved`, `bounty_accepted`, `bounty_completed`, `standing_changed`, `rumour_recorded`, `flag_set`, `item_changed`, `currency_changed`, `effect_applied`, `injury_gained`, `downed`, `last_breath`, `died`, `reckoning`, `time_advanced`, `clock_advanced`, `npc_introduced`, `location_introduced`, `hook_registered`, `hook_resolved`, `beat_fired`, `secret_released`, `actions_suggested`, `tool_call_dropped`, `rift_closed`.
 
 ## 6. Tool contracts (narrator to engine)
 
@@ -125,19 +130,19 @@ All arguments are validated by Pydantic. Unknown tools are rejected. Where the n
 |---|---|---|
 | `request_check` | `stat`, `skill?`, `difficulty` (`routine`/`hard`/`severe`/`heroic`), `challenge_tier`, `approach` (`force`/`other`), `stakes`, `overcome?` | Rolls d100 per ENG-04/05; ENG-05 auto-fail applies only to `approach: force`; validates the `overcome` parts it can (Standing, Artifact tier, Ally tier); returns chance, roll, outcome, `check_id` |
 | `use_skill` | `skill_id`, `target?`, `overspend?` | Checks the skill is known, unblanked and off cooldown, and that the pool can pay (overspend up to 50 % if allowed); deducts the cost; rolls for Injury after an overspend; may chain a `request_check` |
-| `grant_loot` | `source` (`rift_floor:<id>`, `rift_core:<id>`, `foe:<id>`, `cache:<id>`) | Rolls shards, fragments and items from the source's loot table; the narrator never picks shard rarity |
+| `grant_loot` | `source` (`rift_floor:<id>`, `rift_core:<id>`, `foe:<id>`, `cache:<id>`) | Rolls shards, fragments and items from the source's loot table; the narrator never picks shard rarity. `rift_core:<id>` is legal only after a successful check this turn at that rift's core tier; it emits `rift_closed` (which adds 1 to `flags.rifts_closed`) and grants the rift's title |
 | `apply_effect` | `target`, `kind` (`damage`/`heal`/`condition`), `source` (`check_id` or named hazard), `reason` | Size from the source check's outcome and the effect table; bounds-checks; returns new values; HP 0 emits `downed` |
 | `grant_xp` | `kind` (for example `minor`, `major`, `milestone`), `reason` | Amount from the XP table; per-turn cap; returns level state |
 | `adjust_standing` | `entity` (god/faction/npc), `kind` (`slight`/`notable`/`grave`), `direction` (`+`/`-`), `witness` (`npc:<id>`/`evidence:<item>`/`record:<office>`/`none`), `reason` | Delta from the Standing table; clamps to [-100, 100]; with `witness: none` records a rumour instead (D-013) |
 | `grant_title` | `title_id`, `witness`, `reason` | Validates the title's condition against state; needs a witness |
 | `send_petition` | `god`, `ask`, `due_condition` | Registers a petition as a hook; granting or ignoring it adjusts Standing |
-| `test_burden` | `oath_id`, `situation`, `kept` (bool) | Records the narrator's judgement; `kept: false` applies the Breach |
+| `test_burden` | `oath_id`, `situation`, `kept` (bool) | Records the narrator's judgement; `kept: false` applies the Breach. The `burden_tested` event keeps `situation`, and the status panel and `pantheon log` show it, so the player can see why a blessing was suspended (GAME-04) |
 | `adjust_inventory` | `item`, `quantity` (+/-), `reason` | Narrator chooses the item and count (ENG-09); rejects removing what is not held and counts above the per-turn bound |
 | `adjust_currency` | `amount` (+/-), `reason` | Narrator chooses the amount; rejects overdraft and gains above the bound for the character's tier |
 | `advance_time` | `span` (`minutes`/`hours`/`rest`/`day`/`days`), `count?`, `reason` | Advances the calendar; ticks time-driven clocks, Oath timers and daily Boons |
-| `set_flag` | `key`, `value`, `reason` | Namespaced keys only |
+| `set_flag` | `key`, `value`, `reason` | A registered key (section 7) only when its `set_by` is `narrator` and its `accept` rule holds; any other key only under `story.` and only `true` or `false` |
 | `register_hook` | `description`, `due_condition`, `source_choice` | Stores in consequence ledger (NAR-05) |
-| `advance_clock` | `clock_id`, `segments` (1 to 2), `reason` | Rejects if clock is not narratively eligible |
+| `advance_clock` | `clock_id`, `cause` (`check_id` or `beat_id` from this turn), `reason` | One segment. Accepts only when the clock's data lists the cause's kind (for example a failed check against that faction, or a beat tagged with the clock), and at most once per clock per in-world day. This is the computable form of "only when the story supports it" (`world/factions.md`) |
 | `introduce_npc` | `name`, `role`, `tier`, `disposition` | Rejects duplicates and tier above region cap |
 | `introduce_location` | `name`, `region`, `description` | Registers for retrieval |
 | `offer_oath` | `god`, `oath_id` | Checks prerequisites and oath conflicts |
@@ -161,6 +166,8 @@ tier >= 3 and standing.ilvane >= 40 and flags.rifts_closed >= 1
 ```
 
 The evaluator shall use a restricted expression grammar (comparison, `and`, `or`, `not`, parentheses, dotted state paths; a bare path is true when its value is set and truthy). No `eval`. Released secrets are recorded as `secret_released` events so they remain released after a fork.
+
+**Flag registry.** A gate may read only state fields (`tier`, `level`, `standing.<id>`, where a god's id is its name in lower case with `_` for `-`, for example `ilvane`, `maru_ghen`) and flags listed in `world/data/flags.yaml` or `world/sealed/data/flags.yaml` (D-023). Each entry gives the flag's `kind` (`bool` or `counter`), who sets it (`engine`, `beat` or `narrator`) and, for narrator flags, an `accept` rule the engine checks. Counters only go up. The M0 test fails on a gate path that is in neither list, so no gate depends on a flag nothing sets.
 
 ## 8. Timeline forks
 

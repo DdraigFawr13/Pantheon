@@ -94,17 +94,17 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Decision:** First playable version (through M3.5): the Ford Reaches, Tier 0 to Tier 2, the opening, bounties, crafting and professions, one rival, the first rift, the Unwritten path, the sealed affinity's first trace. A minimal phone web page arrives at M2.5. After: tactical combat, sub-affinities, full Oath list, codex and journal, romance (Standing plus flags), companions, holdings, prophecy, images (off until the owner sets a monthly cap).
 - **Why:** owner's keep list and final plan.
 
-## D-017 The opening's two gods are drawn at random
-
-- **Status:** Accepted (2026-10-30)
-- **Decision:** At timeline creation the engine draws two of the seven gods from the timeline's seed and records an `opening_gods_drawn` event; each offers its first Oath. The rival swears the refused god's Oath (D-013). A config setting may fix the pair for tests.
-- **Why:** owner wants restarts to open different paths. Seeded, so replays and forks stay deterministic (ENG-03).
-
 ## D-016 Content limits
 
 - **Status:** Accepted (2026-10-30)
 - **Decision:** Allowed: romance, off-screen sexual content, torture, slavery and debt-bondage, real-world religious parallels. Not allowed: harm to children, body horror.
 - **Why:** owner's round 1 answer.
+
+## D-017 The opening's two gods are drawn at random
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** At timeline creation the engine draws two of the seven gods from the timeline's seed and records an `opening_gods_drawn` event; each offers its first Oath. The rival swears the refused god's Oath (D-013). A config setting may fix the pair for tests.
+- **Why:** owner wants restarts to open different paths. Seeded, so replays and forks stay deterministic (ENG-03).
 
 ## D-018 Plan changes are shown to the owner as an artifact
 
@@ -135,3 +135,21 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Assumed (2026-10-30)
 - **Decision:** Adopt, as our own code, four patterns seen in the open-source Andromeda RPG (MIT code, github.com/danielrod36/Andromeda, read 2026-10-30): named RNG streams; a validate-roll-mutate-append command funnel where a rejected command consumes no randomness; a curated state view for the narrator prompt; a banned-mechanical-terms list in the prose validator. No code is copied; if any is, it is credited in `docs/ATTRIBUTION.md` with its MIT notice (SAFE-05). Not adopted: their JSON-snapshot reload (we replay the event log, ENG-06), no prompt caching, and their read-only narrator (ours proposes state changes through tools).
 - **Why:** each pattern makes determinism or narrator safety stronger at no extra dependency. Andromeda is the closest public design to Pantheon found in the 2026-10-30 research.
+
+## D-023 Flag registry, loader exclusions and the sealed-path guard
+
+- **Status:** Accepted (2026-10-30; owner: "fix the three M0 blockers, then do whatever you recommend")
+- **Decision:** (1) Every flag that a reveal gate, beat or canon file names is listed in `world/data/flags.yaml`, or in `world/sealed/data/flags.yaml` for sealed flags, with its `kind` (`bool` or `counter`), who sets it (`engine`, `beat`, `narrator`) and, for narrator flags, an `accept` rule. Gates read only registered flags and state fields (NAR-02). The narrator may set other keys only under `story.`, true or false. (2) Destroying a rift's core is `grant_loot` from `rift_core:<id>` after a successful check; it emits `rift_closed`, which counts `flags.rifts_closed`. (3) The loader skips `README.md` files (WLD-01) and fails when the sealed type and the `world/sealed/` path disagree (WLD-04). (4) `.gitignore` ignores only the root `data/`, so `world/data/` is tracked.
+- **Why:** audit `docs/audit/2026-10-30-repo-audit.md` items 1 to 3 and 11: six gate flags had no setter, so three secrets could never release; the sealed README would fail the M0 load; canon tables would have been silently ignored by git.
+
+## D-024 Second-pass audit fixes to the design
+
+- **Status:** Accepted (2026-10-30; same owner instruction as D-023)
+- **Decision:** Applied audit items 4, 6 to 10, 12, 17 and 18 to `docs/SPEC.md`, `docs/architecture.md`, `docs/BUILD_PLAN.md`, `docs/KICKOFF_PROMPT.md`, `config.example.toml` and `scripts/render_plan.py`. In short: every reply that will be recorded passes the NAR-04 validator, and the fallback text replaces prose that still fails; `advance_clock` stays (canon allows it, `world/factions.md`) but must cite a `check_id` or `beat_id` the clock's data lists, one segment, at most once per clock per in-world day; `burden_tested` keeps the narrator's `situation` and the UI shows it; a Windows test job runs on pushes to `main` only (D-021); `base_url` is in the example config (D-020).
+- **Why:** each rule the engine was asked to enforce must be computable from state (ENG-02), and each consequence visible to the player (GAME-04).
+
+## D-025 Cloud sessions reuse the harness branch name
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Claude Code cloud sessions push to the branch name the harness assigns, which can repeat across PRs. After a merge the branch is cut again from the latest `main` before new work, so no merged history is reused. This meets GIT-01's intent; it is not an override.
+- **Why:** PRs #1 to #6 shared one branch name (audit item 13). The harness assigns the name; recording the practice stops a later session from treating it as a GIT-01 breach.

@@ -3,6 +3,7 @@
 [models]
 narrator = ""        # set to a current model identifier from the provider
 summarizer = ""      # may be a smaller model; evaluate before switching
+base_url = ""        # empty = the Anthropic API; "http://localhost:11434" = a local Ollama server (D-020)
 
 [budget]
 max_input_tokens_per_turn = 20000

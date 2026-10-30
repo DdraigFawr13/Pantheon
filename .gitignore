@@ -1,6 +1,6 @@
 .env
 config.toml
-data/
+/data/
 *.db
 *.db-wal
 *.db-shm

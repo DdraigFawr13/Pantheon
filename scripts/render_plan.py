@@ -127,6 +127,10 @@ strong { font-weight:700; }
 def main() -> None:
     out_path = Path(sys.argv[1])
     commit = subprocess.run(["git", "-C", str(ROOT), "log", "-1", "--format=%h %cs"], capture_output=True, text=True).stdout.strip()
+    paths = [str(path) for _, _, path in SOURCES]
+    dirty = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--", *paths], capture_output=True, text=True).stdout.strip()
+    if dirty:
+        commit += " plus uncommitted changes"
     nav = "".join(f'<a href="#{slug}">{title}</a>' for slug, title, _ in SOURCES)
     body = "".join(f'<section id="{slug}">{render(path.read_text())}</section>' for slug, _, path in SOURCES)
     page = f"""<title>Pantheon Build Plan</title>

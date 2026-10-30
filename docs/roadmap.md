@@ -4,11 +4,11 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 
 ## M0: Scaffold (1 session)
 
-- `uv` project, package layout from `docs/SPEC.md` section 4, `ruff`, `mypy`, `pytest` configured.
-- World loader parses every file in `world/` and validates frontmatter (WLD-01).
+- `uv` project, package layout from `docs/BUILD_PLAN.md`, `ruff`, `mypy`, `pytest` configured.
+- World loader parses every lore file in `world/` (not `README.md`) and every `world/data/` table, and validates frontmatter (WLD-01).
 - `uv run pantheon new` creates an empty timeline in SQLite.
 
-**Acceptance:** all world files load; a schema test fails on a deliberately malformed file; CI-equivalent local command passes.
+**Acceptance:** all world files load; every reveal-gate path resolves to a registered flag or a state field (NAR-02); a schema test fails on a deliberately malformed file; CI-equivalent local command passes.
 
 ## M1: Engine core (ENG-01 to ENG-11, OPS-05)
 
