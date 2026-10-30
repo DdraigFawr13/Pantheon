@@ -111,3 +111,27 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Accepted (2026-10-30)
 - **Decision:** Every change to `docs/BUILD_PLAN.md` or `docs/roadmap.md` is rendered by `scripts/render_plan.py` and republished to one standing artifact (https://claude.ai/artifact/HkerL2UNT7oeQcFPW2dZmy), linked in the same reply. The repo files stay the source of truth; the page is a view.
 - **Why:** owner's instruction, 2026-10-30. The owner reviews from a phone; a rendered page is easier to read than Markdown in a diff.
+
+## D-019 Libraries approved: PyYAML, anthropic, uvicorn, jinja2
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Add PyYAML (MIT, M0), anthropic (Apache-2.0, M2), uvicorn (BSD-3-Clause, M2.5) and jinja2 (BSD, M2.5). All are free; the only running cost is model usage.
+- **Why:** owner approved, 2026-10-30. Licences checked on PyPI the same day.
+
+## D-020 Local models through Ollama
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Support a local Ollama server as a second narrator backend by pointing the Anthropic SDK at Ollama's Anthropic-compatible API (no new dependency). Choose the default narrator after a side-by-side scripted test in M2.
+- **Why:** owner asked about free models. Ollama is MIT-licensed and runs models at no per-turn cost, but needs a capable machine (about 16 GB RAM for 8B models; about 24 GB of GPU memory for the 24 to 27B models reported to narrate well) and lacks prompt caching, `count_tokens` and `tool_choice` (docs.ollama.com/api/anthropic-compatibility).
+
+## D-021 The game runs on the owner's Windows gaming PC
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** The game (and Ollama, per D-020) runs on the owner's Windows gaming PC, started by a one-click `start.bat`. The phone reaches the page over home Wi-Fi first; Tailscale (free personal plan) adds access away from home without exposing anything to the public internet, so the page needs no login. Python code must run on Windows as well as Linux (CI and cloud sessions).
+- **Why:** owner chose their PC and asked to go with the recommendations. Cloud sessions cannot attach to a Windows computer, so on-PC checks (GPU, playtests) are done by the owner or a local Claude Code session.
+
+## D-022 Patterns adopted from Andromeda
+
+- **Status:** Assumed (2026-10-30)
+- **Decision:** Adopt, as our own code, four patterns seen in the open-source Andromeda RPG (MIT code, github.com/danielrod36/Andromeda, read 2026-10-30): named RNG streams; a validate-roll-mutate-append command funnel where a rejected command consumes no randomness; a curated state view for the narrator prompt; a banned-mechanical-terms list in the prose validator. No code is copied; if any is, it is credited in `docs/ATTRIBUTION.md` with its MIT notice (SAFE-05). Not adopted: their JSON-snapshot reload (we replay the event log, ENG-06), no prompt caching, and their read-only narrator (ours proposes state changes through tools).
+- **Why:** each pattern makes determinism or narrator safety stronger at no extra dependency. Andromeda is the closest public design to Pantheon found in the 2026-10-30 research.
