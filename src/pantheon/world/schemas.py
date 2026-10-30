@@ -81,6 +81,37 @@ class FlagRegistry(_Strict):
     flags: tuple[Flag, ...]
 
 
+class Origin(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    stat: Stat
+    skill: str
+    standing: dict[str, int]
+    complication: str
+
+
+class Origins(_Strict):
+    start_coin_silver: int = Field(ge=0)
+    stat_array: tuple[int, int, int, int, int]
+    flaws: tuple[str, ...]
+    origins: tuple[Origin, ...]
+
+
+class LevelGains(_Strict):
+    primary: int = Field(ge=0)
+    secondary: int = Field(ge=0)
+    free_points: int = Field(ge=0)
+
+
+class Rewards(_Strict):
+    xp: dict[str, int]
+    xp_per_turn_cap: int = Field(gt=0)
+    level_gains: LevelGains
+    standing: dict[str, int]
+    damage_percent: dict[str, int]
+    heal_percent: dict[str, int]
+
+
 class GameData(_Strict):
     gods: tuple[God, ...]
     affinities: Affinities
@@ -88,6 +119,8 @@ class GameData(_Strict):
     classes: tuple[BaseClass, ...]
     peoples: tuple[People, ...]
     professions: Professions
+    origins: Origins
+    rewards: Rewards
 
     def god_ids(self) -> tuple[str, ...]:
         return tuple(g.id for g in self.gods)

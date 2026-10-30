@@ -5,6 +5,8 @@ narrator = ""        # set to a current model identifier from the provider
 summarizer = ""      # may be a smaller model; evaluate before switching
 base_url = ""        # empty = the Anthropic API; "http://localhost:11434" = a local Ollama server (D-020)
                      # Ollama: start the server with OLLAMA_CONTEXT_LENGTH=32768 (D-027)
+                     # start.bat runs a private one on port 11435, so use "http://127.0.0.1:11435" with it
+think = true         # false asks the model to skip its thinking step (faster, may lower quality)
 
 [budget]
 max_input_tokens_per_turn = 20000

@@ -11,7 +11,7 @@ Format: `- G-<n> · <gap> · <where it shows> · <status>`
 - G-05 · Character age, needed for the "years of life" Tithe · `world/power_tiers.md` · RESOLVED `3085d96`: age recorded, no mechanics; the Tithe of years is removed (D-014)
 - G-06 · Tier cap per region for `introduce_npc` · `world/geography.md`, `world/factions.md` · RESOLVED `3085d96`: Ford Reaches residents at most Tier 3
 - G-07 · Rate at which global clocks advance with elapsed time · `world/factions.md` Clocks · RESOLVED `3085d96`: one segment per season, plus one when neglected
-- G-08 · Reward tables: XP per kind, Standing delta per kind, damage per outcome and effect, coin and item bounds per tier (ENG-09) · `docs/architecture.md` section 6 · open: numbers are engine data, tuned in M1 against D-014 pacing
+- G-08 · Reward tables: XP per kind, Standing delta per kind, damage per outcome and effect, coin and item bounds per tier (ENG-09) · `docs/architecture.md` section 6 · open: first guesses in `world/data/rewards.yaml` (D-030), tuned from playtests against D-014 pacing
 - G-09 · Calendar detail: month names and lengths, season boundaries, day length (ENG-11) · `world/00_overview.md` · RESOLVED `3085d96`: calendar drafted
 - G-10 · Do the Unwritten have a Ledger, and if not, how do they know their own affinities and skills? The UI status panel is drawn from state either way (NAR-04); the question is what the narrator may say · `world/00_overview.md` (the Ledger), `world/power_tiers.md` The Unwritten · open. The opening's last line now says "if an Oath was sworn" (PR #7)
 - G-11 · Nine Tier 6 Sovereigns and three Tier 7 Heirs exist in the tier table but no file names or places one. Are they known, hidden or unaligned, and may the narrator introduce one? · `world/power_tiers.md` tier table · open
@@ -28,3 +28,5 @@ Format: `- G-<n> · <gap> · <where it shows> · <status>`
 - G-22 · Starting stats reach 35 (array plus +3 and +2) but the Tier 0 typical range was 15 to 30 · `world/protagonist_seed.md`, `world/power_tiers.md` tier table · RESOLVED in PR #7: Tier 0 range widened to 15 to 35; owner confirms at merge
 - G-23 · What "a character of sufficient tier" means for the Ally Overcome Condition · `world/power_tiers.md` Checks · open: the engine assumes at or above the challenge's tier (D-028)
 - G-24 · Overcome Conditions only lift the force auto-fail, so force can beat cleverness far above your tier: a Tier 1 at par with a Routine check against Tier 5 has chance 20 by force with a condition, but -20 by any other approach, which passes only on 01 to 05 · `world/power_tiers.md` Checks · open: built as written (D-028)
+- G-25 · Origins' "starting gear" is named but no list exists · `world/protagonist_seed.md` Start state · open: the slice starts with no gear on the sheet
+- G-26 · A Riftborn character's birth rift affinity has no list of rifts to pick from · `world/peoples.md` · open: the slice offers any basic affinity

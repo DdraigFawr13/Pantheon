@@ -17,6 +17,13 @@ class Config:
     data_dir: Path = ROOT / "data"
     seed: int = 0
     opening_gods: tuple[str, ...] = ()
+    narrator_model: str = ""
+    base_url: str = ""
+    think: bool = True
+    recent_turns: int = 6
+    max_tool_rounds: int = 6
+    max_tool_retries: int = 2
+    violence: str = "moderate"
     raw: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -33,10 +40,19 @@ def load_config(path: Path | None = None) -> Config:
             raw = tomllib.load(f)
     paths = raw.get("paths", {})
     gameplay = raw.get("gameplay", {})
+    models = raw.get("models", {})
+    budget = raw.get("budget", {})
     return Config(
         world_dir=ROOT / paths.get("world_dir", "world"),
         data_dir=ROOT / paths.get("data_dir", "data"),
         seed=int(gameplay.get("seed", 0)),
         opening_gods=tuple(gameplay.get("opening_gods", ())),
+        narrator_model=str(models.get("narrator", "")),
+        base_url=str(models.get("base_url", "")),
+        think=bool(models.get("think", True)),
+        recent_turns=int(budget.get("recent_turns_verbatim", 6)),
+        max_tool_rounds=int(budget.get("max_tool_rounds", 6)),
+        max_tool_retries=int(budget.get("max_tool_retries", 2)),
+        violence=str(gameplay.get("violence", "moderate")),
         raw=raw,
     )

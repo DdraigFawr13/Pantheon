@@ -84,9 +84,20 @@ tests/        mirrors src/; fixtures/ holds recorded MockClient transcripts
 
 **Acceptance:** roadmap M0. **You test:** nothing to play; read the M0 report.
 
+## M1.5: Thin narrator loop (first fun check, D-029)
+
+Built right after M1a, before the rest of M1, so the plan's top risks are tested first. The remaining M1 and M2 items land behind the same tool and event pattern.
+
+- Thin M1c: events, pure fold, snapshot every 10 turns, one atomic turn commit. No forks yet.
+- Seven narrator tools: `request_check`, `apply_effect`, `grant_xp`, `adjust_standing`, `set_flag`, `register_hook`, `suggest_actions`. The Dual Offer, class, profession and free points are player commands.
+- `llm/` (protocol, `MockClient`, Anthropic and Ollama adapter), `narrator/` (assembly, loop, validators, fallback), first-guess reward tables, character creation, CLI play and `start.bat`.
+- Not in the slice: class skills, shards, combat exchanges, Last Breath and death, items, coin changes, the calendar, forks, summaries, and streaming prose.
+
+**Acceptance:** the roadmap M2 acceptance against `MockClient`, plus a saved transcript from the live local model. **You test:** run `start.bat`, play the opening and a few scenes, and say whether it is fun.
+
 ## M1: Engine core (4 to 6 sessions)
 
-Ordered so each step is testable alone.
+M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is testable alone.
 
 **M1a Dice and checks** (ENG-03, ENG-04, ENG-05)
 - Seeded RNG per timeline, split into named streams (checks, loot, opening draw, rival, world) so rolls in one system never shift another; stream state serialisable for forks (D-022).
