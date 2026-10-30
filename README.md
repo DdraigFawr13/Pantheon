@@ -30,7 +30,7 @@ An open-ended, AI-narrated LitRPG. The player controls one life in a medieval fa
 
 ## Status
 
-Design approved; no code yet. Begin at M0 in `docs/BUILD_PLAN.md`.
+M0 (scaffold) built. Try it: `uv run pantheon new`. Next milestone: M1 in `docs/BUILD_PLAN.md`.
 
 ## Configuration
 

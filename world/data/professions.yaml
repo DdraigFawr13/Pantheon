@@ -1,0 +1,4 @@
+# world/power_tiers.md, Professions.
+gathering: [herbalist, miner, hunter, fisher]
+crafting: [alchemist, smith, leatherworker, tailor, jeweller, enchanter, scribe, cook]
+service: [physician, tamer, merchant]

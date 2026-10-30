@@ -1,0 +1,73 @@
+"""Pydantic models for the tables in world/data/ (GAME-04: content is data)."""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+Stat = Literal["vigor", "agility", "intellect", "resolve", "presence"]
+_ID = r"^[a-z][a-z0-9_]*$"
+
+
+class _Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class God(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    affinities: tuple[str, str]
+    favoured_classes: tuple[str, ...]
+    first_oath: str
+
+
+class Affinities(_Strict):
+    basic: tuple[str, ...]
+    rare: tuple[str, ...]
+    sealed_rare_slots: int = Field(ge=0)
+
+    def all_named(self) -> tuple[str, ...]:
+        return self.basic + self.rare
+
+
+class Oath(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    god: str
+    affinity: str
+
+
+class BaseClass(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    primary: Stat
+    secondary: Stat
+
+
+class People(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    innate_affinity: tuple[str, ...]
+    stat: Stat | Literal["any"]
+
+
+class Professions(_Strict):
+    gathering: tuple[str, ...]
+    crafting: tuple[str, ...]
+    service: tuple[str, ...]
+
+    def all(self) -> tuple[str, ...]:
+        return self.gathering + self.crafting + self.service
+
+
+class GameData(_Strict):
+    gods: tuple[God, ...]
+    affinities: Affinities
+    oaths: tuple[Oath, ...]
+    classes: tuple[BaseClass, ...]
+    peoples: tuple[People, ...]
+    professions: Professions
+
+    def god_ids(self) -> tuple[str, ...]:
+        return tuple(g.id for g in self.gods)

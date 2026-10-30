@@ -1,0 +1,8 @@
+# The seven Hands (world/pantheon.md). first_oath is the Oath offered in the opening (D-017).
+- {id: veshra, name: Veshra, affinities: [binding, mind], favoured_classes: [cantor, warden], first_oath: open_hand}
+- {id: kaul, name: Kaul, affinities: [iron, flame], favoured_classes: [blade_sworn, warden], first_oath: held_line}
+- {id: ysmere, name: Ysmere, affinities: [tide, life], favoured_classes: [wayfinder, hearthwright], first_oath: turning_tide}
+- {id: maru_ghen, name: Maru-Ghen, affinities: [death, stone], favoured_classes: [gravewalker, hearthwright], first_oath: last_rest}
+- {id: ilvane, name: Ilvane, affinities: [light, space], favoured_classes: [cantor, wayfinder], first_oath: kept_light}
+- {id: drovash, name: Drovash, affinities: [shadow, wind], favoured_classes: [wager_bound, wayfinder], first_oath: fair_wager}
+- {id: hurrow, name: Hurrow, affinities: [beast, growth], favoured_classes: [wildkin, wayfinder], first_oath: long_hunt}

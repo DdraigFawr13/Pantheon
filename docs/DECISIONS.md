@@ -135,3 +135,9 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Assumed (2026-10-30)
 - **Decision:** Adopt, as our own code, four patterns seen in the open-source Andromeda RPG (MIT code, github.com/danielrod36/Andromeda, read 2026-10-30): named RNG streams; a validate-roll-mutate-append command funnel where a rejected command consumes no randomness; a curated state view for the narrator prompt; a banned-mechanical-terms list in the prose validator. No code is copied; if any is, it is credited in `docs/ATTRIBUTION.md` with its MIT notice (SAFE-05). Not adopted: their JSON-snapshot reload (we replay the event log, ENG-06), no prompt caching, and their read-only narrator (ours proposes state changes through tools).
 - **Why:** each pattern makes determinism or narrator safety stronger at no extra dependency. Andromeda is the closest public design to Pantheon found in the 2026-10-30 research.
+
+## D-023 M0 implementation assumptions
+
+- **Status:** Assumed (2026-10-30)
+- **Decision:** (1) The loader skips `README.md` files; every other Markdown file under `world/` must carry frontmatter. (2) The import-boundary test also keeps `memory` and `storage` out of `engine/`, stricter than SPEC section 4. (3) pytest treats warnings as errors. (4) CI runs one Linux job on every PR; the Windows job runs only from "Run workflow" (Tier 3), since Windows runners cost more and the game's Windows use is checked on the owner's PC. (5) Names-only data tables in `world/data/` (gods, affinities, Oaths, classes, peoples, professions) are canon and are checked against the prose.
+- **Why:** M0 needed these choices to pass its acceptance criteria; none changes a requirement.
