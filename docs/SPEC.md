@@ -17,18 +17,22 @@ Requirement IDs are stable. Reference them in commits and tests.
 - **ENG-03** All randomness shall derive from a seeded RNG stored per timeline. Identical seed and identical inputs shall reproduce identical outcomes.
 - **ENG-04** Checks shall resolve as `d20 + stat_modifier + skill_rank + 3 * tier_delta` against a base DC (10, 15, 20, 25), where `tier_delta = actor_tier - challenge_tier`. Natural 20 shall upgrade the outcome one step. Natural 1 shall add a complication. Rules detail: `world/power_tiers.md`.
 - **ENG-05** If `tier_delta <= -3` on a direct-force action, the check shall fail automatically unless an Overcome Condition is satisfied (Oath, Artifact, Terrain, Ally, Divine Favor); when satisfied, the roll shall proceed with `tier_delta` capped at -2. If `tier_delta >= 3`, the check shall succeed automatically without a roll.
-- **ENG-06** Every state change shall be appended to an immutable event log. Current state shall be derivable by replaying the log from the timeline origin.
+- **ENG-06** Every state change shall be appended to an immutable event log. Events shall record resolved outcomes (rolls, totals, deltas), not requests, so replay is a pure fold that never re-rolls. Current state shall be derivable by replaying the log from the timeline origin.
 - **ENG-07** Tier advancement shall require an Ascension Trial. XP alone shall not advance a tier.
-- **ENG-08** Timelines shall be forkable from any prior turn. A fork shall copy the event log up to that turn and the RNG state at that turn.
+- **ENG-08** Timelines shall be forkable from any prior turn. A fork shall copy the event log, turn records and stored summaries up to that turn, and the RNG state at that turn.
+- **ENG-09** The narrator shall choose the kind of an XP, Standing or damage change; the engine shall set its size from a rules table. The narrator may choose other rewards (items, coin, information, favours) within engine-validated bounds.
+- **ENG-10** Each timeline shall record the rules version it was created under. Saves shall carry a schema version and upgrade on load; an unreadable save shall never be overwritten.
+- **ENG-11** In-world time shall be engine state (a day counter from 1,140 AS), advanced only by events. The engine shall never read the wall clock for game state.
 
 ### 2.2 Narrator (NAR)
 
 - **NAR-01** The narrator prompt shall be assembled from layers in a fixed order (section 4 of `docs/architecture.md`) to keep the canon prefix cache-stable.
 - **NAR-02** The narrator shall receive secret lore only when the engine evaluates the entry's `reveal_gate` as satisfied. Secret entries not yet released shall not appear in the prompt.
-- **NAR-03** Each turn shall offer 3 to 5 suggested actions and shall accept free text. At least one suggestion shall be non-violent. At least one shall carry a visible cost or risk.
-- **NAR-04** Narrator prose shall not contain numeric outcomes (damage, XP, DCs, rolls) except values returned by the engine in the same turn. The status panel shall be rendered by the UI from state, not written by the narrator.
+- **NAR-03** Each turn shall offer 3 to 5 suggested actions through the `suggest_actions` tool and shall accept free text. The engine shall reject a set without at least one non-violent suggestion and at least one with a visible cost or risk.
+- **NAR-04** Narrator prose shall not contain numeric outcomes (damage, XP, DCs, rolls) except values returned by the engine in the same turn. A runtime validator shall reject prose that breaks this; the rejection counts toward NAR-06. The status panel shall be rendered by the UI from state, not written by the narrator.
 - **NAR-05** Every significant choice shall register at least one downstream hook in the consequence ledger (`register_hook`). The engine shall surface due hooks to the narrator as prompt material.
 - **NAR-06** On an invalid tool call, the engine shall return the rejection reason to the narrator and permit at most 2 retries before the turn proceeds without the rejected change and logs the failure.
+- **NAR-07** If the model is unavailable after retries, the turn shall complete with engine-rendered text (the check result in plain words and the previous suggested actions), marked as a fallback turn.
 
 ### 2.3 Memory (MEM)
 
@@ -61,7 +65,7 @@ Requirement IDs are stable. Reference them in commits and tests.
 | Schemas | Pydantic v2 | Tool-call validation and state models |
 | First UI | CLI (`rich`) | Fastest path to a playable loop |
 | Second UI | FastAPI + server-sent events + HTMX | Streaming prose, no SPA build step |
-| Tests | `pytest`, `hypothesis` for engine invariants | Seeded, deterministic |
+| Tests | `pytest`, `pytest-cov`, `hypothesis` for engine invariants | Seeded, deterministic; coverage measures OPS-05 |
 | Lint/type | `ruff`, `mypy --strict` on `engine/` | Engine correctness is the project's backbone |
 
 ## 4. Layout to create
@@ -79,7 +83,7 @@ tests/
 data/            # saves (git-ignored)
 ```
 
-The `engine/` package shall not import from `narrator/`, `llm/`, or `ui/`. Enforce with an import-linter rule or a test.
+The `engine/` package shall not import from `narrator/`, `llm/`, or `ui/`. Enforce with a pytest that walks the imports under `engine/` (no extra dependency).
 
 ## 5. Working agreements for Claude Code
 

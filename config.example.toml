@@ -12,6 +12,10 @@ scenes_per_chapter = 10
 max_tool_rounds = 6
 max_tool_retries = 2
 
+[pricing]
+# USD per million tokens, per model identifier set above; used for max_session_spend_usd.
+# Example: "<model id>" = { input = 0.0, cached_input = 0.0, output = 0.0 }
+
 [gameplay]
 permadeath = false
 violence = "moderate"     # low | moderate | graphic

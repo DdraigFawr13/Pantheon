@@ -27,3 +27,15 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Assumed (2026-10-30)
 - **Decision:** Engine invariant tests (replay equivalence, bounds) use `hypothesis` to generate action sequences. Determinism (ENG-03) is one fixed-seed test.
 - **Why:** reconciles `docs/roadmap.md:21` with GAME-06. See audit item 20.
+
+## D-005 The engine sizes XP, Standing and damage; the narrator chooses other rewards
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** The narrator names the kind of an XP, Standing or damage change and the engine sets the number from a rules table. Items, coin, information and favours are the narrator's choice within engine bounds. Recorded as ENG-09.
+- **Why:** owner's answer to audit item 1. Keeps "the engine owns the numbers" (GAME-03) where drift hurts progression most, without making every reward a table entry.
+
+## D-006 Audit fixes applied to the design
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** Audit items 2 to 12 and 20 to 22 are applied to `docs/SPEC.md` (ENG-06, ENG-08 to ENG-11, NAR-03, NAR-04, NAR-07, pytest-cov, import test), `docs/architecture.md` sections 3 to 10, `prompts/narrator.md`, `config.example.toml` and `docs/roadmap.md`. Canon gaps (items 13 to 19) are listed in `docs/canon_gaps.md`, not filled.
+- **Why:** owner asked for the audit fixes to be made. Item 9 (model unavailable) follows the recommendation, an engine-rendered fallback turn (NAR-07), so GAME-03 needs no override.

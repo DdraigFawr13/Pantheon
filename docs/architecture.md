@@ -45,72 +45,103 @@ The central decision is how much of the story is authored versus improvised. Thr
 
 ```python
 def take_turn(timeline, player_input):
-    with timeline.transaction() as tx:                      # atomic commit (OPS-03)
-        due = tx.engine.due_beats_and_hooks()               # arc beats, hooks, clocks
-        prompt = narrator.assemble(tx.state, due, player_input)   # NAR-01, MEM-01
-        messages = [prompt]
+    state = timeline.state()                                 # read-only view
+    sim = engine.Simulation(state, timeline.rng_state())     # uncommitted copy
+    due = sim.due_beats_and_hooks()                          # arc beats, hooks, clocks
+    system, messages = narrator.assemble(state, due, player_input)  # NAR-01, MEM-01
+    rejections = Counter()                                   # NAR-06, per tool call
+    reply = None
+    try:
         for _ in range(MAX_TOOL_ROUNDS):
-            reply = llm.complete(messages, tools=TOOL_SCHEMAS)
+            reply = llm.complete(system, messages, tools=TOOL_SCHEMAS)  # OPS-03 retries inside
             if not reply.tool_calls:
+                problems = validators.prose(reply.text, sim.numbers_returned())  # NAR-04
+                if problems and rejections["prose"] < MAX_RETRIES:
+                    rejections["prose"] += 1
+                    messages += [reply, rejection(problems)]
+                    continue
                 break
-            results = [tx.engine.apply(call) for call in reply.tool_calls]  # ENG-02
+            results = []
+            for call in reply.tool_calls:
+                if rejections[call.key] >= MAX_RETRIES:
+                    results.append(dropped(call)); sim.log_failure(call)   # NAR-06
+                    continue
+                result = sim.apply(call)                     # ENG-02
+                if result.rejected:
+                    rejections[call.key] += 1
+                results.append(result)
             messages += [reply, results]
-        tx.append_events(tx.engine.drain_events())          # ENG-06
-        tx.record_turn(player_input, reply.text)
-        memory.maybe_summarize(tx)                          # MEM-02
-    return reply.text, tx.state.status_panel()
+        else:
+            reply = llm.complete(system, messages, tools=None)  # force prose, no tools
+    except LLMUnavailable:
+        reply = fallback.render(sim)                         # NAR-07, engine text only
+    with timeline.transaction() as tx:                       # short, atomic (OPS-03)
+        tx.append_events(sim.drain_events())                 # ENG-06
+        tx.record_turn(player_input, reply.text, fallback=reply.is_fallback)
+    memory.maybe_summarize(timeline)                         # MEM-02, own transaction
+    return reply.text, timeline.state().status_panel()
 ```
 
-In words: the orchestrator opens a transaction, gathers due story material, assembles the prompt, then loops. Each loop iteration sends the conversation to the model. If the model requests tools, the engine applies each one and returns accept or reject results, and the loop continues. When the model returns prose with no further tool calls, the engine drains its pending events into the log, the turn is recorded, summaries are produced if a scene boundary was reached, and the transaction commits. Any exception rolls the whole turn back.
+In words: the orchestrator works on an uncommitted simulation of the state, so model calls never hold a database write lock. Each loop iteration sends the conversation to the model. Tool calls are applied to the simulation; each distinct call may be rejected at most twice before it is dropped and the failure is logged. Prose with no tool calls is checked for unsupplied numbers. If the round cap is reached while the model is still calling tools, one last call without tools forces prose. If the model is unavailable after OPS-03 retries, the engine renders a plain fallback turn. Only then are the events and the turn written in one short transaction; a crash before it leaves the log untouched. Summaries are produced after the commit and stored; a failed summary is retried at the next boundary.
 
 ## 4. Prompt layers (fixed order)
 
-| # | Layer | Source | Cached | Approx. budget |
-|---|---|---|---|---|
-| 1 | Narrator rules | `prompts/narrator.md` | Yes | 2,500 tokens |
-| 2 | Canon core | `world/00_overview.md`, `power_tiers.md`, `pantheon.md` | Yes | 9,000 tokens |
-| 3 | Character state | Engine snapshot (JSON) | No | 1,500 tokens |
-| 4 | Chronicle | Chapter summaries, then scene summaries | No | 3,000 tokens |
-| 5 | Retrieved lore and NPC dossiers | FTS5 by location, tags, names; released secrets | No | 4,000 tokens |
-| 6 | Due material | Beats, hooks, clock states | No | 1,000 tokens |
-| 7 | Recent turns | Last 6 turns verbatim | No | 6,000 tokens |
-| 8 | Player input | Current turn | No | 500 tokens |
+| # | Layer | Source | Cached | Where | Approx. budget |
+|---|---|---|---|---|---|
+| 1 | Narrator rules | `prompts/narrator.md` | Yes | system | 2,500 tokens |
+| 2 | Canon core | `world/00_overview.md`, `power_tiers.md`, `pantheon.md` | Yes | system | 9,000 tokens |
+| 3 | Character state | Engine snapshot (JSON) | No | system | 1,500 tokens |
+| 4 | Chronicle | Chapter summaries, then scene summaries | No | system | 3,000 tokens |
+| 5 | Retrieved lore and NPC dossiers | FTS5 by location, tags, names; released secrets | No | system | 4,000 tokens |
+| 6 | Due material | Beats, hooks, clock states | No | system | 1,000 tokens |
+| 7 | Recent turns | Last 6 turns verbatim | No | messages | 6,000 tokens |
+| 8 | Player input | Current turn | No | messages | 500 tokens |
 
-Layers 1 and 2 form the cache prefix. Layers 3 to 8 total approximately 16,000 tokens, within the MEM-04 target of 20,000.
+Layers 1 and 2 form the cache prefix; the cache breakpoint sits at the end of layer 2, so every instruction (including the output format) is above it. Layers 3 to 8 total approximately 16,000 tokens, within the MEM-04 target of 20,000. On disk, layers 1 and 2 are about 17 KB today (estimate: ~4.3k tokens); check it against the provider's minimum cacheable prefix when the adapter is built.
 
 ## 5. Data model (SQLite)
 
 | Table | Key columns |
 |---|---|
-| `timeline` | `id`, `parent_id`, `fork_turn`, `seed`, `rng_state`, `created_at` |
-| `event` | `timeline_id`, `seq`, `turn`, `type`, `payload_json`, `rules_version` |
+| `meta` | `schema_version` (ENG-10; upgraders run on open, a failed upgrade aborts without writing) |
+| `timeline` | `id`, `parent_id`, `fork_turn`, `seed`, `rng_state`, `rules_version`, `created_at` |
+| `event` | `timeline_id`, `seq`, `turn`, `type`, `payload_json` (resolved outcome) |
 | `snapshot` | `timeline_id`, `turn`, `state_json` (every 10 turns, replay accelerator) |
-| `turn` | `timeline_id`, `turn`, `player_input`, `narration`, `tokens_in`, `tokens_cached`, `tokens_out` |
+| `turn` | `timeline_id`, `turn`, `player_input`, `narration`, `is_fallback`, `tokens_in`, `tokens_cached`, `tokens_out` |
 | `summary` | `timeline_id`, `level` (`scene` or `chapter`), `span_start`, `span_end`, `text` |
-| `hook` | `timeline_id`, `id`, `source_event`, `description`, `due_condition`, `status` |
-| `lore` | `id`, `type`, `visibility`, `tags`, `reveal_gate`, `body` (FTS5 virtual table alongside) |
-| `npc` | `timeline_id`, `id`, `name`, `tier`, `disposition_json`, `dossier` |
+| `lore` | `id`, `type`, `visibility`, `tags`, `reveal_gate`, `body` (FTS5; rebuilt from `world/` on start, never written by play) |
 
-Event types (initial): `check_resolved`, `xp_gained`, `level_up`, `trial_begun`, `trial_resolved`, `oath_offered`, `oath_sworn`, `oath_breached`, `standing_changed`, `flag_set`, `item_changed`, `clock_advanced`, `npc_introduced`, `location_introduced`, `hook_registered`, `hook_resolved`, `beat_fired`.
+**Source and projections.** `event` is the only source of game state (ENG-06). Hooks, NPCs, locations, clocks, flags, inventory, released secrets and the calendar are projections: rebuilt by folding events, cached in snapshots, never written directly. `turn` and `summary` are not game state but are non-reproducible text, so forks copy them (ENG-08). `created_at` is metadata only and never read by rules (ENG-11).
+
+**Events record outcomes.** `check_resolved` stores the dice, modifiers, total and outcome; `xp_gained` stores the amount the engine set. Replay never calls the RNG. A timeline keeps the `rules_version` it was created under; changing rules affects new timelines, and old ones upgrade only through an explicit upgrader.
+
+Event types (initial): `check_resolved`, `xp_gained`, `level_up`, `trial_begun`, `trial_resolved`, `oath_offered`, `oath_sworn`, `oath_conflict_raised`, `oath_conflict_resolved`, `oath_breached`, `standing_changed`, `flag_set`, `item_changed`, `currency_changed`, `effect_applied`, `scar_gained`, `downed`, `last_breath`, `died`, `reckoning`, `time_advanced`, `clock_advanced`, `npc_introduced`, `location_introduced`, `hook_registered`, `hook_resolved`, `beat_fired`, `secret_released`, `actions_suggested`, `tool_call_dropped`.
 
 ## 6. Tool contracts (narrator to engine)
 
-All arguments are validated by Pydantic. Unknown tools are rejected.
+All arguments are validated by Pydantic. Unknown tools are rejected. Where the narrator names a `kind`, the engine maps it to a number from its rules table (ENG-09); the tables are canon balance values (see `docs/canon_gaps.md`).
 
 | Tool | Arguments | Engine behavior |
 |---|---|---|
-| `request_check` | `stat`, `skill?`, `base_dc` (10/15/20/25), `challenge_tier`, `stakes`, `overcome?` | Rolls per ENG-04/05; returns roll, modifiers, outcome tier |
-| `apply_effect` | `target`, `kind` (`damage`/`heal`/`condition`), `amount?`, `reason` | Bounds-checks; returns new values |
-| `grant_xp` | `amount`, `reason` | Engine caps per-turn XP; returns level state |
-| `adjust_standing` | `entity` (god/faction/npc), `delta` (-20 to +20), `reason` | Clamps to [-100, 100] |
+| `request_check` | `stat`, `skill?`, `base_dc` (10/15/20/25), `challenge_tier`, `approach` (`force`/`other`), `stakes`, `overcome?` | Rolls per ENG-04/05; ENG-05 auto-fail applies only to `approach: force`; validates the `overcome` parts it can (Standing, Artifact tier, Ally tier); returns roll, modifiers, outcome, `check_id` |
+| `apply_effect` | `target`, `kind` (`damage`/`heal`/`condition`), `source` (`check_id` or named hazard), `reason` | Size from the source check's outcome and the effect table; bounds-checks; returns new values; HP 0 emits `downed` |
+| `grant_xp` | `kind` (for example `minor`, `major`, `milestone`), `reason` | Amount from the XP table; per-turn cap; returns level state |
+| `adjust_standing` | `entity` (god/faction/npc), `kind` (`slight`/`notable`/`grave`), `direction` (`+`/`-`), `reason` | Delta from the Standing table; clamps to [-100, 100] |
+| `adjust_inventory` | `item`, `quantity` (+/-), `reason` | Narrator chooses the item and count (ENG-09); rejects removing what is not held and counts above the per-turn bound |
+| `adjust_currency` | `amount` (+/-), `reason` | Narrator chooses the amount; rejects overdraft and gains above the bound for the character's tier |
+| `advance_time` | `span` (`minutes`/`hours`/`rest`/`day`/`days`), `count?`, `reason` | Advances the calendar; ticks time-driven clocks, Oath timers and daily Boons |
 | `set_flag` | `key`, `value`, `reason` | Namespaced keys only |
 | `register_hook` | `description`, `due_condition`, `source_choice` | Stores in consequence ledger (NAR-05) |
 | `advance_clock` | `clock_id`, `segments` (1 to 2), `reason` | Rejects if clock is not narratively eligible |
 | `introduce_npc` | `name`, `role`, `tier`, `disposition` | Rejects duplicates and tier above region cap |
 | `introduce_location` | `name`, `region`, `description` | Registers for retrieval |
 | `offer_oath` | `god`, `oath_id` | Checks prerequisites and oath conflicts |
+| `resolve_oath_conflict` | `conflict_id`, `choice` (`honor:<oath>`/`seek_trial`/`accept_breach`) | Applies Breach penalties from `world/power_tiers.md` |
 | `begin_trial` | `kind`, `description`, `stakes` | Only legal at a tier threshold (level multiple of 10) |
+| `resolve_trial` | `trial_id`, `tithe` (`years`/`memory`/`relationship`/`name`), `tithe_detail` | Outcome from the trial's recorded checks, not from the narrator; applies Tithe and Scar |
+| `mark_hostile_round` | `reason` | While Downed, adds a Last Breath mark; three marks is death or Reckoning per config |
 | `record_beat` | `beat_id`, `outcome` | Marks an arc beat consumed |
+| `suggest_actions` | `actions`: 3 to 5 of `{label, violent: bool, cost: str?}` | Rejects sets without a non-violent action and an action with a cost (NAR-03); the UI renders them |
 
 ## 7. Reveal gates
 
@@ -120,26 +151,28 @@ All arguments are validated by Pydantic. Unknown tools are rejected.
 tier >= 3 and standing.ilvane >= 40 and flags.delves_closed >= 1
 ```
 
-The evaluator shall use a restricted expression grammar (comparison, `and`, `or`, `not`, dotted state paths). No `eval`. Released secrets are recorded as events so they remain released after a fork.
+The evaluator shall use a restricted expression grammar (comparison, `and`, `or`, `not`, dotted state paths; a bare path is true when its value is set and truthy). No `eval`. Released secrets are recorded as `secret_released` events so they remain released after a fork.
 
 ## 8. Timeline forks
 
-A fork copies events with `turn <= N` into a new `timeline` row with `parent_id` and `fork_turn`, restores the nearest earlier snapshot, replays to N, and restores the RNG state recorded at N. Fork cost is proportional to the replay distance from the nearest snapshot.
+A fork creates a new `timeline` row with `parent_id` and `fork_turn`, copies events, `turn` rows and snapshots with `turn <= N` and `summary` rows with `span_end <= N`, restores the nearest earlier snapshot, replays to N, and restores the RNG state recorded at N. Fork cost is proportional to the replay distance from the nearest snapshot.
 
 ## 9. Testing strategy
 
 | Layer | Method |
 |---|---|
-| Engine | Unit tests and `hypothesis` invariants: HP bounds, standing clamps, tier-delta rules, replay equivalence (state after replay equals live state) |
-| Determinism | Same seed and inputs yield byte-identical event logs |
-| Narrator loop | `MockClient` with recorded tool-call transcripts; assert rejection handling and retry cap |
-| Prompt assembly | Golden-file tests for layer order and budget trimming |
+| Engine | Unit tests; `hypothesis` generates action sequences for invariants: HP bounds, standing clamps, tier-delta rules, replay equivalence (state after replay equals live state) |
+| Determinism | One fixed-seed test: same seed and inputs yield byte-identical event logs (GAME-06) |
+| Boundaries | A pytest walks imports under `engine/` and fails on `narrator`, `llm` or `ui` |
+| Narrator loop | `MockClient` with recorded tool-call transcripts; assert rejection handling, retry cap, forced-prose round and fallback turn |
+| Prose validator | Unit tests for NAR-04: digits and number words not returned by the engine this turn are rejected |
+| Prompt assembly | Golden-file tests for layer order, cache breakpoint position and budget trimming |
 | Secrets | Test that an unreleased secret string never appears in any assembled prompt |
-| Rule adherence (eval) | Scripted scenarios run against the live model; check that prose contains no unsupplied numbers and that every significant choice produced a hook |
+| Rule adherence (eval) | Scripted scenarios run against the live model; check that every significant choice produced a hook and the prose validator rarely fires |
 
 ## 10. Cost control
 
 - Cache the layer 1 and 2 prefix.
 - Log per-turn tokens; expose a running session total in the CLI.
 - Use a smaller model for summarization if quality holds in eval; keep the model identifier per task in `config.toml`.
-- Enforce a hard per-session spend ceiling in config.
+- Enforce a hard per-session spend ceiling in config, priced from the `[pricing]` table (per million input, cached and output tokens per model).

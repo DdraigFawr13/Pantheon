@@ -10,24 +10,26 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 
 **Acceptance:** all world files load; a schema test fails on a deliberately malformed file; CI-equivalent local command passes.
 
-## M1: Engine core (ENG-01 to ENG-08, OPS-05)
+## M1: Engine core (ENG-01 to ENG-11, OPS-05)
 
 - Character model: stats, derived HP, level, tier, skills (rank cap by tier).
 - Dice with seeded RNG; `request_check` resolution per `world/power_tiers.md`.
-- Event log, snapshots, replay, fork.
+- Event log of resolved outcomes, snapshots, replay, fork (copies turns and summaries); schema and rules versions.
+- In-world calendar and `advance_time`; reward tables for XP, Standing and damage kinds.
 - XP curve and Ascension gating.
 - CLI commands to roll checks and inspect state, without any LLM.
 
 **Acceptance:** replay equivalence holds under `hypothesis`; seeded determinism test passes; tier-delta rules covered at deltas -4 to +4; engine coverage at least 90 %.
 
-## M2: Narrator loop (NAR-01 to NAR-06, OPS-01 to OPS-04)
+## M2: Narrator loop (NAR-01 to NAR-07, OPS-01 to OPS-04)
 
 - `LLMClient` protocol, Anthropic adapter, `MockClient`.
-- Prompt assembly with layers 1 to 3 and 8; tool-call loop with validation and retry cap.
+- Prompt assembly with layers 1 to 3 and 8; tool-call loop with validation, retry cap, forced-prose round and engine fallback turn.
+- Prose validator for NAR-04; `suggest_actions` tool for NAR-03.
 - Character creation flow from `world/protagonist_seed.md`.
 - Streaming output in the CLI; status panel rendered from state.
 
-**Acceptance:** a 10-turn scripted playtest completes with no engine invariant violations; rejected tool calls are surfaced and retried at most twice; no unsupplied numeric outcomes in prose across the scripted run.
+**Acceptance:** a 10-turn scripted playtest completes with no engine invariant violations; rejected tool calls are surfaced and retried at most twice; no unsupplied numeric outcomes in prose across the scripted run; a `MockClient` outage produces a fallback turn and no lost events.
 
 ## M3: Memory (MEM-01 to MEM-04)
 
