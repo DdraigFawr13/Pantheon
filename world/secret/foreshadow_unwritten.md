@@ -3,7 +3,7 @@ id: secret_foreshadow_unwritten
 type: secret-foreshadow
 visibility: secret
 tags: [unwritten, pact, authority, foreshadow]
-reveal_gate: "tier >= 4 and flags.delves_closed >= 5"
+reveal_gate: "tier >= 4 and flags.rifts_closed >= 5"
 ---
 
 # Foreshadow: The Unwritten

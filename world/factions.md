@@ -22,7 +22,7 @@ tags: [factions, realms, politics, clocks, tallyhouse]
 - **Region:** northern hills and forge-cities. **Capital:** Kaulgard.
 - **Government:** confederation of warlords; the Warlord Moot elects a High Hammer every seven years.
 - **Highest tier present:** Tier 5 (High Hammer Brenna Oakhelm).
-- **Goals:** a standing army tested by Delves; expansion toward the southern grain lands.
+- **Goals:** a standing army tested by Rifts; expansion toward the southern grain lands.
 - **Tension:** the Moot is split between war with Hale and consolidation.
 
 ### The League of Seven Harbors (Ysmere, Drovash)
@@ -46,8 +46,8 @@ tags: [factions, realms, politics, clocks, tallyhouse]
 - **Region:** the Barrow-Lands (eastern moors). **Seat:** Sorrowfield.
 - **Government:** a Conclave of Grave-Wardens.
 - **Highest tier present:** Tier 4.
-- **Goals:** bury the dead properly; destroy undeath; hold the line against Delve-spawned dead.
-- **Tension:** pragmatists accept necromantic tools against Delve threats; purists forbid it.
+- **Goals:** bury the dead properly; destroy undeath; hold the line against Rift-spawned dead.
+- **Tension:** pragmatists accept necromantic tools against Rift threats; purists forbid it.
 
 ### The Lantern Orders (Ilvane)
 
@@ -67,25 +67,25 @@ tags: [factions, realms, politics, clocks, tallyhouse]
 
 ### The Tallyhouse (neutral guild)
 
-- **Region:** every city of size. Certifies tiers, registers Delvers, posts bounties.
+- **Region:** every city of size. Certifies tiers, registers Rifters, posts bounties.
 - **Government:** a Board of Tally from four Houses; hereditary Registrars.
 - **Highest tier present:** Tier 3 (field staff); Tier 5 (Grand Registrar).
-- **Goals:** neutrality, profit, and keeping every Delve cleared on schedule.
-- **Tension:** quiet disputes about who benefits from unrecorded Delves.
+- **Goals:** neutrality, profit, and keeping every Rift cleared on schedule.
+- **Tension:** quiet disputes about who benefits from unrecorded Rifts.
 
 ## Global clocks
 
-A clock has a fixed number of segments. The narrator may request `advance_clock`; the engine accepts only when the story supports it. Clocks also advance with elapsed time.
+A clock has a fixed number of segments. The narrator may request `advance_clock`; the engine accepts only when the story supports it. Clocks also advance with elapsed time: one segment per season (three in-world months). A clock whose threads the player has neglected for a full season advances one extra segment.
 
 | Clock | Segments | Filled consequence |
 |---|---|---|
 | **The Seat Vote** | 6 | The council moves to a formal vote on an Heir. Each segment reflects shifting god positions. |
-| **The Delve Tide** | 8 | An **Overflow**: a major Delve breaks its seal and spills monsters into a settled region. |
+| **The Rift Tide** | 8 | An **Overflow**: a major Rift breaks its seal and spills monsters into a settled region. |
 | **The Grain War** | 6 | Open war between the Ironmarch and the Hale Kingdoms. |
-| **The Ember Fever** | 5 | A plague tied to a Delve source; the Ashen Convent quarantines a region. |
+| **The Ember Fever** | 5 | A plague tied to a Rift source; the Ashen Convent quarantines a region. |
 | **The Lantern's Price** | 4 | A prophecy comes due; Ilvane collects. |
 
-Start state: Seat Vote 1, Delve Tide 2, Grain War 2, Ember Fever 0, Lantern's Price 0.
+Start state: Seat Vote 1, Rift Tide 2, Grain War 2, Ember Fever 0, Lantern's Price 0.
 
 ## Relationships (starting Standing between factions, -100 to +100)
 

@@ -3,7 +3,7 @@ id: secret_foreshadow_ledger
 type: secret-foreshadow
 visibility: secret
 tags: [ledger, noth, foreshadow]
-reveal_gate: "tier >= 3 and flags.delves_closed >= 3"
+reveal_gate: "tier >= 3 and flags.rifts_closed >= 3"
 ---
 
 # Foreshadow: The Ledger changes
