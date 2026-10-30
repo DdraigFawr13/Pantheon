@@ -14,7 +14,10 @@ An open-ended, AI-narrated LitRPG. The player controls one life in a medieval fa
 
 | Path | Purpose |
 |---|---|
-| `CLAUDE.md` | Build specification and working agreements for Claude Code (read first) |
+| `AGENTS.md` | Agent instructions: read order, local checks, project rules (read first) |
+| `CLAUDE.md` | Loads `AGENTS.md` and the shared rules from AI-Master-Instructions |
+| `docs/SPEC.md` | Build specification: requirement IDs and working agreements |
+| `docs/HANDOFF.md`, `docs/DECISIONS.md`, `docs/LESSONS.md` | Session state, settled decisions, lessons |
 | `docs/architecture.md` | Components, data model, turn loop, memory layers, tool contracts |
 | `docs/roadmap.md` | Milestones M0 to M6 with acceptance criteria |
 | `docs/KICKOFF_PROMPT.md` | First message to paste into Claude Code |

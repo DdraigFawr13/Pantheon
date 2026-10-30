@@ -4,7 +4,7 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 
 ## M0: Scaffold (1 session)
 
-- `uv` project, package layout from `CLAUDE.md` section 4, `ruff`, `mypy`, `pytest` configured.
+- `uv` project, package layout from `docs/SPEC.md` section 4, `ruff`, `mypy`, `pytest` configured.
 - World loader parses every file in `world/` and validates frontmatter (WLD-01).
 - `uv run pantheon new` creates an empty timeline in SQLite.
 

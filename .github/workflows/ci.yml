@@ -1,0 +1,27 @@
+# Adapted from the AI-Master-Instructions template with the efficient-github-actions skill.
+# M0 adds the Python checks (uv, ruff, mypy, pytest) to this job, not a new job.
+name: CI
+
+on:
+  pull_request:
+    paths-ignore: ["docs/**", "README.md"]
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "README.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      # The runner image ships Node 20+, which sync.mjs needs; no setup-node step.
+      - run: node .claude/master/sync.mjs --check
