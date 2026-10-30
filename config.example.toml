@@ -1,7 +1,7 @@
 # Copy to config.toml. Model identifiers live here, never in source code (OPS-02).
 
 [models]
-narrator = ""        # set to a current model identifier from the provider
+narrator = ""        # a current model identifier; D-032 chose the cheapest Claude model for the first test
 summarizer = ""      # may be a smaller model; evaluate before switching
 base_url = ""        # empty = the Anthropic API; "http://localhost:11434" = a local Ollama server (D-020)
                      # Ollama: start the server with OLLAMA_CONTEXT_LENGTH=32768 (D-027)

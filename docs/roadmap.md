@@ -12,7 +12,7 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 
 ## M1.5: Thin narrator loop (first fun check, D-029)
 
-- After the dice from M1: events and fold, seven narrator tools, the LLM adapter, the turn loop, character creation and CLI play on the local model. Details: `docs/BUILD_PLAN.md`.
+- After the dice from M1: events and fold, seven narrator tools, the LLM adapter, the turn loop, character creation and CLI play on Claude Haiku 5.5 (D-032). Details: `docs/BUILD_PLAN.md`.
 
 **Acceptance:** a 10-turn scripted playtest against `MockClient` with an outage produces no invariant violations, no lost events and no unsupplied numbers; a live transcript is saved; the owner plays it and reports whether it is fun.
 

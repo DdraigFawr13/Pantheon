@@ -31,8 +31,19 @@ class Config:
         return self.data_dir / "pantheon.db"
 
 
+def load_env_file(path: Path) -> None:
+    """Copy KEY=value lines from a .env file into the environment. A real environment variable wins."""
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.partition("=")
+        if separator and not key.lstrip().startswith("#") and value.strip():
+            os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
 def load_config(path: Path | None = None) -> Config:
     """Read config.toml (or the given file); fall back to defaults when it is absent."""
+    load_env_file(ROOT / ".env")
     path = path or Path(os.environ.get("PANTHEON_CONFIG", ROOT / "config.toml"))
     raw: dict[str, Any] = {}
     if path.exists():

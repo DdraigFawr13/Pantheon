@@ -1,12 +1,14 @@
 """The whole game through the CLI, with scripted input and MockClient (D-029): the owner's path."""
 
 import itertools
+import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from pantheon.config import load_env_file
 from pantheon.engine.state import GameState
 from pantheon.llm.client import LLMReply, ToolCall
 from pantheon.llm.mock import MockClient
@@ -197,3 +199,30 @@ def test_humans_choose_their_stat_and_affinity(tmp_path: Path) -> None:
 def test_spoken_choice_is_only_ever_a_clear_one(line: str, expected: str | None) -> None:
     state = GameState(opening_gods=["veshra", "ilvane"])
     assert spoken_choice(line, state, WORLD) == expected
+
+
+def test_d032_a_missing_api_key_says_what_to_do(tmp_path: Path, capsys: Any, monkeypatch: Any) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("pantheon.config.load_env_file", lambda _: None)  # A real .env must not change this.
+    config = tmp_path / "c.toml"
+    config.write_text('[models]\nnarrator = "a-model"\n', encoding="utf-8")
+    code = main(["play", "--db", str(tmp_path / "x.db"), "--config", str(config)], ask=scripted([]))
+    assert code == 1
+    assert ".env" in capsys.readouterr().out
+
+
+def test_d032_env_file_supplies_settings_but_a_real_variable_wins(tmp_path: Path, monkeypatch: Any) -> None:
+    env = tmp_path / ".env"
+    env.write_text(
+        '# note\nPANTHEON_A="from file"\nPANTHEON_B=from file\nPANTHEON_EMPTY=\nno separator\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("PANTHEON_B", "real")
+    monkeypatch.delenv("PANTHEON_A", raising=False)
+    monkeypatch.delenv("PANTHEON_EMPTY", raising=False)
+    load_env_file(env)
+    assert os.environ["PANTHEON_A"] == "from file"
+    assert os.environ["PANTHEON_B"] == "real"
+    assert "PANTHEON_EMPTY" not in os.environ
+    monkeypatch.delenv("PANTHEON_A")
+    load_env_file(tmp_path / "missing")

@@ -8,7 +8,7 @@ import anthropic
 
 from pantheon.llm.client import LLMReply, LLMUnavailable, ToolCall
 
-MAX_REPLY_TOKENS = 1500
+MAX_REPLY_TOKENS = 4000  # Thinking counts against this, so a low cap would cut prose off.
 TIMEOUT_SECONDS = 300.0
 SDK_RETRIES = 2  # The SDK backs off exponentially with jitter (OPS-03).
 CHARS_PER_TOKEN = 4

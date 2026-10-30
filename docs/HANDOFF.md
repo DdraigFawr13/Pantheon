@@ -4,7 +4,7 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1 (engine core) per `docs/BUILD_PLAN.md`. M0 and the audit fixes are merged (PRs #8, #7). M1a (d100 checks) is on branch `m1a-d100-checks`.
+M1.5 thin narrator loop (D-029) is built on branch `thin-narrator-loop`, stacked on M1a (PR #9, unmerged). It waits on the owner's API key and first play.
 
 ## Just done
 
@@ -18,15 +18,16 @@ M1 (engine core) per `docs/BUILD_PLAN.md`. M0 and the audit fixes are merged (PR
 
 - 2026-10-30 M1a: `engine/checks.py` (ENG-04, ENG-05) with band edges, tier gaps -4 to +4, Overcome Conditions and a pinned-hash determinism test (ENG-03). Assumptions in D-028; new gaps G-23, G-24. `.gitattributes` fixes the false drift failure on Windows clones.
 
+- 2026-10-30 M1.5: events and fold, seven narrator tools, Anthropic adapter, referee, narrator and scribe steps (D-031), character creation, CLI play. Four live local-model runs found: the model decided the Dual Offer itself (now a player command), skipped checks (now rolled first), and took 145 to 359 s per turn. The owner rejected local play (D-032).
+
 ## Next
 
-1. Merge the M1a PR, then cut the next branch from `main`. Next is M1b (character and progression), unless the owner takes the audit's thin-M2 proposal (open question below).
-2. Before M2, the owner raises Ollama's context to 32,768 tokens (D-027) and re-runs `ollama ps` to read the CONTEXT and SIZE columns.
+1. Owner adds `ANTHROPIC_API_KEY` to `.env` and runs `start.bat`. The adapter has not yet called the real Claude API; the first run checks that.
+2. Owner reports whether it is fun. Tune `world/data/rewards.yaml`, or move to Sonnet 5.5, from that.
+3. Merge PR #9, then this branch's PR. Then M1b, per `docs/BUILD_PLAN.md`.
 
 ## Open questions
 
-- Owner's call (audit `docs/audit/2026-10-30-repo-audit.md`, "Narrated play arrives late"): after M1a, build a thin M1c and a six-tool M2 to play the opening by about session 5, or keep the plan's order? Recommended: thin M2.
-- Does `qwen3:8b` at a 32,768-token context still fit in 12 GB at 100 % GPU? Estimate: about 10 GB. Owner checks with `ollama ps`, because cloud sessions cannot reach the PC.
 - Reward, loot and evolution numbers are engine data to tune in M1 (canon gap G-08).
 - Owner confirms the PR #7 canon corrections (sea travel 100 km per day, Tier 0 stat range 15 to 35) and answers gaps G-10 to G-20 before the M3.5 content batches need them (`docs/canon_gaps.md`).
 
@@ -44,4 +45,4 @@ M1 (engine core) per `docs/BUILD_PLAN.md`. M0 and the audit fixes are merged (PR
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-027 in `docs/DECISIONS.md` (D-022, D-023, D-027 Assumed).
+- 2026-10-30 D-007 to D-032 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031 Assumed).

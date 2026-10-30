@@ -89,11 +89,11 @@ tests/        mirrors src/; fixtures/ holds recorded MockClient transcripts
 Built right after M1a, before the rest of M1, so the plan's top risks are tested first. The remaining M1 and M2 items land behind the same tool and event pattern.
 
 - Thin M1c: events, pure fold, snapshot every 10 turns, one atomic turn commit. No forks yet.
-- Seven narrator tools: `request_check`, `apply_effect`, `grant_xp`, `adjust_standing`, `set_flag`, `register_hook`, `suggest_actions`. The Dual Offer, class, profession and free points are player commands.
-- `llm/` (protocol, `MockClient`, Anthropic and Ollama adapter), `narrator/` (assembly, loop, validators, fallback), first-guess reward tables, character creation, CLI play and `start.bat`.
+- Six narrator tools plus `request_check`: `apply_effect`, `grant_xp`, `adjust_standing`, `set_flag`, `register_hook`, `suggest_actions`. The Dual Offer, class, profession and free points are player commands.
+- `llm/` (protocol, `MockClient`, Anthropic adapter), `narrator/` (referee, narrator and scribe steps, validators, fallback; D-031), first-guess reward tables, character creation, CLI play and `start.bat`. The narrator is Claude Haiku 5.5 (D-032).
 - Not in the slice: class skills, shards, combat exchanges, Last Breath and death, items, coin changes, the calendar, forks, summaries, and streaming prose.
 
-**Acceptance:** the roadmap M2 acceptance against `MockClient`, plus a saved transcript from the live local model. **You test:** run `start.bat`, play the opening and a few scenes, and say whether it is fun.
+**Acceptance:** the roadmap M2 acceptance against `MockClient`, plus a saved live transcript. **You test:** run `start.bat`, play the opening and a few scenes, and say whether it is fun.
 
 ## M1: Engine core (4 to 6 sessions)
 

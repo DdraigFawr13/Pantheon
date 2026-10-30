@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import secrets
 import sys
@@ -423,6 +424,11 @@ def _play(args: argparse.Namespace, console: Console, ask: Ask, client: LLMClien
         if not config.narrator_model:
             console.print(
                 "[red]Set the narrator under [models] in config.toml (see config.example.toml).[/red]"
+            )
+            return 1
+        if not config.base_url and not os.environ.get("ANTHROPIC_API_KEY"):
+            console.print(
+                "[red]No API key. Put ANTHROPIC_API_KEY=... in a .env file next to start.bat.[/red]"
             )
             return 1
         client = AnthropicClient(config.narrator_model, config.base_url, config.think)
