@@ -1,0 +1,4 @@
+# world/power_tiers.md, Affinities. The fifth rare affinity is sealed (WLD-04) and loaded from world/sealed/.
+basic: [flame, frost, tide, storm, wind, stone, iron, growth, beast, light, shadow, life, death, mind, song]
+rare: [binding, space, blood, spirit]
+sealed_rare_slots: 1

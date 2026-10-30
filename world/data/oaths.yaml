@@ -1,0 +1,8 @@
+# world/power_tiers.md, Oaths. Perks, Burdens and numbers stay in the prose until M1.
+- {id: open_hand, name: Open Hand, god: veshra, affinity: mind}
+- {id: held_line, name: Held Line, god: kaul, affinity: iron}
+- {id: turning_tide, name: Turning Tide, god: ysmere, affinity: tide}
+- {id: last_rest, name: Last Rest, god: maru_ghen, affinity: death}
+- {id: kept_light, name: Kept Light, god: ilvane, affinity: light}
+- {id: fair_wager, name: Fair Wager, god: drovash, affinity: shadow}
+- {id: long_hunt, name: Long Hunt, god: hurrow, affinity: beast}
