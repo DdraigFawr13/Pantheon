@@ -1,6 +1,6 @@
 # Build plan: M0 to M3.5 (first playable version)
 
-Status: Accepted (2026-10-30; owner: "go with your recommendations"). This plan breaks the approved roadmap (`docs/roadmap.md`) into ordered tasks. The requirements live in `docs/SPEC.md`; the rules in `world/power_tiers.md`; the design decisions in `docs/DECISIONS.md` (D-001 to D-021). This file links to them and does not repeat them.
+Status: Accepted (2026-10-30; owner: "go with your recommendations"). This plan breaks the approved roadmap (`docs/roadmap.md`) into ordered tasks. The requirements live in `docs/SPEC.md`; the rules in `world/power_tiers.md`; the design decisions in `docs/DECISIONS.md` (D-001 to D-022). This file links to them and does not repeat them.
 
 Session estimates are estimates (REP-01), assuming 1 session is about 2 to 3 hours of agent work.
 
@@ -88,9 +88,9 @@ tests/        mirrors src/; fixtures/ holds recorded MockClient transcripts
 Ordered so each step is testable alone.
 
 **M1a Dice and checks** (ENG-03, ENG-04, ENG-05)
-- Seeded RNG per timeline, state serialisable for forks.
+- Seeded RNG per timeline, split into named streams (checks, loot, opening draw, rival, world) so rolls in one system never shift another; stream state serialisable for forks (D-022).
 - d100 check: chance formula, outcome bands, 01 to 05 and 96 to 00, tier-gap automatic rules, Overcome Conditions (the parts the engine can verify).
-- Tests: table-driven tests at every band edge; tier gaps -4 to +4; one fixed-seed determinism test (GAME-06).
+- Tests: table-driven tests at every band edge; tier gaps -4 to +4; one fixed-seed determinism test that compares a hash of the event log (GAME-06).
 
 **M1b Character and progression** (ENG-01, ENG-07)
 - Character: people, class, profession, five stats, free points, HP/mana/stamina formulas, affinities, skills (rarity, rank), titles, Injuries, Oaths, age.
@@ -100,7 +100,9 @@ Ordered so each step is testable alone.
 - Player commands (`allocate_point`, `pick_skill`, `absorb_shard`, `fuse_fragments`, `choose_evolution`).
 
 **M1c Event log, replay, fork, versions** (ENG-06, ENG-08, ENG-10, ENG-11)
+- One command funnel: validate, then roll, then mutate, then append. A rejected tool call fails at validate and consumes no randomness (D-022).
 - Events store resolved outcomes; state is a pure fold; snapshots every 10 turns.
+- Save versions upgrade one step at a time through a migration chain; a save newer than the game is refused, never overwritten (ENG-10, GAME-05).
 - Fork copies events, turns, snapshots and summaries up to turn N with the RNG state.
 - Calendar (1 Seedtide 1,140 AS start, Blank Days), `advance_time`, clocks (one segment per season, neglect rule), petitions as hooks.
 - Tests: `hypothesis` generates action sequences; replay equals live state; bounds hold.
@@ -120,9 +122,9 @@ Ordered so each step is testable alone.
 
 1. `llm/`: `LLMClient` protocol, `MockClient` replaying recorded transcripts, Anthropic adapter with timeouts, backoff and jitter (OPS-01, OPS-03), prompt caching on layers 1 and 2 (OPS-04), per-turn token logging (MEM-04). Provider switch (D-020): the same adapter talks to a local Ollama server through its Anthropic-compatible API (`base_url` in `config.toml`); Ollama lacks prompt caching, `count_tokens` and `tool_choice`, so the budgeter estimates tokens itself and the loop never forces a tool.
 2. `engine/tools.py`: every tool in `docs/architecture.md` section 6 as a Pydantic schema with engine validation; unknown tools rejected (ENG-02).
-3. `narrator/assemble.py`: layers 1 to 3 and 8 in fixed order; recent turns as messages (NAR-01).
+3. `narrator/assemble.py`: layers 1 to 3 and 8 in fixed order; recent turns as messages (NAR-01). Layer 3 is a curated view of state (no raw roll logs, no off-scene NPCs, nothing gated), not a full dump (D-022).
 4. `narrator/loop.py`: the turn loop in architecture section 3: per-call retry cap, forced-prose round, fallback turn, short commit transaction (NAR-06, NAR-07, OPS-03).
-5. `narrator/validators.py`: prose number check with known-name allowlist (NAR-04); `suggest_actions` rules (NAR-03).
+5. `narrator/validators.py`: prose number check with known-name allowlist (NAR-04), plus a list of banned mechanical terms (dice notation, stat abbreviations, "rolled", "chance"); `suggest_actions` rules (NAR-03). The fallback path never raises (NAR-07).
 6. Character creation from `world/protagonist_seed.md` and `world/peoples.md`; the opening scene with the two drawn gods (D-017); the rival set up from the refused Oath (D-013).
 7. Tallyhouse bounty board as data (hooks and beats) with witnessed Standing and rumours.
 8. CLI play with streaming prose and a status panel rendered from state.

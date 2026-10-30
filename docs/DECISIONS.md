@@ -129,3 +129,9 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Accepted (2026-10-30)
 - **Decision:** The game (and Ollama, per D-020) runs on the owner's Windows gaming PC, started by a one-click `start.bat`. The phone reaches the page over home Wi-Fi first; Tailscale (free personal plan) adds access away from home without exposing anything to the public internet, so the page needs no login. Python code must run on Windows as well as Linux (CI and cloud sessions).
 - **Why:** owner chose their PC and asked to go with the recommendations. Cloud sessions cannot attach to a Windows computer, so on-PC checks (GPU, playtests) are done by the owner or a local Claude Code session.
+
+## D-022 Patterns adopted from Andromeda
+
+- **Status:** Assumed (2026-10-30)
+- **Decision:** Adopt, as our own code, four patterns seen in the open-source Andromeda RPG (MIT code, github.com/danielrod36/Andromeda, read 2026-10-30): named RNG streams; a validate-roll-mutate-append command funnel where a rejected command consumes no randomness; a curated state view for the narrator prompt; a banned-mechanical-terms list in the prose validator. No code is copied; if any is, it is credited in `docs/ATTRIBUTION.md` with its MIT notice (SAFE-05). Not adopted: their JSON-snapshot reload (we replay the event log, ENG-06), no prompt caching, and their read-only narrator (ours proposes state changes through tools).
+- **Why:** each pattern makes determinism or narrator safety stronger at no extra dependency. Andromeda is the closest public design to Pantheon found in the 2026-10-30 research.

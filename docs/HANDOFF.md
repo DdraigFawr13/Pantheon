@@ -15,11 +15,11 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 ## Next
 
 1. Start M0 on a new branch.
-2. Owner reads GPU model and video memory from Task Manager (Performance, GPU) before the M2 model test.
+2. Owner's PC: AMD Radeon RX 6700 XT, 12 GB (2026-10-30). Not on Ollama's Windows ROCm list; Vulkan may work. Before the M2 model test the owner runs `ollama run qwen3:8b` then `ollama ps`; 100 % GPU means local models are viable.
 
 ## Open questions
 
-- GPU model and video memory of the owner's PC (cloud sessions cannot read a Windows machine).
+- Does Ollama use the RX 6700 XT through Vulkan? Owner checks with `ollama ps` (cloud sessions cannot reach a Windows machine).
 - Reward, loot and evolution numbers are engine data to tune in M1 (canon gap G-08).
 
 ## Plan page (D-018)
@@ -36,4 +36,4 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-021 in `docs/DECISIONS.md`.
+- 2026-10-30 D-007 to D-022 in `docs/DECISIONS.md` (D-022 Assumed).
