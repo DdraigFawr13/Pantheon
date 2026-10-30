@@ -20,6 +20,7 @@ An open-ended, AI-narrated LitRPG. The player controls one life in a medieval fa
 | `docs/HANDOFF.md`, `docs/DECISIONS.md`, `docs/LESSONS.md` | Session state, settled decisions, lessons |
 | `docs/architecture.md` | Components, data model, turn loop, memory layers, tool contracts |
 | `docs/roadmap.md` | Milestones M0 to M6 with acceptance criteria |
+| `docs/BUILD_PLAN.md` | Ordered tasks from M0 to the first playable version (M3.5) |
 | `docs/KICKOFF_PROMPT.md` | First message to paste into Claude Code |
 | `prompts/narrator.md` | Runtime system prompt template for the in-game narrator |
 | `world/` | Canon: world bible (public lore) |
@@ -29,7 +30,7 @@ An open-ended, AI-narrated LitRPG. The player controls one life in a medieval fa
 
 ## Status
 
-Scaffold only. Begin at milestone M0 in `docs/roadmap.md`.
+Design approved; no code yet. Begin at M0 in `docs/BUILD_PLAN.md`.
 
 ## Configuration
 

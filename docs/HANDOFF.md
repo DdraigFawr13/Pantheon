@@ -4,22 +4,23 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-Design approved; canon batch for the new System merged next. Then M0 per `docs/BUILD_PLAN.md` and `docs/roadmap.md`.
+Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `docs/roadmap.md`.
 
 ## Just done
 
 - 2026-10-30 Integrated AI-Master-Instructions; audit and fixes merged (PR #1).
 - 2026-10-30 Design rounds finished and approved (D-007 to D-016).
-- 2026-10-30 Canon batch: `world/power_tiers.md` rewritten as the d100 System; peoples, economy and calendar drafted; Delves renamed rifts; sealed affinity added under `world/sealed/` and checked by a reviewer agent; SPEC (ENG-04/05/07, WLD-04), architecture tools, narrator prompt and roadmap (M2.5, M3.5) updated.
+- 2026-10-30 PR #2 merged. Canon batch: `world/power_tiers.md` rewritten as the d100 System; peoples, economy and calendar drafted; Delves renamed rifts; sealed affinity added under `world/sealed/` and checked by a reviewer agent; random opening gods (D-017); SPEC (ENG-04/05/07, WLD-04), architecture tools, narrator prompt and roadmap (M2.5, M3.5) updated.
 
 ## Next
 
-1. Write `docs/BUILD_PLAN.md` (detailed plan, M0 to M3.5).
+1. Owner approves four dependencies (PyYAML, anthropic, uvicorn, jinja2) listed in `docs/BUILD_PLAN.md`.
 2. Start M0 on a new branch.
 
 ## Open questions
 
-- None. Numbers in reward, loot and evolution tables are engine data to tune in M1 (canon gap G-08).
+- Approve PyYAML (M0), anthropic (M2), uvicorn and jinja2 (M2.5)? Recommended: yes; each is the standard choice for its job.
+- Reward, loot and evolution numbers are engine data to tune in M1 (canon gap G-08).
 
 ## Design forms (owner's answers live in each page's database)
 
