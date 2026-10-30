@@ -94,6 +94,12 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Decision:** First playable version (through M3.5): the Ford Reaches, Tier 0 to Tier 2, the opening, bounties, crafting and professions, one rival, the first rift, the Unwritten path, the sealed affinity's first trace. A minimal phone web page arrives at M2.5. After: tactical combat, sub-affinities, full Oath list, codex and journal, romance (Standing plus flags), companions, holdings, prophecy, images (off until the owner sets a monthly cap).
 - **Why:** owner's keep list and final plan.
 
+## D-017 The opening's two gods are drawn at random
+
+- **Status:** Accepted (2026-10-30)
+- **Decision:** At timeline creation the engine draws two of the seven gods from the timeline's seed and records an `opening_gods_drawn` event; each offers its first Oath. The rival swears the refused god's Oath (D-013). A config setting may fix the pair for tests.
+- **Why:** owner wants restarts to open different paths. Seeded, so replays and forks stay deterministic (ENG-03).
+
 ## D-016 Content limits
 
 - **Status:** Accepted (2026-10-30)

@@ -20,6 +20,7 @@ max_tool_retries = 2
 permadeath = false
 violence = "moderate"     # low | moderate | graphic
 seed = 0                  # 0 = random per new timeline
+opening_gods = []         # empty = drawn from the seed; e.g. ["veshra", "drovash"] to fix them for tests
 
 [paths]
 world_dir = "world"
