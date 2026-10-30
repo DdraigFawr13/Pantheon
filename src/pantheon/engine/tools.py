@@ -66,7 +66,7 @@ class ApplyEffect(_Args):
 
     kind: Literal["damage", "heal"]
     source: str = Field(
-        description="damage: a check_id this turn, or hazard:<name>. heal: aid:<name>, or rest for a full sleep."
+        description="damage: a check_id this turn, or hazard:<name>. heal: aid:<name>, or rest after sleep."
     )
     reason: str
 
