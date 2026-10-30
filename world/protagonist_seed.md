@@ -40,13 +40,17 @@ A sum owed. A favor owed. A name owed. The Debt is registered as a hook at turn 
 
 The Sunken Stair collapses under a team of Rifters. The player, working at the edge of the rift as a porter, a clerk, or a lantern-bearer, is dragged into the fall. In the dark, two voices answer a dying wish. Both are real.
 
+**Which gods speak is random.** When a timeline is created, the engine draws two of the seven Hands from the timeline's seed (21 possible pairs) and records the draw as an event. Each drawn god offers its first Oath from `world/power_tiers.md`, in its own voice, for example:
+
 - **Veshra's Weighing Voice** offers the **Open Hand**: the player will always be able to tell when others lie, and must never lie in return.
 - **Drovash's Laughing Voice** offers the **Fair Wager**: the player may reroll a failed check each day, and must honor any wager they accept.
+
+The same seed always draws the same pair, so a replay with a new seed can open a different path. `config.toml` may fix the pair for testing.
 
 The player may accept one, refuse both, or try to bargain. The two gods dislike being asked to share. Accepting one earns the other's quiet interest or open hostility. Refusing both keeps the player Unwritten (see `world/power_tiers.md`, The Unwritten): no class or level, growth through shards, gear, allies and reputation.
 
 **The rival:** someone else in the fall accepts the Oath the player refused and climbs on that god's path. If the player refuses both, the rival takes one of them.
 
-**Required engine events from the opening:** `oath_offered` (two), `oath_sworn` (zero or one), `flag_set: opening.dual_offer_resolved`, `hook_registered` (at least two: one for each god's response).
+**Required engine events from the opening:** `opening_gods_drawn` (at timeline creation), `oath_offered` (two), `oath_sworn` (zero or one), `flag_set: opening.dual_offer_resolved`, `hook_registered` (at least two: one for each god's response).
 
 **Narrator guidance:** the scene shall end with the player standing in the rubble of the Stair, a Ledger open in the mind for the first time, an NPC rescuer present (Registrar Hale Dunmore or an Ironmarch caravan-master), and one clear short-term goal. No more than one major reveal in the first 5 turns.
