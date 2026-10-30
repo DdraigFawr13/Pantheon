@@ -1,0 +1,13 @@
+.env
+config.toml
+data/
+*.db
+*.db-wal
+*.db-shm
+__pycache__/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+dist/

@@ -1,0 +1,22 @@
+# Copy to config.toml. Model identifiers live here, never in source code (OPS-02).
+
+[models]
+narrator = ""        # set to a current model identifier from the provider
+summarizer = ""      # may be a smaller model; evaluate before switching
+
+[budget]
+max_input_tokens_per_turn = 20000
+max_session_spend_usd = 5.00
+recent_turns_verbatim = 6
+scenes_per_chapter = 10
+max_tool_rounds = 6
+max_tool_retries = 2
+
+[gameplay]
+permadeath = false
+violence = "moderate"     # low | moderate | graphic
+seed = 0                  # 0 = random per new timeline
+
+[paths]
+world_dir = "world"
+data_dir = "data"
