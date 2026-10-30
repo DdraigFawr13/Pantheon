@@ -1,6 +1,6 @@
 .env
 config.toml
-data/
+/data/
 *.db
 *.db-wal
 *.db-shm
@@ -11,3 +11,5 @@ __pycache__/
 .pytest_cache/
 .hypothesis/
 dist/
+.coverage
+coverage.xml
