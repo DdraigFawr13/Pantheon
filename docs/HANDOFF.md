@@ -4,7 +4,7 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M0 (scaffold) merged (PR #8). Audit fixes in PR #7. Next: M1 (engine core) per `docs/BUILD_PLAN.md`.
+M1 (engine core) per `docs/BUILD_PLAN.md`. M0 and the audit fixes are merged (PRs #8, #7). M1a (d100 checks) is on branch `m1a-d100-checks`.
 
 ## Just done
 
@@ -16,13 +16,16 @@ M0 (scaffold) merged (PR #8). Audit fixes in PR #7. Next: M1 (engine core) per `
 
 - 2026-10-30 M0: uv project, package layout, world loader and reveal-gate grammar, names-only data tables, SQLite store, `pantheon new` with the seeded opening-god draw; 51 tests, engine coverage 100 %, CI runs ruff, mypy and pytest.
 
+- 2026-10-30 M1a: `engine/checks.py` (ENG-04, ENG-05) with band edges, tier gaps -4 to +4, Overcome Conditions and a pinned-hash determinism test (ENG-03). Assumptions in D-028; new gaps G-23, G-24. `.gitattributes` fixes the false drift failure on Windows clones.
+
 ## Next
 
-1. Merge PR #7, then start M1a (d100 checks) on a fresh branch from `main`.
+1. Merge the M1a PR, then cut the next branch from `main`. Next is M1b (character and progression), unless the owner takes the audit's thin-M2 proposal (open question below).
 2. Before M2, the owner raises Ollama's context to 32,768 tokens (D-027) and re-runs `ollama ps` to read the CONTEXT and SIZE columns.
 
 ## Open questions
 
+- Owner's call (audit `docs/audit/2026-10-30-repo-audit.md`, "Narrated play arrives late"): after M1a, build a thin M1c and a six-tool M2 to play the opening by about session 5, or keep the plan's order? Recommended: thin M2.
 - Does `qwen3:8b` at a 32,768-token context still fit in 12 GB at 100 % GPU? Estimate: about 10 GB. Owner checks with `ollama ps`, because cloud sessions cannot reach the PC.
 - Reward, loot and evolution numbers are engine data to tune in M1 (canon gap G-08).
 - Owner confirms the PR #7 canon corrections (sea travel 100 km per day, Tier 0 stat range 15 to 35) and answers gaps G-10 to G-20 before the M3.5 content batches need them (`docs/canon_gaps.md`).
