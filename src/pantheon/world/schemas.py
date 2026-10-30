@@ -36,6 +36,8 @@ class Oath(_Strict):
     name: str
     god: str
     affinity: str
+    perk: str
+    burden: str
 
 
 class BaseClass(_Strict):

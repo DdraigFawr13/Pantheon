@@ -12,7 +12,7 @@ from pantheon.engine.timeline import Rules, Simulation
 from pantheon.engine.tools import resolve_offer
 from pantheon.llm.client import LLMReply, ToolCall
 from pantheon.llm.mock import MockClient
-from pantheon.narrator.assemble import assemble
+from pantheon.narrator.assemble import assemble, history_window
 from pantheon.narrator.loop import TurnOutcome, take_turn
 from pantheon.narrator.validators import prose_problems, strip_action_list
 from pantheon.storage.db import Database, TurnRecord
@@ -61,6 +61,19 @@ def tools(*calls: ToolCall) -> LLMReply:
 
 
 SUGGEST = tools(call("suggest_actions", actions=ACTIONS))
+WORDS = (
+    "zeroth",
+    "first",
+    "second",
+    "third",
+    "fourth",
+    "fifth",
+    "sixth",
+    "seventh",
+    "eighth",
+    "ninth",
+    "tenth",
+)
 
 
 def run(script: list[LLMReply | None], **kwargs: Any) -> tuple[TurnOutcome, MockClient]:
@@ -69,66 +82,107 @@ def run(script: list[LLMReply | None], **kwargs: Any) -> tuple[TurnOutcome, Mock
     return take_turn(client, WORLD, RULES, state, rng, [], "I climb.", 1, **kwargs), client
 
 
-def test_eng02_a_turn_runs_tools_then_records_prose_and_actions() -> None:
-    check = tools(call("request_check", stat="agility", difficulty="routine", challenge_tier=1))
-    outcome, client = run([check, SUGGEST, LLMReply(text=PROSE)])
+NONE = LLMReply(text="NONE")
+CHECK = tools(
+    call("request_check", stat="agility", difficulty="routine", challenge_tier=1, stakes="the climb")
+)
+
+
+def test_d031_a_turn_rolls_then_narrates_the_outcome_then_records_it() -> None:
+    outcome, client = run([CHECK, LLMReply(text=PROSE), SUGGEST])
     assert outcome.narration == PROSE and not outcome.is_fallback
     assert [t for t, _ in outcome.events] == ["check_resolved", "actions_suggested"]
-    assert outcome.state.checks_made == 1
-    assert len(outcome.state.suggested) == 3
+    assert outcome.state.checks_made == 1 and len(outcome.state.suggested) == 3
     assert (outcome.tokens_in, outcome.tokens_cached, outcome.tokens_out) == (20, 10, 4)
-    sent = client.calls[1]["messages"]
-    assert sent[-1]["content"][0]["type"] == "tool_result"
-    assert '"status": "accepted"' in sent[-1]["content"][0]["content"]
+    referee, narrator, scribe = client.calls
+    assert [t["name"] for t in referee["tools"]] == ["request_check"] and referee["fast"]
+    assert narrator["tools"] is None and not narrator["fast"]
+    assert "The engine has decided" in str(narrator["messages"][-1]["content"])
+    assert "suggest_actions" in {t["name"] for t in scribe["tools"]} and scribe["fast"]
 
 
-def test_prose_written_beside_a_tool_call_is_kept() -> None:
-    outcome, _ = run([LLMReply(text=PROSE, tool_calls=SUGGEST.tool_calls), LLMReply()])
-    assert outcome.narration == PROSE
+def test_d031_a_plain_question_rolls_nothing() -> None:
+    outcome, client = run([NONE, LLMReply(text=PROSE), SUGGEST])
+    assert outcome.state.checks_made == 0
+    assert "The engine has decided" not in str(client.calls[1]["messages"])
+    assert "Referee step" not in str(client.calls[1]["messages"])
 
 
-def test_d030_actions_are_requested_when_the_model_skips_them() -> None:
-    outcome, client = run([LLMReply(text=PROSE), SUGGEST])
-    assert outcome.narration == PROSE
+def test_d031_the_referee_may_only_roll() -> None:
+    grant = tools(call("grant_xp", kind="major", reason="x"))
+    outcome, client = run([grant, NONE, LLMReply(text=PROSE), SUGGEST])
+    assert outcome.state.xp == 0
+    assert "not available" in str(client.calls[1]["messages"][-1]["content"])
+
+
+def test_d031_the_scribe_records_consequences_with_the_turns_check() -> None:
+    effects = tools(
+        call("apply_effect", kind="damage", source="hazard:rocks", reason="rocks"),
+        call("grant_xp", kind="minor", reason="survived"),
+        call("register_hook", description="The stones remember", due_condition="later"),
+    )
+    outcome, _ = run([CHECK, LLMReply(text=PROSE), effects, SUGGEST])
+    assert outcome.state.wounds > 0 and outcome.state.xp == 25 and outcome.state.suggested
+    assert outcome.state.hooks[-1].description == "The stones remember"
+
+
+def test_d030_actions_are_requested_when_the_scribe_skips_them() -> None:
+    hook = tools(call("register_hook", description="h", due_condition="later"))
+    outcome, client = run([NONE, LLMReply(text=PROSE), hook, LLMReply(), SUGGEST])
     assert outcome.state.suggested
-    assert [t["name"] for t in client.calls[1]["tools"]] == ["suggest_actions"]
+    assert [t["name"] for t in client.calls[-1]["tools"]] == ["suggest_actions"]
 
 
-def test_d030_a_refusal_to_suggest_leaves_the_prose_standing() -> None:
-    outcome, _ = run([LLMReply(text=PROSE), LLMReply(text="No.")])
+def test_d030_a_scribe_that_refuses_leaves_the_prose_standing() -> None:
+    outcome, _ = run([NONE, LLMReply(text=PROSE), LLMReply(text="No."), LLMReply(text="No.")])
     assert outcome.narration == PROSE and not outcome.is_fallback
+
+
+def test_only_suggest_actions_is_offered_before_the_dual_offer_is_answered() -> None:
+    unresolved = GameState(opening_gods=["kaul", "hurrow"], stats={"vigor": 20, "agility": 20}, created=True)
+    grant = tools(call("request_check", stat="vigor", difficulty="routine", challenge_tier=0))
+    client = MockClient([LLMReply(text=PROSE), grant, SUGGEST])
+    outcome = take_turn(client, WORLD, RULES, unresolved, RngStreams.from_seed(1).state(), [], "Hello?", 1)
+    assert client.calls[0]["tools"] is None
+    assert [t["name"] for t in client.calls[1]["tools"]] == ["suggest_actions"]
+    assert [t for t, _ in outcome.events] == ["actions_suggested"]
 
 
 def test_nar06_rejections_retry_at_most_twice_then_drop_and_log() -> None:
     bad = tools(call("grant_xp", kind="enormous", reason="x"))
-    outcome, client = run([bad, bad, bad, SUGGEST, LLMReply(text=PROSE)])
+    outcome, client = run([CHECK, LLMReply(text=PROSE), bad, bad, bad], max_rounds=3)
     assert outcome.narration == PROSE
-    dropped = [p for t, p in outcome.events if t == "tool_call_dropped"]
-    assert [d["tool"] for d in dropped] == ["grant_xp"]
-    results = [c["messages"][-1]["content"][0]["content"] for c in client.calls[1:4]]
-    assert '"rejected"' in results[0] and '"rejected"' in results[1] and '"dropped"' in results[2]
+    assert [p["tool"] for t, p in outcome.events if t == "tool_call_dropped"] == ["grant_xp"]
+    contents = [str(c["messages"][-1]["content"]) for c in client.calls[3:]]
+    assert "rejected" in contents[0] and "rejected" in contents[1]
+
+
+def test_nar06_a_rejected_check_can_be_retried() -> None:
+    bad = tools(call("request_check", stat="luck", difficulty="hard", challenge_tier=1))
+    outcome, _ = run([bad, CHECK, LLMReply(text=PROSE), SUGGEST])
+    assert outcome.state.checks_made == 1
 
 
 def test_nar04_bad_prose_is_retried_with_the_reason_and_never_recorded() -> None:
-    outcome, client = run([LLMReply(text="You take 12 damage."), SUGGEST, LLMReply(text=PROSE)])
+    outcome, client = run([NONE, LLMReply(text="You take 12 damage."), LLMReply(text=PROSE), SUGGEST])
     assert outcome.narration == PROSE
-    assert any("12" in str(m["content"]) and m["role"] == "user" for m in client.calls[1]["messages"])
+    assert "12" in str(client.calls[2]["messages"][-1]["content"])
 
 
 def test_nar07_prose_that_keeps_failing_becomes_the_fallback_turn() -> None:
     bad = LLMReply(text="You take 12 damage.")
-    outcome, _ = run([bad, bad, bad])
-    assert outcome.is_fallback
-    assert "12" not in outcome.narration
+    outcome, _ = run([NONE, bad, bad, bad])
+    assert outcome.is_fallback and "12" not in outcome.narration
+
+
+def test_nar07_empty_prose_is_retried() -> None:
+    outcome, _ = run([NONE, LLMReply(), LLMReply(text=PROSE), SUGGEST])
+    assert outcome.narration == PROSE
 
 
 def test_nar07_outage_gives_a_fallback_and_keeps_resolved_events() -> None:
-    check = tools(
-        call("request_check", stat="agility", difficulty="routine", challenge_tier=1, stakes="the climb")
-    )
-    outcome, _ = run([check, None])
-    assert outcome.is_fallback
-    assert "the climb:" in outcome.narration
+    outcome, _ = run([CHECK, None])
+    assert outcome.is_fallback and "the climb:" in outcome.narration
     assert [t for t, _ in outcome.events] == ["check_resolved"]
 
 
@@ -138,28 +192,35 @@ def test_nar07_outage_with_nothing_resolved_still_has_text() -> None:
     assert outcome.events == []
 
 
-def test_nar06_round_cap_forces_prose_with_no_tools() -> None:
-    hook = [tools(call("register_hook", i, description=f"hook {i}", due_condition="later")) for i in range(2)]
-    outcome, client = run([*hook, LLMReply(text=PROSE), SUGGEST], max_rounds=2)
+def test_nar07_an_outage_after_the_prose_keeps_the_prose() -> None:
+    outcome, _ = run([NONE, LLMReply(text=PROSE), None])
+    assert outcome.narration == PROSE and not outcome.is_fallback
+
+
+def test_d031_prose_that_repeats_an_earlier_turn_is_retried() -> None:
+    state, rng = sworn_state()
+    earlier = (
+        "You shove the beam with your shoulder until it moves. The figure watches from the wall in silence."
+    )
+    client = MockClient([NONE, LLMReply(text=earlier), LLMReply(text=PROSE), SUGGEST])
+    outcome = take_turn(client, WORLD, RULES, state, rng, [("I shove.", earlier)], "Who are you?", 2)
     assert outcome.narration == PROSE
-    assert client.calls[2]["tools"] is None
+    assert "repeats earlier narration" in str(client.calls[2]["messages"][-1]["content"])
 
 
-def test_round_cap_accepts_valid_prose_already_written() -> None:
-    reply = LLMReply(text=PROSE, tool_calls=(call("register_hook", description="h", due_condition="later"),))
-    outcome, _ = run([reply, SUGGEST], max_rounds=1)
-    assert outcome.narration == PROSE
+def test_d031_xp_is_offered_only_after_a_check() -> None:
+    _, talking = run([NONE, LLMReply(text=PROSE), SUGGEST])
+    assert "grant_xp" not in {t["name"] for t in talking.calls[2]["tools"]}
+    _, tested = run([CHECK, LLMReply(text=PROSE), SUGGEST])
+    assert "grant_xp" in {t["name"] for t in tested.calls[2]["tools"]}
 
 
-def test_round_cap_forced_prose_is_checked_too() -> None:
-    hook = tools(call("register_hook", description="h", due_condition="later"))
-    outcome, _ = run([hook, LLMReply(text="You gain 50 XP.")], max_rounds=1)
-    assert outcome.is_fallback
+def test_d031_history_grows_then_resets() -> None:
+    assert [history_window(t, 3) for t in range(7)] == [3, 4, 5, 3, 4, 5, 3]
 
 
 def test_nar04_numbers_returned_by_the_engine_are_allowed() -> None:
-    grant = tools(call("grant_xp", kind="major", reason="x"))
-    outcome, _ = run([grant, SUGGEST, LLMReply(text="Level 1 still, you think.")])
+    outcome, _ = run([NONE, LLMReply(text="Forty silver, you think."), SUGGEST])
     assert not outcome.is_fallback
 
 
@@ -219,10 +280,12 @@ def test_nar01_layers_are_in_fixed_order_with_a_stable_cached_prefix() -> None:
     assert "Narrator system prompt" not in system[0]["text"]
     assert "The Ledger is the System" in system[0]["text"]
     assert "{{" not in system[0]["text"] + system[1]["text"]
-    assert system[1]["text"].index("Character state") < system[1]["text"].index("Due material")
-    assert '"name": "Wren"' in system[1]["text"]
+    assert (
+        '"name":"Wren"' not in system[0]["text"] + system[1]["text"]
+    )  # The sheet changes, so it is not in the system.
+    assert '"name":"Wren"' in messages[-1]["content"]
+    assert messages[-1]["content"].index("Character sheet") < messages[-1]["content"].index("I hide.")
     assert [m["role"] for m in messages] == ["user", "assistant", "user"]
-    assert messages[-1]["content"].startswith("I hide.")
     other, _ = assemble(state.model_copy(update={"xp": 99}), WORLD, [], "I hide.")
     assert other[0] == system[0]
 
@@ -230,10 +293,13 @@ def test_nar01_layers_are_in_fixed_order_with_a_stable_cached_prefix() -> None:
 def test_opening_lore_and_offer_appear_only_until_resolved() -> None:
     unresolved = GameState(opening_gods=["kaul", "hurrow"], stats={"vigor": 20})
     system, _ = assemble(unresolved, WORLD, [], "start")
-    assert "The Dual Offer is unresolved" in system[1]["text"]
-    assert "Kaul (id kaul) offers the Held Line" in system[1]["text"]
+    assert "The Dual Offer is unresolved" in str(assemble(unresolved, WORLD, [], "start")[1])
+    assert "Burden: Shall not abandon a charge" in str(assemble(unresolved, WORLD, [], "start")[1])
+    assert "Sunken Stair collapses" in system[1]["text"]
     state, _ = sworn_state()
-    assert "Dual Offer is unresolved" not in assemble(state, WORLD, [], "x")[0][1]["text"]
+    resolved_system, resolved_messages = assemble(state, WORLD, [], "x")
+    assert "Dual Offer is unresolved" not in str(resolved_messages)
+    assert "Sunken Stair collapses" not in resolved_system[1]["text"]
 
 
 def test_nar02_no_secret_or_sealed_text_reaches_a_prompt() -> None:
@@ -275,14 +341,20 @@ def test_nar_ten_turn_scripted_playtest_commits_and_replays(tmp_path: Path) -> N
         choose_profession(sim, "merchant")
         db.commit_events(tid, 0, sim.events, sim.rng.state())
         for turn in range(1, 11):
+            check = call("request_check", turn, stat="agility", difficulty="hard", challenge_tier=1)
             turn_calls = (
-                call("request_check", turn, stat="agility", difficulty="hard", challenge_tier=1),
                 call("grant_xp", turn, kind="minor", reason="progress"),
                 call("register_hook", turn, description=f"Consequence {turn}", due_condition="later"),
                 call("suggest_actions", turn, actions=ACTIONS),
             )
             script: list[LLMReply | None] = (
-                [None] if turn == 7 else [tools(*turn_calls), LLMReply(text=PROSE)]
+                [None]
+                if turn == 7
+                else [
+                    tools(check),
+                    LLMReply(text=f"You climb the {WORDS[turn]} flight of the broken stair."),
+                    tools(*turn_calls),
+                ]
             )
             current = db.load_state(tid)
             outcome = take_turn(

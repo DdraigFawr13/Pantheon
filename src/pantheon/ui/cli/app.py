@@ -30,13 +30,18 @@ from pantheon.engine.timeline import Rejected, Rules, Simulation
 from pantheon.engine.tools import resolve_offer
 from pantheon.llm.anthropic_adapter import AnthropicClient
 from pantheon.llm.client import LLMClient
+from pantheon.narrator.assemble import history_window
 from pantheon.narrator.loop import TurnOutcome, take_turn
 from pantheon.storage.db import Database, TurnRecord
 from pantheon.world.loader import World, load_world
 
 type Ask = Callable[[str], str]
 
-OPENING_INPUT = "[The game begins. Open with the scene: The Dual Offer.]"
+OPENING_INPUT = (
+    "[The game begins. Open with The Dual Offer. Narrate the collapse of the Stair as it happens and the "
+    "fall into the dark. Then each of the two gods speaks to the player directly, in its own distinct "
+    "voice, naming its Oath's gift and its Burden. End with both voices waiting for an answer.]"
+)
 _HELP = "Type an action, or a number from the list. Commands: /sheet /hooks /swear <god> /refuse /help /quit"
 _SAVED = "Saved. `pantheon play` resumes here."
 
@@ -308,7 +313,7 @@ class Game:
                 self.rules,
                 self.state,
                 self.db.rng_state(self.tid),
-                self.db.recent_turns(self.tid, self.config.recent_turns),
+                self.db.recent_turns(self.tid, history_window(turn - 1, self.config.recent_turns)),
                 player_input,
                 turn,
                 max_rounds=self.config.max_tool_rounds,

@@ -16,8 +16,9 @@ _PROMPT = Path(__file__).resolve().parents[3] / "prompts" / "narrator.md"
 _MAX_HOOKS_SHOWN = 12
 # Small local models follow the end of the prompt best. Not stored with the turn (first live playtest).
 _REMINDER = (
-    "[Narrator: use tools only for what this action needs, then write 100 to 250 words of prose, once. "
-    "No options or lists in the prose, no digits, no headings. Never act or decide for the player.]"
+    "[Narrator: write the scene once: 100 to 250 words, second person, present tense, as it happens rather "
+    "than as a summary. Move the scene forward with something new, and never reuse an image or phrase from "
+    "earlier turns. No game terms, options, lists, digits or headings. Never act or decide for the player.]"
 )
 
 
@@ -50,9 +51,12 @@ def _due_material(state: GameState, world: World) -> str:
     if not state.offer_resolved:
         gods = {g.id: g for g in world.data.gods}
         oaths = {o.id: o for o in world.data.oaths}
-        offers = [
-            f"{gods[g].name} (id {g}) offers the {oaths[gods[g].first_oath].name}" for g in state.opening_gods
-        ]
+        offers = []
+        for god_id in state.opening_gods:
+            oath = oaths[gods[god_id].first_oath]
+            offers.append(
+                f"{gods[god_id].name} offers the {oath.name}. Gift: {oath.perk}. Burden: {oath.burden}"
+            )
         lines.append(
             "The Dual Offer is unresolved. "
             + "; ".join(offers)
@@ -66,6 +70,11 @@ def _due_material(state: GameState, world: World) -> str:
         for h in state.hooks[-_MAX_HOOKS_SHOWN:]
     ]
     return "\n".join(lines) or "(nothing due)"
+
+
+def history_window(last_turn: int, size: int) -> int:
+    """How many past turns to send. It grows, then resets, so the model's cache survives most turns."""
+    return size + last_turn % size
 
 
 def assemble(
@@ -82,11 +91,8 @@ def assemble(
     canon = "\n\n".join(world.by_id(entry).body for entry in _CANON_CORE)
     lore_ids = ((_OPENING_LORE,) if not state.offer_resolved else ()) + _LORE
     lore = "\n\n".join(world.by_id(entry).body for entry in lore_ids)
-    rest = (
-        rest.replace("{{state_snapshot}}", json.dumps(state_view(state), indent=1))
-        .replace("{{chronicle}}", "(not kept in this build; recent turns follow as messages)")
-        .replace("{{retrieved_lore}}", lore)
-        .replace("{{due_material}}", _due_material(state, world))
+    rest = rest.replace("{{chronicle}}", "(not kept in this build; recent turns follow as messages)").replace(
+        "{{retrieved_lore}}", lore
     )
     system = [
         {"type": "text", "text": prefix + canon, "cache_control": {"type": "ephemeral"}},
@@ -95,5 +101,9 @@ def assemble(
     messages: list[dict[str, Any]] = []
     for said, narration in recent:
         messages += [{"role": "user", "content": said}, {"role": "assistant", "content": narration}]
-    messages.append({"role": "user", "content": f"{player_input}\n\n{_REMINDER}"})
+    # Sheet first and instructions last, so every call this turn reuses the model's cache up to the steps.
+    sheet = json.dumps(state_view(state), separators=(",", ":"))
+    due = _due_material(state, world)
+    latest = f"[Character sheet: {sheet}]\n[Due: {due}]\n\nThe player: {player_input}\n\n{_REMINDER}"
+    messages.append({"role": "user", "content": latest})
     return system, messages

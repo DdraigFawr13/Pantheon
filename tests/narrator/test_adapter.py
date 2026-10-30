@@ -59,6 +59,12 @@ def test_think_false_and_no_tools_are_passed_through() -> None:
     assert "tools" not in fake.kwargs
 
 
+def test_d031_a_fast_call_skips_thinking() -> None:
+    adapter, fake = client(sdk_reply())
+    adapter.complete(SYSTEM, MESSAGES, None, fast=True)
+    assert fake.kwargs["thinking"] == {"type": "disabled"}
+
+
 def test_d027_a_truncated_local_prompt_fails_the_call() -> None:
     adapter, _ = client(sdk_reply(tokens_in=100), base_url="http://localhost")
     with pytest.raises(LLMUnavailable, match="OLLAMA_CONTEXT_LENGTH"):

@@ -16,9 +16,14 @@ class MockClient:
         self.calls: list[dict[str, Any]] = []
 
     def complete(
-        self, system: list[dict[str, Any]], messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None
+        self,
+        system: list[dict[str, Any]],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        *,
+        fast: bool = False,
     ) -> LLMReply:
-        self.calls.append({"system": system, "messages": list(messages), "tools": tools})
+        self.calls.append({"system": system, "messages": list(messages), "tools": tools, "fast": fast})
         if not self.script:
             raise LLMUnavailable("the script has ended")
         reply = self.script.pop(0)

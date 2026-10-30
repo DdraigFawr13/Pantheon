@@ -34,5 +34,10 @@ class LLMReply:
 
 class LLMClient(Protocol):
     def complete(
-        self, system: list[dict[str, Any]], messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None
+        self,
+        system: list[dict[str, Any]],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        *,
+        fast: bool = False,
     ) -> LLMReply: ...

@@ -308,6 +308,16 @@ def test_nar03_suggest_actions_rules(actions: list[dict[str, Any]], ok: bool) ->
     assert sim.suggested is ok
 
 
+def test_d031_the_oath_menu_is_not_duplicated_in_suggestions() -> None:
+    actions = [{"label": "Swear to Veshra", "cost": "a Burden"}, {"label": "Run"}, {"label": "Hide"}]
+    assert not apply_tool(fresh(), "suggest_actions", {"actions": actions}).accepted
+    assert apply_tool(sworn(), "suggest_actions", {"actions": actions}).accepted
+
+
+def test_d031_healing_needs_a_wound() -> None:
+    assert not apply_tool(sworn(), "apply_effect", {"kind": "heal", "source": "rest", "reason": "x"}).accepted
+
+
 def test_commands_reject_bad_choices() -> None:
     sim = fresh()
     with pytest.raises(Rejected):

@@ -1,5 +1,6 @@
 """The whole game through the CLI, with scripted input and MockClient (D-029): the owner's path."""
 
+import itertools
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,7 @@ from pantheon.ui.cli.app import main, spoken_choice
 from pantheon.world.loader import load_world
 
 WORLD = load_world(Path(__file__).resolve().parents[1] / "world")
-PROSE = "The dark presses close, and something in it is listening."
+PROSE = "The dark presses close."
 ACTIONS = [
     {"label": "Ask what it wants"},
     {"label": "Bargain", "cost": "it may remember"},
@@ -33,9 +34,20 @@ def scripted(lines: list[str]) -> Callable[[str], str]:
     return ask
 
 
-def narration(*calls: ToolCall) -> list[LLMReply | None]:
+_WORDS = itertools.cycle(("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"))
+
+
+def narration(*calls: ToolCall, check: ToolCall | None = None) -> list[LLMReply | None]:
+    """A turn after the Dual Offer: referee, prose, scribe."""
     suggest = ToolCall("s", "suggest_actions", {"actions": ACTIONS})
-    return [LLMReply(tool_calls=(*calls, suggest)), LLMReply(text=PROSE)]
+    referee = LLMReply(tool_calls=(check,)) if check else LLMReply(text="NONE")
+    prose = f"{PROSE} The {next(_WORDS)} stair groans under you, and the dust has not yet settled."
+    return [referee, LLMReply(text=prose), LLMReply(tool_calls=(*calls, suggest))]
+
+
+def talk() -> list[LLMReply | None]:
+    """A turn before the Dual Offer is answered: prose, then actions."""
+    return narration()[1:]
 
 
 def play(
@@ -58,7 +70,7 @@ NEW_GAME = ["Wren", "21", "4", "2", "a p v i r", "Cannot refuse a dare", "Forty 
 
 
 def test_new_game_creates_a_character_and_plays_the_opening(tmp_path: Path, capsys: Any) -> None:
-    code, state, _ = play(tmp_path, [*NEW_GAME, "/quit"], narration())
+    code, state, _ = play(tmp_path, [*NEW_GAME, "/quit"], talk())
     assert code == 0
     assert state.name == "Wren" and state.people == "saltborn" and state.origin == "toll_ferry_orphan"
     assert state.stats["agility"] == 32 and state.stats["presence"] == 30
@@ -70,7 +82,7 @@ def test_new_game_creates_a_character_and_plays_the_opening(tmp_path: Path, caps
 
 def test_swearing_from_the_menu_then_choosing_class_and_profession(tmp_path: Path, capsys: Any) -> None:
     lines = [*NEW_GAME, "4", "1", "1", "/sheet", "/hooks", "/help", "/quit"]
-    _code, state, _ = play(tmp_path, lines, [*narration(), *narration()])
+    _code, state, _ = play(tmp_path, lines, [*talk(), *narration()])
     assert state.level == 1 and len(state.oaths) == 1
     assert state.class_id == "blade_sworn"
     assert state.profession == "herbalist"
@@ -80,19 +92,19 @@ def test_swearing_from_the_menu_then_choosing_class_and_profession(tmp_path: Pat
 
 
 def test_refusing_from_the_menu_stays_unwritten(tmp_path: Path) -> None:
-    _code, state, _ = play(tmp_path, [*NEW_GAME, "6", "/quit"], [*narration(), *narration()])
+    _code, state, _ = play(tmp_path, [*NEW_GAME, "6", "/quit"], [*talk(), *narration()])
     assert state.level == 0 and state.flags["unwritten_path"] is True
 
 
 def test_a_suggested_action_becomes_the_players_turn_and_the_ledger_shows_results(
     tmp_path: Path, capsys: Any
 ) -> None:
+    check = ToolCall(
+        "c",
+        "request_check",
+        {"stat": "agility", "difficulty": "routine", "challenge_tier": 0, "stakes": "x"},
+    )
     calls = (
-        ToolCall(
-            "c",
-            "request_check",
-            {"stat": "agility", "difficulty": "routine", "challenge_tier": 0, "stakes": "x"},
-        ),
         ToolCall(
             "h", "apply_effect", {"kind": "damage", "source": "hazard:rocks", "reason": "falling rocks"}
         ),
@@ -106,7 +118,8 @@ def test_a_suggested_action_becomes_the_players_turn_and_the_ledger_shows_result
         ),
         ToolCall("k", "register_hook", {"description": "The stones remember", "due_condition": "later"}),
     )
-    _code, state, tid = play(tmp_path, [*NEW_GAME, "1", "/quit"], [*narration(), *narration(*calls)])
+    lines = [*NEW_GAME, "4", "1", "1", "1", "/quit"]
+    _code, state, tid = play(tmp_path, lines, [*talk(), *narration(), *narration(*calls, check=check)])
     with Database.open(tmp_path / "game.db") as db:
         assert db.recent_turns(tid, 1)[0][0] == "Ask what it wants"
     assert state.wounds > 0
@@ -117,21 +130,22 @@ def test_a_suggested_action_becomes_the_players_turn_and_the_ledger_shows_result
 
 def test_typed_oath_asks_first_and_a_no_keeps_the_turn(tmp_path: Path) -> None:
     lines = [*NEW_GAME, "I swear to no one", "/quit"]
-    _code, state, _ = play(tmp_path, lines, [*narration(), *narration()])
+    _code, state, _ = play(tmp_path, lines, [*talk(), *narration()])
     assert state.level == 0 and not state.offer_resolved
 
 
 def test_xp_level_up_prompts_for_the_free_point(tmp_path: Path, capsys: Any) -> None:
     grant = ToolCall("g", "grant_xp", {"kind": "milestone", "reason": "a great deed"})
     lines = [*NEW_GAME, "4", "1", "1", "Do the deed", "2", "/quit"]
-    _code, state, _ = play(tmp_path, lines, [*narration(), *narration(), *narration(grant)])
+    check = ToolCall("c", "request_check", {"stat": "agility", "difficulty": "routine", "challenge_tier": 0})
+    _code, state, _ = play(tmp_path, lines, [*talk(), *narration(), *narration(grant, check=check)])
     assert state.level == 2 and state.free_points == 0
     out = capsys.readouterr().out
     assert "Level 2!" in out and "Place your free point" in out
 
 
 def test_resume_shows_the_last_turn_and_a_downed_character(tmp_path: Path, capsys: Any) -> None:
-    play(tmp_path, [*NEW_GAME, "/quit"], narration())
+    play(tmp_path, [*NEW_GAME, "/quit"], talk())
     capsys.readouterr()
     code, state, _ = play(tmp_path, ["/quit"], [])
     assert code == 0 and state.name == "Wren"
@@ -139,7 +153,7 @@ def test_resume_shows_the_last_turn_and_a_downed_character(tmp_path: Path, capsy
 
 
 def test_end_of_input_saves_and_exits(tmp_path: Path, capsys: Any) -> None:
-    code, _state, _ = play(tmp_path, NEW_GAME, narration())
+    code, _state, _ = play(tmp_path, NEW_GAME, talk())
     assert code == 0
     assert "Saved" in capsys.readouterr().out
 
@@ -153,14 +167,14 @@ def test_no_model_configured_says_what_to_do(tmp_path: Path, capsys: Any) -> Non
 
 
 def test_fresh_starts_a_new_timeline(tmp_path: Path) -> None:
-    _c, _s, first = play(tmp_path, [*NEW_GAME, "/quit"], narration())
-    _c, _s, second = play(tmp_path, [*NEW_GAME, "/quit"], narration(), "--fresh")
+    _c, _s, first = play(tmp_path, [*NEW_GAME, "/quit"], talk())
+    _c, _s, second = play(tmp_path, [*NEW_GAME, "/quit"], talk(), "--fresh")
     assert first != second
 
 
 def test_humans_choose_their_stat_and_affinity(tmp_path: Path) -> None:
     lines = ["Ana", "", "1", "1", "1", "1", "nonsense", "a p v i r", "", "", "/quit"]
-    _code, state, _ = play(tmp_path, lines, narration())
+    _code, state, _ = play(tmp_path, lines, talk())
     assert state.age == 22
     assert state.stats["vigor"] == 24 + 3 + 0
     assert state.affinities == {"flame": 1}

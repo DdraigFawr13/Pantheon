@@ -27,6 +27,7 @@ from pantheon.engine.timeline import Rejected, Simulation
 MAX_REJECTION_DETAIL = 3
 _FLAG_KEY = re.compile(r"^story\.[a-z][a-z0-9_.]*$")
 _DIGIT = re.compile(r"\d")
+_OATH_CHOICE = re.compile(r"\b(swear|accept|refuse)\b", re.I)
 
 
 @dataclass(frozen=True)
@@ -65,7 +66,7 @@ class ApplyEffect(_Args):
 
     kind: Literal["damage", "heal"]
     source: str = Field(
-        description="damage: a check_id from this turn, or hazard:<name>. heal: rest, or aid:<name>."
+        description="damage: a check_id this turn, or hazard:<name>. heal: aid:<name>, or rest for a full sleep."
     )
     reason: str
 
@@ -192,6 +193,8 @@ def _apply_effect(sim: Simulation, args: ApplyEffect) -> dict[str, Any]:
             raise Rejected("source must be a check_id from this turn or hazard:<name>")
         amount = min(math.ceil(state.max_hp * percent / 100), state.hp)
     else:
+        if state.wounds == 0:
+            raise Rejected("the character has no wounds to heal")
         if args.source == "rest":
             amount = state.wounds
         elif args.source.startswith("aid:"):
@@ -291,6 +294,8 @@ def _suggest_actions(sim: Simulation, args: SuggestActions) -> dict[str, Any]:
         raise Rejected("at least one action must be non-violent")
     if not any(a.cost for a in actions):
         raise Rejected("at least one action must name a visible cost or risk in its cost field")
+    if not sim.state.offer_resolved and any(_OATH_CHOICE.search(a.label) for a in actions):
+        raise Rejected("the game's menu offers swearing and refusing; suggest questions and bargains instead")
     if any(_DIGIT.search(a.label + (a.cost or "")) for a in actions):
         raise Rejected("action labels and costs must not contain digits; the engine owns the numbers")
     sim.emit("actions_suggested", {"actions": [Action(**a.model_dump()).model_dump() for a in actions]})

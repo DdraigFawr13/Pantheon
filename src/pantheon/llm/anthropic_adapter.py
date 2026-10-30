@@ -32,10 +32,15 @@ class AnthropicClient:
         )
 
     def complete(
-        self, system: list[dict[str, Any]], messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None
+        self,
+        system: list[dict[str, Any]],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None,
+        *,
+        fast: bool = False,
     ) -> LLMReply:
         kwargs: dict[str, Any] = {"tools": tools} if tools else {}
-        if not self.think:
+        if fast or not self.think:
             kwargs["thinking"] = {"type": "disabled"}
         try:
             reply = self.client.messages.create(
