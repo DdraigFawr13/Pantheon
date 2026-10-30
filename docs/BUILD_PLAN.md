@@ -79,7 +79,7 @@ tests/        mirrors src/; fixtures/ holds recorded MockClient transcripts
 5. `storage/db.py`: SQLite in WAL mode, `meta.schema_version`, the tables in `docs/architecture.md` section 5.
 6. CLI: `pantheon new` creates a timeline with a seed and rules version (ENG-10), and draws the opening's two gods from the seed (D-017).
 7. Tests: every world file loads; a malformed fixture fails the schema; every reveal gate (secret and sealed) parses and every path in it is a registered flag or a state field (NAR-02); no `README.md` is in the lore index; a sealed-type file outside `world/sealed/`, or the reverse, fails the load (WLD-04); the engine import-boundary test.
-8. CI: add the uv, ruff, mypy and pytest steps to the existing `check` job with the `efficient-github-actions` skill (CI-06). Add one `windows-latest` job that runs `uv run pytest` on pushes to `main` only, not on PRs, so Windows bugs (D-021) show up without doubling PR minutes.
+8. CI: add the uv, ruff, mypy and pytest steps to the existing `check` job with the `efficient-github-actions` skill (CI-06). A `windows-latest` job runs the tests from "Run workflow" only (D-023).
 9. Canon batch 2 (`canon:`): first `world/data/` tables for affinities, peoples, Oaths, professions (names only, from canon). `flags.yaml` already exists (D-024); the loader adopts its format.
 
 **Acceptance:** roadmap M0. **You test:** nothing to play; read the M0 report.

@@ -4,18 +4,20 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `docs/roadmap.md`.
+M0 (scaffold) merged (PR #8). Audit fixes in PR #7. Next: M1 (engine core) per `docs/BUILD_PLAN.md`.
 
 ## Just done
 
 - 2026-10-30 Integrated AI-Master-Instructions; audit and fixes merged (PR #1).
 - 2026-10-30 Design rounds finished and approved (D-007 to D-016).
 - 2026-10-30 PR #2 merged. Canon batch: `world/power_tiers.md` rewritten as the d100 System; peoples, economy and calendar drafted; Delves renamed rifts; sealed affinity added under `world/sealed/` and checked by a reviewer agent; random opening gods (D-017); SPEC (ENG-04/05/07, WLD-04), architecture tools, narrator prompt and roadmap (M2.5, M3.5) updated.
-- 2026-10-30 Whole-repo audit (`docs/audit/2026-10-30-repo-audit.md`) and its fixes in PR #7: the three M0 blockers (D-024: flag registry in `world/data/flags.yaml` and `world/sealed/data/flags.yaml`, README rule, `/data/` ignore), design fixes (D-025), branch-name practice (D-026), canon corrections and gaps G-10 to G-22. Sealed and secret changes passed the reviewer agent.
+- 2026-10-30 Whole-repo audit (`docs/audit/2026-10-30-repo-audit.md`) and its fixes in PR #7: the three M0 blockers (D-024: flag registry in `world/data/flags.yaml` and `world/sealed/data/flags.yaml`, enforced by the loader and `tests/world/test_flags.py`; sealed type and path guard), design fixes (D-025), branch-name practice (D-026), canon corrections and gaps G-10 to G-22. Sealed and secret changes passed the reviewer agent.
+
+- 2026-10-30 M0: uv project, package layout, world loader and reveal-gate grammar, names-only data tables, SQLite store, `pantheon new` with the seeded opening-god draw; 51 tests, engine coverage 100 %, CI runs ruff, mypy and pytest.
 
 ## Next
 
-1. Start M0 on a new branch.
+1. Merge PR #7, then start M1a (d100 checks) on a fresh branch from `main`.
 2. Owner's PC: AMD Radeon RX 6700 XT, 12 GB (2026-10-30). Not on Ollama's Windows ROCm list; Vulkan may work. Before the M2 model test the owner runs `ollama run qwen3:8b` then `ollama ps`; 100 % GPU means local models are viable.
 
 ## Open questions
@@ -38,4 +40,4 @@ Design approved and in canon (PR #2). Next: M0 per `docs/BUILD_PLAN.md` and `doc
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-026 in `docs/DECISIONS.md` (D-022 Assumed).
+- 2026-10-30 D-007 to D-026 in `docs/DECISIONS.md` (D-022, D-023 Assumed).

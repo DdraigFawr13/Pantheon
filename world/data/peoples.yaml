@@ -1,0 +1,6 @@
+# world/peoples.md. innate_affinity "any_basic" means the player chooses.
+- {id: humans, name: Humans, innate_affinity: [any_basic], stat: any}
+- {id: riftborn, name: Riftborn, innate_affinity: [birth_rift], stat: intellect}
+- {id: fenfolk, name: Fenfolk, innate_affinity: [beast, growth], stat: agility}
+- {id: saltborn, name: Saltborn, innate_affinity: [tide], stat: presence}
+- {id: stonekin, name: Stonekin, innate_affinity: [stone, iron], stat: vigor}

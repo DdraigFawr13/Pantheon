@@ -15,11 +15,11 @@ Shared rules come from AI-Master-Instructions and load through CLAUDE.md (`.clau
 ## Local checks (run before pushing)
 
 - Every push: `node .claude/master/sync.mjs --check`.
-- From M0 on: `uv run ruff check . && uv run mypy src/pantheon/engine && uv run pytest`.
+- From M0 on: `uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest --cov --cov-fail-under=90`.
 
 ## What CI runs
 
-- **CI** (`ci.yml`): the drift check on every PR update and `main` push; M0 adds the Python checks. Changes only to `docs/**` or `README.md` skip it. `world/` changes do not skip it: the loader validates canon frontmatter.
+- **CI** (`ci.yml`): one Linux job on every PR update and `main` push: drift check, ruff, mypy, pytest with 90 % coverage. Changes only to `docs/**` or `README.md` skip it; `world/` changes do not (the loader validates canon). A Windows test job runs only from "Run workflow" (D-023).
 - **Delete merged PR branches** (`prune-merged-branches.yml`): on PR close.
 - No deploys.
 
