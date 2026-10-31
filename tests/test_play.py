@@ -142,18 +142,71 @@ def test_d033_the_oath_menu_states_its_terms_plainly(tmp_path: Path, capsys: Any
     assert "No class or level" in out
 
 
-def test_d033_options_show_their_tag_and_hide_the_cost_hint(tmp_path: Path, capsys: Any) -> None:
-    tagged = [{"label": "Ask what it wants", "tag": "presence", "cost": "it may remember"}, *ACTIONS[:2]]
-    reply = LLMReply(tool_calls=(ToolCall("s", "suggest_actions", {"actions": tagged}),))
-    script = [*talk(), LLMReply(text=f"{PROSE} The stair shifts under you."), reply]
-    lines = [*NEW_GAME, "4", "1", "1", "1", "/quit"]
-    _code, _state, tid = play(tmp_path, lines, [*script, *narration()])
+ROLL = {"stat": "presence", "difficulty": "routine", "challenge_tier": 0, "stakes": "its patience"}
+TAGGED = [
+    {"label": "Ask what it wants", "check": ROLL, "cost": "it may remember"},
+    {"label": "Speak the Oath", "tag": "Held Line"},
+    {"label": "Back away"},
+]
+
+
+def tagged_turn(actions: list[dict[str, Any]]) -> list[LLMReply | None]:
+    reply = LLMReply(tool_calls=(ToolCall("s", "suggest_actions", {"actions": actions}),))
+    return [LLMReply(text=f"{PROSE} The stair shifts under you."), reply]
+
+
+def sworn_game(god: str = "4") -> list[str]:
+    return [*NEW_GAME, god, "1", "1"]
+
+
+def test_d036_options_show_real_odds_and_hide_the_cost_hint(tmp_path: Path, capsys: Any) -> None:
+    code, state, _ = play(tmp_path, [*NEW_GAME, "/quit"], talk())
+    assert code == 0
+    first_oath = {g.id: g.first_oath for g in WORLD.data.gods}[state.opening_gods[0]] if WORLD.data else ""
+    name = {o.id: o.name for o in WORLD.data.oaths}[first_oath] if WORLD.data else ""
+    actions = [TAGGED[0], {"label": "Speak the Oath", "tag": name}, TAGGED[2]]
+    capsys.readouterr()
+    lines = ["4", "1", "1", "/quit"]
+    _code, _state, _ = play(tmp_path, lines, tagged_turn(actions))
     out = capsys.readouterr().out
-    assert "[PRESENCE] Ask what it wants" in out
+    # An Oath means Tier 1: routine 60, (30 - 35) // 5 for Presence 30, and +20 against a Tier 0 obstacle.
+    assert "[PRESENCE 79%] Ask what it wants" in out
+    assert f"[{name.upper()}] Speak the Oath" in out
     assert "Or type your own" in out
     assert "it may remember" not in out
+
+
+def test_d036_picking_an_option_rolls_exactly_what_it_showed(tmp_path: Path) -> None:
+    script = [*talk(), *tagged_turn([TAGGED[0], TAGGED[2], {"label": "Wait"}]), *narration()[1:]]
+    _code, _state, tid = play(tmp_path, [*sworn_game(), "1", "/quit"], script)
     with Database.open(tmp_path / "game.db") as db:
-        assert db.recent_turns(tid, 1)[0][0] == "Ask what it wants (presence)"
+        assert db.recent_turns(tid, 1)[0][0] == "Ask what it wants"
+        rolled = [e["payload"] for e in db.events(tid) if e["type"] == "check_resolved"]
+    assert len(rolled) == 1 and rolled[0]["stat"] == "presence" and rolled[0]["chance"] == 79
+
+
+def test_d036_a_check_shown_in_the_story_does_not_print_again(tmp_path: Path, capsys: Any) -> None:
+    marked = f"{PROSE} She tried it.\n\n<<CHECK>>\n\nThe stair held under her, and the dust settled."
+    reply = LLMReply(tool_calls=(ToolCall("s", "suggest_actions", {"actions": ACTIONS}),))
+    script = [*talk(), *tagged_turn([TAGGED[0], TAGGED[2], {"label": "Wait"}]), LLMReply(text=marked), reply]
+    play(tmp_path, [*sworn_game(), "1", "/quit"], script)
+    out = capsys.readouterr().out
+    assert out.count("Presence check") == 1
+    assert "<<CHECK>>" not in out
+
+
+def test_d036_inspect_describes_an_option_and_costs_no_turn(tmp_path: Path, capsys: Any) -> None:
+    script = [*talk(), *tagged_turn([TAGGED[0], TAGGED[2], {"label": "Wait"}])]
+    lines = [*sworn_game(), "inspect 1", "/inspect 3", "inspect 9", "inspect", "/quit"]
+    _code, _state, tid = play(tmp_path, lines, script)
+    out = " ".join(capsys.readouterr().out.split())
+    assert "Presence 30" in out and "routine" in out and "79%" in out
+    assert "its patience" in out and "it may remember" in out
+    assert "No roll" in out
+    assert "There is no option 9" in out
+    assert "inspect 2" in out
+    with Database.open(tmp_path / "game.db") as db:
+        assert db.last_turn(tid) == 2
 
 
 def test_d033_swearing_and_levelling_show_the_full_sheet(tmp_path: Path, capsys: Any) -> None:

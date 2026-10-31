@@ -19,7 +19,13 @@ from pantheon.engine.commands import (
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import GameState, replay, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
-from pantheon.engine.tools import apply_tool, resolve_offer, tool_definition, tool_definitions
+from pantheon.engine.tools import (
+    apply_tool,
+    check_preview,
+    resolve_offer,
+    tool_definition,
+    tool_definitions,
+)
 from pantheon.world.loader import load_world
 
 WORLD = load_world(Path(__file__).resolve().parents[2] / "world")
@@ -313,9 +319,8 @@ def test_nar03_suggest_actions_rules(actions: list[dict[str, Any]], ok: bool) ->
 @pytest.mark.parametrize(
     ("tag", "ok"),
     [
-        ("agility", True),
-        ("AGILITY", True),
         ("Fair Wager", True),  # sworn() swears the Oath this tag names.
+        ("FAIR WAGER", True),
         ("Open Hand", False),  # An Oath this character does not hold.
         ("sorcery", False),
         ("", False),
@@ -327,6 +332,49 @@ def test_d033_action_tags_must_be_something_the_character_has(tag: str, ok: bool
     assert apply_tool(sim, "suggest_actions", {"actions": actions}).accepted is ok
     if ok:
         assert sim.state.suggested[0].tag == tag
+
+
+ROLL = {"stat": "agility", "difficulty": "routine", "challenge_tier": 0, "stakes": "the climb"}
+
+
+@pytest.mark.parametrize("tag", ["agility", "AGILITY", "streetwise"])
+def test_d036_a_stat_or_skill_tag_must_come_with_a_check(tag: str) -> None:
+    rest = [{"label": "Run"}, {"label": "Hide"}]
+    assert not apply_tool(sworn(), "suggest_actions", {"actions": [{**GOOD, "tag": tag}, *rest]}).accepted
+    sim = sworn()
+    actions = [{**GOOD, "tag": tag, "check": ROLL}, *rest]
+    assert apply_tool(sim, "suggest_actions", {"actions": actions}).accepted
+    assert sim.state.suggested[0].check is not None
+
+
+def test_d036_a_check_with_no_tag_shows_its_skill_or_stat() -> None:
+    sim = sworn()
+    actions = [
+        {**GOOD, "check": ROLL},
+        {"label": "Ask around", "check": {**ROLL, "skill": "streetwise"}},
+        {"label": "Hide"},
+    ]
+    assert apply_tool(sim, "suggest_actions", {"actions": actions}).accepted
+    assert [a.tag for a in sim.state.suggested] == ["agility", "streetwise", None]
+
+
+def test_d036_nothing_rolls_before_the_dual_offer_so_no_action_claims_to() -> None:
+    sim = fresh()
+    actions = [{**GOOD, "tag": "agility", "check": ROLL}, {"label": "Ask", "tag": "presence"}]
+    assert apply_tool(sim, "suggest_actions", {"actions": actions}).accepted
+    assert all(a.check is None and a.tag is None for a in sim.state.suggested)
+
+
+def test_d036_the_preview_equals_the_chance_the_roll_uses() -> None:
+    sim = sworn()
+    assert apply_tool(sim, "suggest_actions", {"actions": [{**GOOD, "check": ROLL}, *[{"label": "Run"}] * 2]})
+    check = sim.state.suggested[0].check
+    assert check is not None
+    preview = check_preview(sim.state, RULES.data, check)
+    apply_tool(sim, "request_check", check)
+    rolled = next(p for t, p in sim.events if t == "check_resolved")
+    assert preview.chance == rolled["chance"]
+    json.dumps(check)  # The check is stored in the event log, so it must be plain data.
 
 
 def test_d033_action_labels_stay_brief() -> None:
