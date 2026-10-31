@@ -10,6 +10,12 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 
 **Acceptance:** all world files load; every reveal-gate path resolves to a registered flag or a state field (NAR-02); a schema test fails on a deliberately malformed file; CI-equivalent local command passes.
 
+## M1.5: Thin narrator loop (first fun check, D-029)
+
+- After the dice from M1: events and fold, seven narrator tools, the LLM adapter, the turn loop, character creation and CLI play on Claude Haiku 5.5 (D-032). Details: `docs/BUILD_PLAN.md`.
+
+**Acceptance:** a 10-turn scripted playtest against `MockClient` with an outage produces no invariant violations, no lost events and no unsupplied numbers; a live transcript is saved; the owner plays it and reports whether it is fun.
+
 ## M1: Engine core (ENG-01 to ENG-11, OPS-05)
 
 - Character model per `world/power_tiers.md`: people, class, profession, stats and free points, HP/mana/stamina, affinities, skills (rarity, rank, caps), shards, titles, Injuries.

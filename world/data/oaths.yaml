@@ -1,8 +1,8 @@
-# world/power_tiers.md, Oaths. Perks, Burdens and numbers stay in the prose until M1.
-- {id: open_hand, name: Open Hand, god: veshra, affinity: mind}
-- {id: held_line, name: Held Line, god: kaul, affinity: iron}
-- {id: turning_tide, name: Turning Tide, god: ysmere, affinity: tide}
-- {id: last_rest, name: Last Rest, god: maru_ghen, affinity: death}
-- {id: kept_light, name: Kept Light, god: ilvane, affinity: light}
-- {id: fair_wager, name: Fair Wager, god: drovash, affinity: shadow}
-- {id: long_hunt, name: Long Hunt, god: hurrow, affinity: beast}
+# world/power_tiers.md, Oaths.
+- {id: open_hand, name: Open Hand, god: veshra, affinity: mind, perk: "Sense a knowing falsehood in spoken words", burden: "Shall not knowingly lie or break a sworn word"}
+- {id: held_line, name: Held Line, god: kaul, affinity: iron, perk: "+10 on checks defending others; resist fear", burden: "Shall not abandon a charge or yield a held position unordered"}
+- {id: turning_tide, name: Turning Tide, god: ysmere, affinity: tide, perk: "Recover 5 % HP each exchange; sense coming weather", burden: "Shall not remain in one place longer than 30 days"}
+- {id: last_rest, name: Last Rest, god: maru_ghen, affinity: death, perk: "Speak to the recently dead", burden: "Shall not raise or bind the dead; shall see the dying properly buried"}
+- {id: kept_light, name: Kept Light, god: ilvane, affinity: light, perk: "One prophetic glimpse per level-up; see in darkness", burden: "Shall not conceal a danger one has foreseen"}
+- {id: fair_wager, name: Fair Wager, god: drovash, affinity: shadow, perk: "Reroll one failed check per day", burden: "Shall honor any wager accepted; shall not cheat the unaware"}
+- {id: long_hunt, name: Long Hunt, god: hurrow, affinity: beast, perk: "Track any quarry; +10 on Wilds checks", burden: "Shall not hunt for sport; shall not enclose the wild"}

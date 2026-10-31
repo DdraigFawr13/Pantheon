@@ -1,0 +1,7 @@
+# First-guess balance values (G-08, D-030). The owner's playtests tune them.
+xp: {minor: 25, major: 60, milestone: 150}
+xp_per_turn_cap: 200
+level_gains: {primary: 2, secondary: 1, free_points: 1}
+standing: {slight: 2, notable: 5, grave: 15}
+damage_percent: {failure: 25, success_at_cost: 10, hazard: 15}
+heal_percent: {aid: 25}

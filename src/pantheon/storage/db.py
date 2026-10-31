@@ -9,15 +9,31 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pantheon.engine.state import EventRecord, GameState, replay
 from pantheon.engine.version import RULES_VERSION, SCHEMA_VERSION
+
+SNAPSHOT_EVERY = 10
 
 
 class SaveError(RuntimeError):
     """A save file this version of the game must not open."""
+
+
+@dataclass(frozen=True)
+class TurnRecord:
+    turn: int
+    player_input: str
+    narration: str
+    is_fallback: bool = False
+    tokens_in: int = 0
+    tokens_cached: int = 0
+    tokens_out: int = 0
 
 
 _SCHEMA = """
@@ -116,6 +132,97 @@ class Database:
                 (timeline_id, seq, turn, type_, json.dumps(payload, sort_keys=True)),
             )
         return int(seq)
+
+    def latest_timeline(self) -> str | None:
+        row = self.conn.execute(
+            "SELECT id FROM timeline ORDER BY created_at DESC, rowid DESC LIMIT 1"
+        ).fetchone()
+        return str(row[0]) if row else None
+
+    def last_turn(self, timeline_id: str) -> int:
+        (turn,) = self.conn.execute(
+            "SELECT COALESCE(MAX(turn), 0) FROM turn WHERE timeline_id = ?", (timeline_id,)
+        ).fetchone()
+        return int(turn)
+
+    def rng_state(self, timeline_id: str) -> dict[str, Any]:
+        row = self.conn.execute("SELECT rng_state FROM timeline WHERE id = ?", (timeline_id,)).fetchone()
+        state: dict[str, Any] = json.loads(row[0])
+        return state
+
+    def load_state(self, timeline_id: str) -> GameState:
+        """Rebuild the state from the nearest snapshot and the events after it (ENG-06)."""
+        row = self.conn.execute(
+            "SELECT turn, state_json FROM snapshot WHERE timeline_id = ? ORDER BY turn DESC LIMIT 1",
+            (timeline_id,),
+        ).fetchone()
+        start = GameState.model_validate_json(row[1]) if row else None
+        after = row[0] if row else -1
+        records = self.conn.execute(
+            "SELECT type, payload_json FROM event WHERE timeline_id = ? AND turn > ? ORDER BY seq",
+            (timeline_id, after),
+        ).fetchall()
+        return replay(((r[0], json.loads(r[1])) for r in records), start)
+
+    def recent_turns(self, timeline_id: str, count: int) -> list[tuple[str, str]]:
+        rows = self.conn.execute(
+            "SELECT player_input, narration FROM turn WHERE timeline_id = ? ORDER BY turn DESC LIMIT ?",
+            (timeline_id, count),
+        ).fetchall()
+        return [(r[0], r[1]) for r in reversed(rows)]
+
+    def commit_events(
+        self, timeline_id: str, turn: int, events: Iterable[EventRecord], rng_state: dict[str, Any]
+    ) -> None:
+        """Append player-command events and the RNG state in one transaction."""
+        with self.conn:
+            self._write_events(timeline_id, turn, events, rng_state)
+
+    def commit_turn(
+        self,
+        timeline_id: str,
+        record: TurnRecord,
+        events: Iterable[EventRecord],
+        rng_state: dict[str, Any],
+        state: GameState,
+    ) -> None:
+        """Write a whole turn, or nothing (OPS-03). Every tenth turn also stores a snapshot."""
+        with self.conn:
+            self._write_events(timeline_id, record.turn, events, rng_state)
+            self.conn.execute(
+                "INSERT INTO turn (timeline_id, turn, player_input, narration, is_fallback, tokens_in,"
+                " tokens_cached, tokens_out) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    timeline_id,
+                    record.turn,
+                    record.player_input,
+                    record.narration,
+                    int(record.is_fallback),
+                    record.tokens_in,
+                    record.tokens_cached,
+                    record.tokens_out,
+                ),
+            )
+            if record.turn % SNAPSHOT_EVERY == 0:
+                self.conn.execute(
+                    "INSERT INTO snapshot (timeline_id, turn, state_json) VALUES (?, ?, ?)",
+                    (timeline_id, record.turn, state.model_dump_json()),
+                )
+
+    def _write_events(
+        self, timeline_id: str, turn: int, events: Iterable[EventRecord], rng_state: dict[str, Any]
+    ) -> None:
+        (seq,) = self.conn.execute(
+            "SELECT COALESCE(MAX(seq) + 1, 0) FROM event WHERE timeline_id = ?", (timeline_id,)
+        ).fetchone()
+        for offset, (type_, payload) in enumerate(events):
+            self.conn.execute(
+                "INSERT INTO event (timeline_id, seq, turn, type, payload_json) VALUES (?, ?, ?, ?, ?)",
+                (timeline_id, seq + offset, turn, type_, json.dumps(payload, sort_keys=True)),
+            )
+        self.conn.execute(
+            "UPDATE timeline SET rng_state = ? WHERE id = ?", (json.dumps(rng_state), timeline_id)
+        )
 
     def events(self, timeline_id: str) -> list[dict[str, Any]]:
         rows = self.conn.execute(

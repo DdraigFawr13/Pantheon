@@ -163,7 +163,7 @@ def gate_path_problems(world: World) -> list[str]:
     return problems
 
 
-_TABLES = ("gods", "affinities", "oaths", "classes", "peoples", "professions")
+_TABLES = ("gods", "affinities", "oaths", "classes", "peoples", "professions", "origins", "rewards")
 
 
 def load_data(folder: Path) -> GameData:

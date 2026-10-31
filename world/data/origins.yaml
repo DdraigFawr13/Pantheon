@@ -1,0 +1,23 @@
+# world/protagonist_seed.md, Origins and start state.
+start_coin_silver: 12
+stat_array: [30, 27, 24, 20, 18]
+flaws: [Hot-tempered, Compulsive about debts, Cannot refuse a dare, Distrusts anyone in a uniform, Hoards small objects]
+origins:
+  - id: ledger_clerk
+    name: Ledger-clerk's apprentice
+    stat: intellect
+    skill: lore
+    standing: {hale: 10, tallyhouse: 5}
+    complication: Owes a master 40 silver for training
+  - id: toll_ferry_orphan
+    name: Toll-ferry orphan
+    stat: agility
+    skill: streetwise
+    standing: {harbors: 5, underlanes: 5}
+    complication: A pursuer in the Underlanes remembers your parent
+  - id: shrine_sweeper
+    name: Shrine-sweeper
+    stat: resolve
+    skill: ritual
+    standing: {convent: 5, lantern: 5}
+    complication: Has seen something in the cracked altar they cannot explain
