@@ -4,7 +4,7 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1.6 writing style: the first build (D-033 to D-035) is merged in PR #11, with M1a and M1.5 before it (PRs #9, #10). The second build (D-036) is on branch `style-pass-2`, waiting for the owner's play and merge. The owner's API key works, and one turn of the new style is saved.
+M1b character and progression (D-037) is on branch `m1b-progression`, waiting for the owner's merge. M1a, M1.5 and M1.6 are merged (PRs #9 to #12). The owner's API key works, but only one turn of the new style is saved, from before PR #12: real odds and mid-story dice have not run on the live model.
 
 ## Just done
 
@@ -24,8 +24,8 @@ M1.6 writing style: the first build (D-033 to D-035) is merged in PR #11, with M
 
 ## Next
 
-1. Owner plays `style-pass-2`, then merges its PR. It has only run against `MockClient`: watch whether Haiku gives checks, places `<<CHECK>>`, and keeps labels to 12 words without many retries (D-036). The owner has not confirmed moving titles to M1b or the high-stakes moment to M2.5.
-2. Then M1b, as the owner chose. Tune `world/data/rewards.yaml` from play.
+1. Owner merges the M1b PR, and plays a longer session. On the live model, watch whether Haiku gives checks, places `<<CHECK>>`, and keeps labels to 12 words without many retries (D-036). The owner has not confirmed moving the high-stakes moment to M2.5. Titles are built in M1b's engine, as moved.
+2. Next in the plan is M1c (forks, save upgrades, calendar), M1d (combat) and M1e (rewards and loot). Loot in M1e is what first makes shards reachable. Tune `world/data/rewards.yaml` from play.
 3. Whenever the owner plays a longer session, save it to `docs/playtests/` from `data/pantheon.db`: this completes M1.5's and M1.6's live transcript. Tables: `turn`, `event` (`payload_json`).
 
 Known from the first live turn (timeline 685eeb5a): about 23,000 tokens in and 4,800 out, about half a cent at list price (estimate from those counts); the prose read well. Watch for invented belongings and injuries (LESSONS).
@@ -51,4 +51,4 @@ Known from the first live turn (timeline 685eeb5a): about 23,000 tokens in and 4
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-035 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031 Assumed).
+- 2026-10-30 D-007 to D-037 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031 Assumed).

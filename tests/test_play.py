@@ -7,14 +7,18 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from rich.console import Console
 
 from pantheon.config import load_env_file
-from pantheon.engine.state import GameState
+from pantheon.engine.rng import RngStreams
+from pantheon.engine.state import STATS, EventRecord, GameState, Injury, Shard, xp_to_next
+from pantheon.engine.timeline import Rules, Simulation
 from pantheon.llm.client import LLMReply, ToolCall
 from pantheon.llm.mock import MockClient
 from pantheon.storage.db import Database
-from pantheon.ui.cli.app import main, spoken_choice
+from pantheon.ui.cli.app import _player_choices, _sheet, ledger_lines, main, spoken_choice
 from pantheon.world.loader import load_world
+from pantheon.world.schemas import Evolution, Skill
 
 WORLD = load_world(Path(__file__).resolve().parents[1] / "world")
 PROSE = "The dark presses close."
@@ -240,6 +244,106 @@ def test_d035_swear_with_no_god_lists_the_choices(tmp_path: Path, capsys: Any) -
     _code, state, _ = play(tmp_path, [*NEW_GAME, "/swear", "/quit"], talk())
     assert state.level == 0
     assert "Use the numbers" in capsys.readouterr().out
+
+
+def ready_for_trial(tmp_path: Path) -> str:
+    """A game at level 10 with full XP, committed to the save as the engine would."""
+    _code, _state, tid = play(tmp_path, [*sworn_game(), "/quit"], [*talk(), *narration()])
+    events: list[EventRecord] = [
+        ("level_up", {"level": 10, "xp_spent": 0, "gains": {}, "free_points": 0}),
+        ("xp_gained", {"amount": xp_to_next(10), "kind": "milestone", "reason": "a long road"}),
+    ]
+    with Database.open(tmp_path / "game.db") as db:
+        db.commit_events(tid, db.last_turn(tid) + 1, events, db.rng_state(tid))
+    return tid
+
+
+def test_d037_the_game_says_when_a_trial_is_ready_and_trial_runs_it(tmp_path: Path, capsys: Any) -> None:
+    ready_for_trial(tmp_path)
+    capsys.readouterr()
+    _code, state, _ = play(
+        tmp_path, ["trial", "1", "/quit"], narration()[1:]
+    )  # Seed 42 ascends: place a point.
+    out = capsys.readouterr().out
+    assert "Ascension Trial is ready" in out
+    assert "Ascension Trial: Ascend" in out
+    assert out.count("The Ledger") == 1
+    assert state.checks_made == 1 and state.level == 11 and state.free_points == 0
+
+
+def test_d037_closing_the_game_at_a_prompt_cannot_undo_a_trial(tmp_path: Path) -> None:
+    ready_for_trial(tmp_path)
+    _code, state, _ = play(tmp_path, ["trial"], [])  # The input ends at the free-point prompt.
+    assert state.checks_made == 1 and state.level == 11
+
+
+def test_d037_no_trial_is_available_early(tmp_path: Path, capsys: Any) -> None:
+    _code, state, _ = play(tmp_path, [*sworn_game(), "trial", "/quit"], [*talk(), *narration()])
+    assert "No Ascension Trial is due" in capsys.readouterr().out.replace("no Ascension", "No Ascension")
+    assert state.checks_made == 0
+
+
+def test_d037_the_ledger_names_progress_and_the_sheet_lists_it(capsys: Any) -> None:
+    events: list[EventRecord] = [
+        ("skill_gained", {"skill": "ember", "rank": 1, "rarity": "common"}),
+        ("affinity_raised", {"affinity": "flame", "rank": 2}),
+        ("title_earned", {"title": "survivor", "stat": "vigor", "bonus": 2}),
+        ("injury_gained", {"stat": "vigor", "amount": 10, "reason": "a Breaking"}),
+        ("xp_lost", {"amount": 50, "reason": "a Setback"}),
+        ("trial_resolved", {"result": "setback", "evolution_due": False}),
+        ("class_evolved", {"class_id": "ember_blade", "stat": "vigor", "bonus": 5}),
+        ("shard_gained", {"kind": "affinity", "target": "flame", "rarity": "common", "fragment": False}),
+    ]
+    text = " ".join(ledger_lines(events))
+    for expected in (
+        "ember",
+        "flame rank 2",
+        "survivor",
+        "Injury",
+        "-50 XP",
+        "Setback",
+        "ember_blade",
+        "Shard",
+    ):
+        assert expected in text
+    state = GameState(
+        stats=dict.fromkeys(STATS, 20),
+        titles=["survivor"],
+        injuries=[Injury(stat="vigor", amount=10)],
+        shards=[Shard(kind="affinity", target="flame")],
+    )
+    assert WORLD.data is not None
+    Console(width=120).print(_sheet(state, WORLD))
+    out = capsys.readouterr().out
+    assert "Titles: survivor" in out and "Injuries: vigor -10" in out and "Shards: flame" in out
+
+
+def test_d037_skill_offers_and_evolutions_are_the_players_choice(capsys: Any) -> None:
+    assert WORLD.data is not None
+    data = WORLD.data.model_copy(
+        update={
+            "skills": (Skill(id="ember", name="Ember", rarity="common", classes=("wayfinder",)),),
+            "evolutions": (
+                Evolution(
+                    id="tide_walker",
+                    name="Tide Walker",
+                    from_class="wayfinder",
+                    primary="agility",
+                    secondary="presence",
+                ),
+            ),
+        }
+    )
+    sim = Simulation(GameState(stats=dict.fromkeys(STATS, 20)), RngStreams.from_seed(1), Rules(data, {}), 1)
+    sim.emit("level_up", {"level": 1, "xp_spent": 0, "gains": {}, "free_points": 0})
+    sim.emit("class_chosen", {"class_id": "wayfinder"})
+    sim.emit("profession_chosen", {"profession": "alchemist"})
+    sim.emit("skill_offered", {"level": 1, "options": ["ember"]})
+    sim.emit("trial_resolved", {"result": "ascend", "evolution_due": True})
+    _player_choices(sim, scripted(["1", "1"]), Console())
+    assert sim.state.skills == {"ember": 1} and sim.state.class_id == "tide_walker"
+    out = capsys.readouterr().out
+    assert "Ember" in out and "Tide Walker" in out
 
 
 def test_typed_oath_asks_first_and_a_no_keeps_the_turn(tmp_path: Path) -> None:

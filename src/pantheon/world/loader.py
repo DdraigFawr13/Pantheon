@@ -164,11 +164,13 @@ def gate_path_problems(world: World) -> list[str]:
 
 
 _TABLES = ("gods", "affinities", "oaths", "classes", "peoples", "professions", "origins", "rewards")
+_LATER_TABLES = ("skills", "titles", "evolutions")  # Canon batches in M3.5; the game runs without them.
 
 
 def load_data(folder: Path) -> GameData:
     raw: dict[str, object] = {}
-    for name in _TABLES:
+    later = [name for name in _LATER_TABLES if (folder / f"{name}.yaml").is_file()]
+    for name in (*_TABLES, *later):
         path = folder / f"{name}.yaml"
         try:
             raw[name] = yaml.safe_load(path.read_text(encoding="utf-8"))

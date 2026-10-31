@@ -35,6 +35,19 @@ class Action(BaseModel):
     check: dict[str, Any] | None = None
 
 
+class Shard(BaseModel):
+    kind: str  # "skill" or "affinity".
+    target: str
+    rarity: str = "common"
+    fragment: bool = False
+
+
+class Injury(BaseModel):
+    stat: str
+    amount: int
+    reason: str = ""
+
+
 class GameState(BaseModel):
     created: bool = False
     name: str = ""
@@ -51,6 +64,13 @@ class GameState(BaseModel):
     free_points: int = 0
     affinities: dict[str, int] = Field(default_factory=dict)
     skills: dict[str, int] = Field(default_factory=dict)
+    skill_rarity: dict[str, str] = Field(default_factory=dict)
+    skill_offers: list[list[str]] = Field(default_factory=list)
+    shards: list[Shard] = Field(default_factory=list)
+    titles: list[str] = Field(default_factory=list)
+    injuries: list[Injury] = Field(default_factory=list)
+    needs_evolution: bool = False
+    trial_recovery: bool = False
     oaths: list[str] = Field(default_factory=list)
     standing: dict[str, int] = Field(default_factory=dict)
     coin: int = 0
@@ -96,6 +116,11 @@ class GameState(BaseModel):
     def needs_profession(self) -> bool:
         return self.level >= 1 and self.profession is None
 
+    @property
+    def trial_ready(self) -> bool:
+        """Level 10, 20 and so on with XP full: the next level takes an Ascension Trial."""
+        return self.level > 0 and self.level % 10 == 0 and self.xp >= xp_to_next(self.level)
+
 
 def apply_event(state: GameState, type_: str, payload: dict[str, Any]) -> None:
     """Apply one resolved event in place. An unknown event is an error, never a silent skip (GAME-05)."""
@@ -131,6 +156,39 @@ def apply_event(state: GameState, type_: str, payload: dict[str, Any]) -> None:
             else:
                 state.wounds -= payload["amount"]
                 state.downed = False
+                if payload["source"] == "rest":
+                    state.trial_recovery = False
+        case "skill_offered":
+            state.skill_offers.append(list(payload["options"]))
+        case "skill_offers_cleared":
+            state.skill_offers = []
+        case "skill_gained":
+            state.skills[payload["skill"]] = payload["rank"]
+            state.skill_rarity[payload["skill"]] = payload["rarity"]
+            if payload.get("from_offer"):
+                state.skill_offers.pop(0)
+        case "affinity_raised":
+            state.affinities[payload["affinity"]] = payload["rank"]
+        case "shard_gained":
+            state.shards.append(Shard(**payload))
+        case "shard_used":
+            del state.shards[payload["index"]]
+        case "title_earned":
+            state.titles.append(payload["title"])
+            if payload.get("stat"):
+                state.stats[payload["stat"]] += payload["bonus"]
+        case "injury_gained":
+            state.injuries.append(Injury(**payload))
+            state.stats[payload["stat"]] -= payload["amount"]
+        case "xp_lost":
+            state.xp -= payload["amount"]
+        case "trial_resolved":
+            state.trial_recovery = payload["result"] != "ascend"
+            state.needs_evolution = bool(payload.get("evolution_due"))
+        case "class_evolved":
+            state.class_id = payload["class_id"]
+            state.stats[payload["stat"]] += payload["bonus"]
+            state.needs_evolution = False
         case "downed":
             state.downed = True
         case "xp_gained":

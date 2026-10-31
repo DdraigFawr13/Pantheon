@@ -26,10 +26,11 @@ from pantheon.engine.commands import (
     innate_affinity_options,
 )
 from pantheon.engine.opening import draw_opening_gods
+from pantheon.engine.progression import choose_evolution, evolution_options, pick_skill
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, Action, EventRecord, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
-from pantheon.engine.tools import check_preview, resolve_offer
+from pantheon.engine.tools import attempt_trial, check_preview, resolve_offer
 from pantheon.llm.anthropic_adapter import AnthropicClient
 from pantheon.llm.client import LLMClient
 from pantheon.narrator.assemble import history_window
@@ -49,7 +50,14 @@ OPENING_INPUT = (
 _REFUSE_TERMS = "No class or level. You grow through shards, gear, allies and reputation."
 _BAR_WIDTH = 10
 _COMMANDS = "[dim]Commands: inspect 2 · sheet · hooks · help · quit[/dim]"
-_BARE_COMMANDS = {"sheet": "/sheet", "hooks": "/hooks", "help": "/help", "?": "/help", "quit": "/quit"}
+_BARE_COMMANDS = {
+    "sheet": "/sheet",
+    "hooks": "/hooks",
+    "help": "/help",
+    "?": "/help",
+    "quit": "/quit",
+    "trial": "/trial",
+}
 _BARE_INSPECT = re.compile(r"inspect(\s+\S+)?", re.I)
 _HELP = (
     "Type a number from the list, or describe what you do in your own words.\n"
@@ -166,11 +174,11 @@ def _bar(label: str, value: int, maximum: int) -> str:
 
 def _sheet(state: GameState, world: World) -> Panel:
     assert world.data is not None
-    names = {c.id: c.name for c in world.data.classes}
+    current = world.data.class_of(state.class_id)
     oaths = {o.id: o.name for o in world.data.oaths}
     lines = [
         f"[bold]{state.name}[/bold], {state.age}, {state.people}",
-        f"Class: {names.get(state.class_id or '', 'none')} · Profession: {state.profession or 'none'}",
+        f"Class: {current.name if current else 'none'} · Profession: {state.profession or 'none'}",
         f"Tier {state.tier} · Level {state.level}",
         _bar("HP", state.hp, state.max_hp),
         _bar("Mana", state.max_mana, state.max_mana),
@@ -183,6 +191,14 @@ def _sheet(state: GameState, world: World) -> Panel:
         "Oaths: " + (", ".join(oaths[o] for o in state.oaths) or "none"),
         "Standing: " + (", ".join(f"{e} {v:+d}" for e, v in state.standing.items()) or "none"),
     ]
+    if state.titles:
+        lines.append("Titles: " + ", ".join(state.titles))
+    if state.injuries:
+        lines.append("Injuries: " + ", ".join(f"{i.stat} -{i.amount}" for i in state.injuries))
+    if state.shards:
+        lines.append(
+            "Shards: " + ", ".join(f"{s.target} {'fragment' if s.fragment else s.kind}" for s in state.shards)
+        )
     return Panel("\n".join(lines), title="The Ledger" if state.oaths else "Unwritten", border_style="yellow")
 
 
@@ -215,6 +231,22 @@ def ledger_lines(events: list[EventRecord]) -> list[str]:
                 )
             case "hook_registered":
                 lines.append(f"[dim]Consequence noted: {p['description']}[/dim]")
+            case "skill_gained":
+                lines.append(f"[bold]Skill:[/bold] {p['skill']} rank {p['rank']} ({p['rarity']})")
+            case "affinity_raised":
+                lines.append(f"[bold]Affinity:[/bold] {p['affinity']} rank {p['rank']}")
+            case "shard_gained":
+                lines.append(f"Shard: {p['target']} ({p['rarity']})")
+            case "title_earned":
+                lines.append(f"[bold]Title:[/bold] {p['title']}")
+            case "injury_gained":
+                lines.append(f"[red bold]Injury:[/red bold] {p['stat']} -{p['amount']} ({p['reason']})")
+            case "xp_lost":
+                lines.append(f"-{p['amount']} XP ({p['reason']})")
+            case "trial_resolved":
+                lines.append(f"[bold]Ascension Trial: {p['result'].capitalize()}[/bold]")
+            case "class_evolved":
+                lines.append(f"[bold]Class evolved:[/bold] {p['class_id']}, {p['stat']} +{p['bonus']}")
             case _:
                 pass
     return lines
@@ -234,6 +266,13 @@ def _player_choices(sim: Simulation, ask: Ask, console: Console) -> None:
         choose_profession(sim, _pick(ask, console, "Choose your profession", professions))
     while sim.state.free_points > 0:
         allocate_point(sim, _pick(ask, console, "Place your free point", [(s, s) for s in STATS]))
+    names = {s.id: s for s in data.skills}
+    while sim.state.skill_offers:
+        options = [(o, f"{names[o].name} ({names[o].rarity})") for o in sim.state.skill_offers[0]]
+        pick_skill(sim, _pick(ask, console, "Your class offers a skill", options))
+    if sim.state.needs_evolution:
+        evolutions = [(e.id, e.name) for e in evolution_options(sim.state, data)]
+        choose_evolution(sim, _pick(ask, console, "Choose your evolved class", evolutions))
 
 
 def _show(outcome: TurnOutcome, console: Console) -> None:
@@ -256,6 +295,10 @@ def _odds_text(state: GameState, world: World, action: Action) -> str:
 
 def _show_actions(state: GameState, world: World, console: Console) -> None:
     console.print(_status_line(state))
+    if state.trial_ready:
+        console.print(
+            "[bold]An Ascension Trial is ready.[/bold] Type [bold]trial[/bold] when you choose to face it."
+        )
     for number, action in enumerate(state.suggested, 1):
         odds = _odds_text(state, world, action)
         tag = f"[bold]\\[{action.tag.upper()}{odds}][/bold] " if action.tag else ""
@@ -422,6 +465,23 @@ class Game:
             )
         return "[I refuse both gods and stay Unwritten. Narrate the aftermath.]"
 
+    def _attempt_trial(self) -> str | None:
+        sim = self._command_sim()
+        try:
+            result = attempt_trial(sim)
+        except Rejected as exc:
+            self.console.print(f"[yellow]{exc}[/yellow]")
+            return None
+        self._commit_commands(sim)  # Saved before any prompt, so closing the game cannot undo the roll.
+        for line in ledger_lines(sim.events):
+            self.console.print(f"  {line}")
+        self.player_choices()
+        if result["result"] == "ascend":
+            self.console.print(_sheet(self.state, self.world))
+        return (
+            f"[I face the Ascension Trial and the result is {result['result']}. Narrate it and what follows.]"
+        )
+
     def _command(self, line: str) -> str | None:
         """Return the text to send to the narrator, or None when the command needs no turn."""
         command, _, rest = line.partition(" ")
@@ -430,6 +490,8 @@ class Game:
                 self.console.print(_sheet(self.state, self.world))
             case "/inspect":
                 self.console.print(_inspect(self.state, self.world, rest))
+            case "/trial":
+                return self._attempt_trial()
             case "/hooks":
                 for hook in self.state.hooks:
                     self.console.print(

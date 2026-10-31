@@ -3,7 +3,7 @@
 - {id: warden, name: Warden, primary: resolve, secondary: vigor}
 - {id: cantor, name: Cantor, primary: presence, secondary: intellect}
 - {id: wayfinder, name: Wayfinder, primary: agility, secondary: intellect}
-- {id: hearthwright, name: Hearthwright, primary: intellect, secondary: resolve}
+- {id: hearthwright, name: Hearthwright, primary: intellect, secondary: resolve, fragments_to_fuse: 2}
 - {id: wager_bound, name: Wager-bound, primary: agility, secondary: presence}
 - {id: gravewalker, name: Gravewalker, primary: resolve, secondary: presence}
 - {id: wildkin, name: Wildkin, primary: vigor, secondary: agility}

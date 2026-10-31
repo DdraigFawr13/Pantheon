@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from pantheon.engine.progression import offer_skills
 from pantheon.engine.state import STATS
 from pantheon.engine.timeline import Rejected, Simulation
 
@@ -94,6 +95,7 @@ def choose_class(sim: Simulation, class_id: str) -> None:
     if class_id not in {c.id for c in sim.rules.data.classes}:
         raise Rejected(f"unknown class: {class_id}")
     sim.emit("class_chosen", {"class_id": class_id})
+    offer_skills(sim)
 
 
 def choose_profession(sim: Simulation, profession: str) -> None:

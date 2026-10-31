@@ -112,7 +112,7 @@ M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is t
 - d100 check: chance formula, outcome bands, 01 to 05 and 96 to 00, tier-gap automatic rules, Overcome Conditions (the parts the engine can verify).
 - Tests: table-driven tests at every band edge; tier gaps -4 to +4; one fixed-seed determinism test that compares a hash of the event log (GAME-06).
 
-**M1b Character and progression** (ENG-01, ENG-07)
+**M1b Character and progression** (ENG-01, ENG-07). Engine built on `m1b-progression` (D-037). Skills, titles and evolutions wait for M3.5's canon batches, and shards for loot, so most of it cannot appear in play yet.
 - Character: people, class, profession, five stats, free points, HP/mana/stamina formulas, affinities, skills (rarity, rank), titles, Injuries, Oaths, age.
 - Caps: skill rank by tier and affinity; affinity by `tier + 1`; Unwritten caps (D-013).
 - XP curve, level-ups, class skill offers (1 of 3 at levels 1, 3, 5, 7, 9), Level 10 gate, Ascension Trial, evolution choice.
