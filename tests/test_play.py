@@ -130,6 +130,65 @@ def test_a_suggested_action_becomes_the_players_turn_and_the_ledger_shows_result
         assert expected in out
 
 
+def test_d033_the_oath_menu_states_its_terms_plainly(tmp_path: Path, capsys: Any) -> None:
+    code, state, _ = play(tmp_path, [*NEW_GAME, "/quit"], talk())
+    assert code == 0
+    out = " ".join(capsys.readouterr().out.split())
+    oaths = {o.id: o for o in WORLD.data.oaths} if WORLD.data else {}
+    gods = {g.id: g for g in WORLD.data.gods} if WORLD.data else {}
+    for god in state.opening_gods:
+        oath = oaths[gods[god].first_oath]
+        assert oath.perk in out and oath.burden in out
+    assert "No class or level" in out
+
+
+def test_d033_options_show_their_tag_and_hide_the_cost_hint(tmp_path: Path, capsys: Any) -> None:
+    tagged = [{"label": "Ask what it wants", "tag": "presence", "cost": "it may remember"}, *ACTIONS[:2]]
+    reply = LLMReply(tool_calls=(ToolCall("s", "suggest_actions", {"actions": tagged}),))
+    script = [*talk(), LLMReply(text=f"{PROSE} The stair shifts under you."), reply]
+    lines = [*NEW_GAME, "4", "1", "1", "1", "/quit"]
+    _code, _state, tid = play(tmp_path, lines, [*script, *narration()])
+    out = capsys.readouterr().out
+    assert "[PRESENCE] Ask what it wants" in out
+    assert "Or type your own" in out
+    assert "it may remember" not in out
+    with Database.open(tmp_path / "game.db") as db:
+        assert db.recent_turns(tid, 1)[0][0] == "Ask what it wants (presence)"
+
+
+def test_d033_swearing_and_levelling_show_the_full_sheet(tmp_path: Path, capsys: Any) -> None:
+    grant = ToolCall("g", "grant_xp", {"kind": "milestone", "reason": "a great deed"})
+    check = ToolCall("c", "request_check", {"stat": "agility", "difficulty": "routine", "challenge_tier": 0})
+    lines = [*NEW_GAME, "4", "1", "1", "Do the deed", "2", "/quit"]
+    play(tmp_path, lines, [*talk(), *narration(), *narration(grant, check=check)])
+    out = capsys.readouterr().out
+    assert out.count("The Ledger") >= 2
+    assert "█" in out
+
+
+def test_d035_commands_work_without_a_slash_and_are_on_screen(tmp_path: Path, capsys: Any) -> None:
+    code, state, _ = play(tmp_path, [*NEW_GAME, "sheet", "hooks", "help", "?", "QUIT"], talk())
+    assert code == 0 and state.name == "Wren"
+    out = capsys.readouterr().out
+    assert "Unwritten" in out  # The sheet's title before an Oath.
+    assert "Debt:" in out  # A hook from character creation.
+    assert "sheet" in out and "quit" in out
+    assert out.count("Commands:") >= 2
+
+
+def test_d035_a_word_inside_a_sentence_is_still_an_action(tmp_path: Path) -> None:
+    lines = [*NEW_GAME, "4", "1", "1", "help the dying man", "/quit"]
+    _code, _state, tid = play(tmp_path, lines, [*talk(), *narration(), *narration()])
+    with Database.open(tmp_path / "game.db") as db:
+        assert db.recent_turns(tid, 1)[0][0] == "help the dying man"
+
+
+def test_d035_swear_with_no_god_lists_the_choices(tmp_path: Path, capsys: Any) -> None:
+    _code, state, _ = play(tmp_path, [*NEW_GAME, "/swear", "/quit"], talk())
+    assert state.level == 0
+    assert "Use the numbers" in capsys.readouterr().out
+
+
 def test_typed_oath_asks_first_and_a_no_keeps_the_turn(tmp_path: Path) -> None:
     lines = [*NEW_GAME, "I swear to no one", "/quit"]
     _code, state, _ = play(tmp_path, lines, [*talk(), *narration()])

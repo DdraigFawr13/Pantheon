@@ -95,6 +95,14 @@ Built right after M1a, before the rest of M1, so the plan's top risks are tested
 
 **Acceptance:** the roadmap M2 acceptance against `MockClient`, plus a saved live transcript. **You test:** run `start.bat`, play the opening and a few scenes, and say whether it is fun.
 
+## M1.6: Writing style (D-033, D-034)
+
+**First build, done on `style-pass-1`:** new narrator prompt and turn instructions (third person, past tense, plain prose, engine numbers allowed), 3 to 4 options tagged with what the character really has, plain Oath terms on the menu, the drawn sheet on swearing and level-up.
+
+**Second build, after the owner plays the first:** mid-story Ledger notices with chance and roll, a moment for high-stakes rolls, real odds on options, `/inspect`, and titles.
+
+**You test:** play the opening and a few scenes with `start.bat`, and say whether it reads right and is fun.
+
 ## M1: Engine core (4 to 6 sessions)
 
 M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is testable alone.

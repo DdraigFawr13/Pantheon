@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pantheon.engine.state import GameState
+from pantheon.engine.state import GameState, xp_to_next
 from pantheon.world.loader import World
 
 _CANON_CORE = ("overview", "power_tiers", "pantheon")
@@ -16,9 +16,12 @@ _PROMPT = Path(__file__).resolve().parents[3] / "prompts" / "narrator.md"
 _MAX_HOOKS_SHOWN = 12
 # Small local models follow the end of the prompt best. Not stored with the turn (first live playtest).
 _REMINDER = (
-    "[Narrator: write the scene once: 100 to 250 words, second person, present tense, as it happens rather "
-    "than as a summary. Move the scene forward with something new, and never reuse an image or phrase from "
-    "earlier turns. No game terms, options, lists, digits or headings. Never act or decide for the player.]"
+    "[Narrator: write the scene once: 200 to 400 words, third person, past tense, close on the character, in "
+    "plain everyday prose. The character reasons on the page, using stats by name, with a dry italic thought "
+    "now and then. Numbers only from the sheet or this turn's results; never state dice. Invent no "
+    "belongings and no injury the result did not give. Move the scene forward with something new, and never "
+    "reuse an image or phrase from earlier turns. Weigh what could be done next and what each choice would "
+    "cost, then end on a hook. No lists or headings. Never decide the player's next action.]"
 )
 
 
@@ -35,7 +38,12 @@ def state_view(state: GameState) -> dict[str, Any]:
         "class": state.class_id or "(none yet)",
         "profession": state.profession or "(none yet)",
         "stats": state.stats,
-        "hp": f"{state.hp} of {state.max_hp}",
+        "hp": state.hp,
+        "max_hp": state.max_hp,
+        "max_mana": state.max_mana,
+        "max_stamina": state.max_stamina,
+        "xp": state.xp,
+        "xp_to_next": xp_to_next(state.level) if state.level else 0,
         "downed": state.downed,
         "affinities": state.affinities,
         "skills": state.skills,

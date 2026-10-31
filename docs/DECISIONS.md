@@ -195,3 +195,22 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Accepted (2026-10-30; owner: "we just need to use a cheaper Claude model and run it. This isn't going to work if it's this slow.")
 - **Decision:** Claude Haiku 5.5 is the first narrator, set in `config.toml`, with the API key in `.env`. `start.bat` no longer starts Ollama. The Ollama path through `base_url` stays in the adapter but is not the default. This replaces the "default narrator picked by side-by-side evidence" step of D-020 and makes D-027 optional. If Haiku's prose disappoints, the next step is Claude Sonnet 5.5, a one-line config change.
 - **Why:** measured on `qwen3:8b` on the owner's RX 6700 XT: 145 to 359 seconds per turn over 7 turns (`docs/playtests/2026-10-30-local-model.md`), well above what a 20 to 40 minute session can bear. Listed Haiku 5.5 price is $0.10 per million input tokens and $0.50 per million output, and it needs no new adapter.
+
+## D-033 Writing style follows The Primal Hunter, with Path of Ascension and A Soldier's Life
+
+- **Status:** Accepted (2026-10-30; owner's answers in the style workshop forms, https://claude.ai/artifact/5fnPKcTrTudPap9ozbqjTV and https://claude.ai/artifact/3yHuM5FmjjJ7Pee81qzgnc)
+- **Decision:** Third person, past tense, plain everyday prose; the character reasons through stats on the page; dry humour; rules explained early through people and the Ledger; some everyday detail; gods with big personalities who talk often; 200 to 400 words, longer for big moments; scenes end on a hook. Prose may use numbers from the sheet or this turn's results, never invented ones (NAR-04 unchanged). 3 to 4 options, tagged with a stat, skill, Oath, class, profession or people the character has, with cost hints kept out of the list (NAR-03 changed from 3 to 5). Oath voices stay oblique and the menu states plain terms. The full sheet, with drawn bars, shows when swearing and on level-up; the real graphic comes with the phone page (M2.5). No book text enters the game or the repo.
+- **Deferred by the owner to the next style build:** mid-story Ledger notices with a moment for high-stakes rolls, real odds on options with `/inspect`, and titles. Options show the stat without odds until then. Needs later milestones: first-kill and rift-clear notices (M1, M3.5), skill and item cards (M3.5), exchange-by-exchange fights and post-fight sheets (M1), time skips (M1, G-27), alchemy scenes (M3.5).
+- **Why:** the first chat test read as moody and vague, with options that felt like a menu. Samples of book 1 of all three series, read on Amazon on 2026-10-30, use plain explanatory past-tense prose with numbers in the story. The owner asked for options like Baldur's Gate 3: brief, with the stat visible. The Primal Hunter feel was the owner's pick among four samples.
+
+## D-034 Haiku stays the narrator for every step
+
+- **Status:** Accepted (2026-10-30; owner: blind pick "Y, clearly", then "Better writer for prose, cheap model for the rest")
+- **Decision:** Claude Haiku 5.5 runs the referee, prose and scribe steps. This answers D-032's open question for now. The prompt forbids invented belongings and injuries after Haiku's sample did both.
+- **Why:** in one blind trial on the same brief and engine roll, the owner clearly preferred the Haiku sample to the Sonnet 5.5 sample. Both ran through subagents, not the game's adapter, so this is one sample and not a measurement. Haiku is about 20 times cheaper per token at list price.
+
+## D-035 Commands stay on screen and need no slash
+
+- **Status:** Accepted (2026-10-30; owner: "the commands are just a little hard to remember")
+- **Decision:** Every prompt lists the commands. The whole line `sheet`, `hooks`, `help`, `?` or `quit` works without a slash, while the same word in a sentence stays an action. Oath choices are made by number. Action labels are capped at 12 words.
+- **Why:** the owner's first real play of the new style. The opening turn also offered a 16-word option, longer than the brief entries the owner asked for.

@@ -18,15 +18,15 @@ from pantheon.engine.timeline import Rules, Simulation
 from pantheon.engine.tools import ToolResult, apply_tool, tool_definitions
 from pantheon.llm.client import LLMClient, LLMReply, LLMUnavailable
 from pantheon.narrator import fallback
-from pantheon.narrator.assemble import assemble
+from pantheon.narrator.assemble import assemble, state_view
 from pantheon.narrator.validators import prose_problems, repeats_earlier_turn, strip_action_list
 from pantheon.world.loader import World
 
 _REFEREE_PROMPT = (
     "[Referee step, no story yet. If the player is attempting something physical, risky, stealthy, forceful "
     "or deceptive whose result is not certain, call request_check now and choose the stat, difficulty and "
-    "challenge_tier. Asking a question, talking, looking around and walking somewhere safe are never checks: "
-    "for those, reply with the single word NONE.]"
+    "challenge_tier. If the action names a stat in brackets, use that stat. Asking a question, talking, "
+    "looking around and walking somewhere safe are never checks: for those, reply with the single word NONE.]"
 )
 _NARRATE_OUTCOME = (
     "[The engine has decided: {outcomes}. Narrate exactly that result, and do not soften it. "
@@ -43,8 +43,9 @@ _SCRIBE_PROMPT = (
     "calls. grant_xp if a check was passed or survived, if offered. apply_effect if the player was hurt (use "
     "a check_id or hazard:<name>). adjust_standing only if a named person or god who matters saw a deed. "
     "register_hook only for a new choice or person who should matter later. Always finish with "
-    "suggest_actions: 3 to 5 actions that fit this exact moment, one non-violent, one with a cost or risk in "
-    "its cost field, no digits.]"
+    "suggest_actions: 3 to 4 actions that fit this exact moment, one non-violent, one with a cost or risk in "
+    "its cost field, no digits. Each label is one brief plain line. Give each a tag naming the stat, skill, "
+    "Oath, class, profession or people it rests on, from the sheet; leave the tag out if nothing applies.]"
 )
 _SCRIBE_TOOLS = (
     "grant_xp",
@@ -55,8 +56,10 @@ _SCRIBE_TOOLS = (
     "suggest_actions",
 )
 _SUGGEST_PROMPT = (
-    "[Now call suggest_actions with 3 to 5 next actions for the player. Include a non-violent action "
-    "and one with a visible cost or risk in its cost field. Use no digits. Write no more prose.]"
+    "[Now call suggest_actions with 3 to 4 next actions for the player, each one brief plain line. Include a "
+    "non-violent action and one with a visible cost or risk in its cost field. Tag each with the stat, "
+    "skill, Oath, class, profession or people it rests on, from the sheet. Use no digits. Write no more "
+    "prose.]"
 )
 
 
@@ -235,6 +238,7 @@ def take_turn(
     system, messages = assemble(state, world, recent, player_input, violence)
     run = _Turn(client, sim, max_retries, system)
     run.recent = [narration for _, narration in recent]
+    run.allowed = _numbers_in(state_view(state))  # Prose may quote the engine's own sheet (D-033).
     narration: str | None = None
     try:
         # Until the player answers the Dual Offer the scene is only talk, so there is nothing to roll.

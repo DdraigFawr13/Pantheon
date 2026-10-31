@@ -297,7 +297,8 @@ GOOD = {"label": "Bargain", "violent": False, "cost": "owes a favour"}
     [
         ([GOOD, {"label": "Run"}, {"label": "Hit", "violent": True}], True),
         ([GOOD, {"label": "Run"}], False),
-        ([GOOD] * 6, False),
+        ([GOOD] * 4, True),
+        ([GOOD] * 5, False),
         ([{"label": "Hit", "violent": True, "cost": "a wound"}] * 3, False),
         ([{"label": "Run"}, {"label": "Hide"}, {"label": "Wait"}], False),
         ([{"label": "Spend 5 silver", "cost": "coin"}, {"label": "Run"}, {"label": "Hide"}], False),
@@ -307,6 +308,31 @@ def test_nar03_suggest_actions_rules(actions: list[dict[str, Any]], ok: bool) ->
     sim = sworn()
     assert apply_tool(sim, "suggest_actions", {"actions": actions}).accepted is ok
     assert sim.suggested is ok
+
+
+@pytest.mark.parametrize(
+    ("tag", "ok"),
+    [
+        ("agility", True),
+        ("AGILITY", True),
+        ("Fair Wager", True),  # sworn() swears the Oath this tag names.
+        ("Open Hand", False),  # An Oath this character does not hold.
+        ("sorcery", False),
+        ("", False),
+    ],
+)
+def test_d033_action_tags_must_be_something_the_character_has(tag: str, ok: bool) -> None:
+    sim = sworn()
+    actions = [{**GOOD, "tag": tag}, {"label": "Run"}, {"label": "Hide"}]
+    assert apply_tool(sim, "suggest_actions", {"actions": actions}).accepted is ok
+    if ok:
+        assert sim.state.suggested[0].tag == tag
+
+
+def test_d033_action_labels_stay_brief() -> None:
+    long = {"label": "Bargain with the god and ask what the dead man can tell you if you speak now"}
+    sim = sworn()
+    assert not apply_tool(sim, "suggest_actions", {"actions": [GOOD, long, {"label": "Run"}]}).accepted
 
 
 def test_d031_oath_choices_are_filtered_from_suggestions_until_the_offer_is_answered() -> None:

@@ -151,7 +151,7 @@ All arguments are validated by Pydantic. Unknown tools are rejected. Where the n
 | `resolve_trial` | `trial_id` | Outcome (Ascend, Setback, Breaking) from the trial's recorded checks, not from the narrator; Ascend unlocks the player's evolution choice |
 | `mark_hostile_exchange` | `reason` | While Downed, adds a Last Breath mark; three marks is death or Reckoning per config |
 | `record_beat` | `beat_id`, `outcome` | Marks an arc beat consumed |
-| `suggest_actions` | `actions`: 3 to 5 of `{label, violent: bool, cost: str?}` | Rejects sets without a non-violent action and an action with a cost (NAR-03); the UI renders them |
+| `suggest_actions` | `actions`: 3 to 4 of `{label, violent: bool, cost: str?, tag: str?}` | Rejects sets without a non-violent action and an action with a cost (NAR-03), and tags the character does not have (D-033); the UI renders them |
 
 ### Player commands (UI to engine, no narrator)
 

@@ -40,10 +40,19 @@ type Ask = Callable[[str], str]
 
 OPENING_INPUT = (
     "[The game begins. Open with The Dual Offer. Narrate the collapse of the Stair as it happens and the "
-    "fall into the dark. Then each of the two gods speaks to the player directly, in its own distinct "
-    "voice, naming its Oath's gift and its Burden. End with both voices waiting for an answer.]"
+    "fall into the dark. Then each of the two gods speaks to the character directly, with a big personality "
+    "in its own distinct voice, hinting at its Oath's gift and Burden without spelling them out; the game's "
+    "menu states the terms. End with both voices waiting for an answer.]"
 )
-_HELP = "Type an action, or a number from the list. Commands: /sheet /hooks /swear <god> /refuse /help /quit"
+_REFUSE_TERMS = "No class or level. You grow through shards, gear, allies and reputation."
+_BAR_WIDTH = 10
+_COMMANDS = "[dim]Commands: sheet · hooks · help · quit[/dim]"
+_BARE_COMMANDS = {"sheet": "/sheet", "hooks": "/hooks", "help": "/help", "?": "/help", "quit": "/quit"}
+_HELP = (
+    "Type a number from the list, or describe what you do in your own words.\n"
+    "Commands: sheet (your character) · hooks (what may come back) · help (this) · quit (saves first)\n"
+    "The Oath choices are numbers on the list."
+)
 _SAVED = "Saved. `pantheon play` resumes here."
 
 
@@ -147,16 +156,23 @@ def _status_line(state: GameState) -> str:
     return f"[dim]{state.name} · {progress} · {health}[/dim]"
 
 
+def _bar(label: str, value: int, maximum: int) -> str:
+    filled = round(_BAR_WIDTH * value / maximum) if maximum else 0
+    return f"{label:<8}{'█' * filled}{'░' * (_BAR_WIDTH - filled)} {value}/{maximum}"
+
+
 def _sheet(state: GameState, world: World) -> Panel:
     assert world.data is not None
     names = {c.id: c.name for c in world.data.classes}
     oaths = {o.id: o.name for o in world.data.oaths}
-    next_level = f" of {xp_to_next(state.level)}" if state.level else ""
     lines = [
         f"[bold]{state.name}[/bold], {state.age}, {state.people}",
         f"Class: {names.get(state.class_id or '', 'none')} · Profession: {state.profession or 'none'}",
-        f"Tier {state.tier} · Level {state.level} · XP {state.xp}{next_level}",
-        f"HP {state.hp}/{state.max_hp} · Mana {state.max_mana} · Stamina {state.max_stamina}",
+        f"Tier {state.tier} · Level {state.level}",
+        _bar("HP", state.hp, state.max_hp),
+        _bar("Mana", state.max_mana, state.max_mana),
+        _bar("Stamina", state.max_stamina, state.max_stamina),
+        *([_bar("XP", state.xp, xp_to_next(state.level))] if state.level else []),
         f"Coin: {state.coin} silver",
         " · ".join(f"{s.capitalize()} {state.stats[s]}" for s in STATS),
         "Affinities: " + (", ".join(f"{a} {r}" for a, r in state.affinities.items()) or "none"),
@@ -234,8 +250,8 @@ def _show(outcome: TurnOutcome, console: Console) -> None:
 def _show_actions(state: GameState, console: Console) -> None:
     console.print(_status_line(state))
     for number, action in enumerate(state.suggested, 1):
-        cost = f" [dim]({action.cost})[/dim]" if action.cost else ""
-        console.print(f"  {number}. {action.label}{cost}")
+        tag = f"[bold]\\[{action.tag.upper()}][/bold] " if action.tag else ""
+        console.print(f"  {number}. {tag}{action.label}")
 
 
 def offer_choices(state: GameState, world: World) -> list[tuple[str, str]]:
@@ -249,6 +265,18 @@ def offer_choices(state: GameState, world: World) -> list[tuple[str, str]]:
         (g, f"Swear the {oaths[gods[g].first_oath].name} to {gods[g].name}") for g in state.opening_gods
     ]
     return [*choices, ("refuse", "Refuse both gods")]
+
+
+def offer_terms(state: GameState, world: World) -> dict[str, str]:
+    """Each Dual Offer choice in plain words; the gods' voices stay oblique (D-033)."""
+    assert world.data is not None
+    gods = {g.id: g for g in world.data.gods}
+    oaths = {o.id: o for o in world.data.oaths}
+    terms = {"refuse": _REFUSE_TERMS}
+    for god in state.opening_gods:
+        oath = oaths[gods[god].first_oath]
+        terms[god] = f"Gift: {oath.perk}. Burden: {oath.burden}."
+    return terms
 
 
 def spoken_choice(line: str, state: GameState, world: World) -> str | None:
@@ -334,6 +362,8 @@ class Game:
         self.state = outcome.state
         _show(outcome, self.console)
         self.player_choices()
+        if any(type_ == "level_up" for type_, _ in outcome.events):
+            self.console.print(_sheet(self.state, self.world))
 
     def _settle_offer(self, choice: str) -> str | None:
         sim = self._command_sim()
@@ -347,6 +377,7 @@ class Game:
             self.console.print(f"  {line}")
         self.player_choices()
         if result["sworn"]:
+            self.console.print(_sheet(self.state, self.world))
             return (
                 f"[I swear the {result['sworn']} Oath to {choice}. The Ledger opens. Narrate the aftermath.]"
             )
@@ -364,7 +395,9 @@ class Game:
                         f"  {hook.id}. {hook.description} [dim](due {hook.due_condition})[/dim]"
                     )
             case "/swear":
-                return self._settle_offer(rest)
+                if rest:
+                    return self._settle_offer(rest)
+                self.console.print("Use the numbers on the list to swear an Oath.")
             case "/refuse":
                 return self._settle_offer("refuse")
             case _:
@@ -382,11 +415,16 @@ class Game:
             _show_actions(self.state, self.console)
             offers = offer_choices(self.state, self.world)
             first = len(self.state.suggested) + 1
-            for number, (_, label) in enumerate(offers, first):
+            terms = offer_terms(self.state, self.world)
+            for number, (choice_id, label) in enumerate(offers, first):
                 self.console.print(f"  {number}. [bold]{label}[/bold]")
+                self.console.print(f"     [dim]{terms[choice_id]}[/dim]")
+            self.console.print("  [dim]Or type your own.[/dim]")
+            self.console.print(f"  {_COMMANDS}")
             line = self.ask("\nWhat do you do? ").strip()
             if not line:
                 continue
+            line = _BARE_COMMANDS.get(line.lower(), line)
             choice = None
             if line.isdigit() and first <= int(line) < first + len(offers):
                 choice = offers[int(line) - first][0]
@@ -407,7 +445,8 @@ class Game:
                 self.console.print(_SAVED)
                 return
             if line.isdigit() and 1 <= int(line) <= len(self.state.suggested):
-                line = self.state.suggested[int(line) - 1].label
+                action = self.state.suggested[int(line) - 1]
+                line = f"{action.label} ({action.tag})" if action.tag else action.label
             elif line.startswith("/"):
                 text = self._command(line)
                 if text is None:

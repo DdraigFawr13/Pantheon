@@ -4,7 +4,7 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1.5 thin narrator loop (D-029) is merged, with M1a (PRs #9, #10). It waits on the owner's API key and first play.
+M1.6 writing style: the first build (D-033 to D-035) is merged in PR #11, with M1a and M1.5 before it (PRs #9, #10). The owner's API key works, and the owner has played one turn of the new style. The second style build has not started.
 
 ## Just done
 
@@ -20,11 +20,19 @@ M1.5 thin narrator loop (D-029) is merged, with M1a (PRs #9, #10). It waits on t
 
 - 2026-10-30 M1.5: events and fold, seven narrator tools, Anthropic adapter, referee, narrator and scribe steps (D-031), character creation, CLI play. Four live local-model runs found: the model decided the Dual Offer itself (now a player command), skipped checks (now rolled first), and took 145 to 359 s per turn. The owner rejected local play (D-032).
 
+- 2026-10-30 Style workshop (forms below): third person past, plain prose, engine numbers in prose, tagged options, plain Oath terms, drawn sheet. A blind trial kept Haiku as narrator.
+
 ## Next
 
-1. Owner adds `ANTHROPIC_API_KEY` to `.env` and runs `start.bat`. The adapter has not yet called the real Claude API; the first run checks that.
-2. Owner reports whether it is fun. Tune `world/data/rewards.yaml`, or move to Sonnet 5.5, from that.
-3. Then M1b, per `docs/BUILD_PLAN.md`, on a fresh branch from `main`.
+1. Second style build, recommended but not yet approved by the owner in so many words, on a fresh branch from `main` (`docs/BUILD_PLAN.md` M1.6):
+   - Real odds on options, such as `[AGILITY 62%]`. Each suggested action carries its check; the engine works out the chance with the same code that rolls it (GAME-02), and picking it rolls exactly that and skips the referee. A stat or skill tag needs a check. Before the Dual Offer is answered nothing rolls, so strip checks and stat tags then. This fixes the live defect of `[INTELLECT]` on a question that never rolls. Show the chance clamped to 5 to 100 % (`checks.py` `outcome_for`).
+   - Mid-story notices: the narrator marks the moment and the engine prints the line; fall back to after the prose if the marker is missing. Don't store the marker in the turn text.
+   - `/inspect <number>`, free of game time, using the stored cost field.
+   - Proposed to the owner, not confirmed: titles move to M1b because no title data exists; the high-stakes roll moment waits for the phone page. Update BUILD_PLAN and republish the plan page if confirmed (D-018).
+2. Then M1b, as the owner chose. Tune `world/data/rewards.yaml` from play.
+3. Whenever the owner plays a longer session, save it to `docs/playtests/` from `data/pantheon.db`: this completes M1.5's and M1.6's live transcript. Tables: `turn`, `event` (`payload_json`).
+
+Known from the first live turn (timeline 685eeb5a): about 23,000 tokens in and 4,800 out, about half a cent at list price (estimate from those counts); the prose read well. Watch for invented belongings and injuries (LESSONS).
 
 ## Open questions
 
@@ -42,7 +50,9 @@ M1.5 thin narrator loop (D-029) is merged, with M1a (PRs #9, #10). It waits on t
 - Superseded final check: https://claude.ai/artifact/YQjWtqPffUopaDLGUJ7Ysg
 - Round 3 (the System): https://claude.ai/artifact/BwmhqfG5VXYAoR2hd4QwfC
 - Final plan (approved): https://claude.ai/artifact/4uyMuu6Xa6dHD2Y9fXQa1s
+- Style round 1: https://claude.ai/artifact/5fnPKcTrTudPap9ozbqjTV
+- Style round 2 (approved): https://claude.ai/artifact/3yHuM5FmjjJ7Pee81qzgnc
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-032 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031 Assumed).
+- 2026-10-30 D-007 to D-035 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031 Assumed).

@@ -31,6 +31,7 @@ class Action(BaseModel):
     label: str
     violent: bool = False
     cost: str | None = None
+    tag: str | None = None
 
 
 class GameState(BaseModel):
