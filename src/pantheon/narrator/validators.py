@@ -7,10 +7,28 @@ import re
 from pantheon.engine.tools import tool_definitions
 
 _NUMBER = re.compile(r"\d[\d,.]*\d|\d")
-_NUMBER_WORDS = (
-    "one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|hundred"
-)
-_UNITS = "points?|percent|damage|xp|experience|hit points?|stamina|mana"
+_NUMBER_WORDS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "fifteen": 15,
+    "twenty": 20,
+    "thirty": 30,
+    "forty": 40,
+    "fifty": 50,
+    "hundred": 100,
+}
+_UNITS = "points?|percent|damage|xp|experience|hit points?|hp|stamina|mana"
+_WORD_WITH_UNIT = re.compile(rf"\b({'|'.join(_NUMBER_WORDS)})\s+(?:{_UNITS})\b", re.I)
 _BANNED = (
     (re.compile(r"\b\d*d(?:4|6|8|10|12|20|100)\b", re.I), "dice notation"),
     (re.compile(r"\b(?:you|they|he|she) rolled? (?:a|an|the)\b|\broll of\b", re.I), "a dice roll"),
@@ -18,8 +36,7 @@ _BANNED = (
         re.compile(r"\bskill check\b|\bsaving throw\b|\bdifficulty class\b|\bsuccess at cost\b", re.I),
         "a game term",
     ),
-    (re.compile(r"\b(?:HP|XP|DC|STR|AGI|DEX|INT|VIG|RES|PRE)\b"), "a stat abbreviation"),
-    (re.compile(rf"\b(?:{_NUMBER_WORDS})\s+(?:{_UNITS})\b", re.I), "a number with a game unit"),
+    (re.compile(r"\b(?:DC|STR|AGI|DEX|INT|VIG|RES|PRE)\b"), "a stat abbreviation"),
 )
 _TOOL_NAMES = re.compile(r"\b(?:" + "|".join(t["name"] for t in tool_definitions()) + r")\b")
 _LIST_WORDS = r"choose|next action|actions?|options?|choices?"
@@ -56,6 +73,9 @@ def prose_problems(text: str, allowed_numbers: set[int]) -> list[str]:
         digits = match.group().replace(",", "").rstrip(".")
         if not digits.isdigit() or int(digits) not in allowed_numbers:
             problems.append(f"the number {match.group()} did not come from the engine this turn")
+    for match in _WORD_WITH_UNIT.finditer(text):
+        if _NUMBER_WORDS[match.group(1).lower()] not in allowed_numbers:
+            problems.append(f"the number in {match.group()!r} did not come from the engine this turn")
     problems += [f"it mentions {label}" for pattern, label in _BANNED if pattern.search(text)]
     if _TOOL_NAMES.search(text):
         problems.append("it names a tool in the prose")

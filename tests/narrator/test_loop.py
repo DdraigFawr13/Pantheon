@@ -251,13 +251,37 @@ def test_nar04_numbers_returned_by_the_engine_are_allowed() -> None:
         "Roll a d20 for it.",
         "You rolled a seven.",
         "That is a skill check.",
-        "Your HP drops.",
         "You gain ten points of renown.",
         "She calls request_check.",
     ],
 )
 def test_nar04_prose_problems_are_caught(text: str) -> None:
     assert prose_problems(text, set())
+
+
+def test_d033_prose_may_use_numbers_the_engine_supplied_in_digits_or_words() -> None:
+    text = "Her HP stood at 58, and she had ten points of Agility to spare."
+    assert prose_problems(text, {58, 10}) == []
+    assert prose_problems(text, {58})
+    assert prose_problems(text, {10})
+
+
+def test_d033_the_narrator_may_use_the_sheet_but_not_invent_numbers() -> None:
+    state, _ = sworn_state()
+    used = f"Wren's Vigor of {state.stats['vigor']} would not lift it. Her HP was {state.hp}."
+    outcome, _ = run([LLMReply(text="NONE"), LLMReply(text=used), SUGGEST])
+    assert not outcome.is_fallback
+    invented = "Wren's Vigor of 999 would not lift it, and the stone above her groaned and settled again."
+    outcome, _ = run([LLMReply(text="NONE"), *[LLMReply(text=invented)] * 3])
+    assert outcome.is_fallback
+
+
+def test_d033_the_prompt_asks_for_past_tense_in_third_person() -> None:
+    state, _ = sworn_state()
+    system, messages = assemble(state, WORLD, [], "Pull")
+    assert "third person, past tense" in system[0]["text"].lower()
+    assert "third person, past tense" in messages[-1]["content"]
+    assert "second person" not in (system[0]["text"] + messages[-1]["content"]).lower()
 
 
 @pytest.mark.parametrize(

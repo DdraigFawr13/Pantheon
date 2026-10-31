@@ -21,7 +21,7 @@ from pantheon.engine.checks import (
     OvercomeKind,
     resolve_check,
 )
-from pantheon.engine.state import STANDING_MAX, STANDING_MIN, Action, xp_to_next
+from pantheon.engine.state import STANDING_MAX, STANDING_MIN, STATS, Action, xp_to_next
 from pantheon.engine.timeline import Rejected, Simulation
 
 MAX_REJECTION_DETAIL = 3
@@ -113,10 +113,15 @@ class SuggestedAction(_Args):
     label: str = Field(description="One line, with no digits.")
     violent: bool = False
     cost: str | None = Field(default=None, description="A visible cost or risk, in words with no digits.")
+    tag: str | None = Field(
+        default=None,
+        description="What this action rests on: a stat, a skill, or the name of an Oath, class, profession "
+        "or people the character has. Omit it when nothing applies.",
+    )
 
 
 class SuggestActions(_Args):
-    """Offer 3 to 5 next actions, differing in kind: one non-violent, and one with a visible cost or risk."""
+    """Offer 3 to 4 next actions, differing in kind: one non-violent, and one with a visible cost or risk."""
 
     actions: list[SuggestedAction]
 
@@ -290,14 +295,28 @@ def _register_hook(sim: Simulation, args: RegisterHook) -> dict[str, Any]:
     return {"hook_id": hook_id}
 
 
+def _character_tags(sim: Simulation) -> set[str]:
+    """What a suggested action may be tagged with: only what this character really has (D-033)."""
+    state, data = sim.state, sim.rules.data
+    names = [*STATS, *state.skills, state.profession or ""]
+    names += [o.name for o in data.oaths if o.id in state.oaths]
+    names += [c.name for c in data.classes if c.id == state.class_id]
+    names += [p.name for p in data.peoples if p.id == state.people]
+    return {name.lower() for name in names if name}
+
+
 def _suggest_actions(sim: Simulation, args: SuggestActions) -> dict[str, Any]:
     actions = args.actions
     minimum = 3
     if not sim.state.offer_resolved:  # The game's menu already offers swearing and refusing.
         actions = [a for a in actions if not _OATH_CHOICE.search(a.label)]
         minimum = 1
-    if not minimum <= len(actions) <= 5:
-        raise Rejected("offer 3 to 5 actions")
+    if not minimum <= len(actions) <= 4:
+        raise Rejected("offer 3 to 4 actions")
+    tags = _character_tags(sim)
+    unknown = [a.tag for a in actions if a.tag is not None and a.tag.lower() not in tags]
+    if unknown:
+        raise Rejected(f"this character has no {unknown[0]!r} to tag an action with")
     if all(a.violent for a in actions):
         raise Rejected("at least one action must be non-violent")
     if not any(a.cost for a in args.actions):
