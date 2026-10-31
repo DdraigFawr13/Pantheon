@@ -18,11 +18,13 @@ from pantheon.engine.checks import (
     CheckOdds,
     CheckRequest,
     Difficulty,
+    Outcome,
     OvercomeClaim,
     OvercomeKind,
     check_odds,
     resolve_check,
 )
+from pantheon.engine.progression import evolution_options, offer_skills
 from pantheon.engine.state import STANDING_MAX, STANDING_MIN, STATS, Action, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Simulation
 from pantheon.world.schemas import GameData
@@ -215,7 +217,7 @@ def _apply_effect(sim: Simulation, args: ApplyEffect) -> dict[str, Any]:
             raise Rejected("source must be a check_id from this turn or hazard:<name>")
         amount = min(math.ceil(state.max_hp * percent / 100), state.hp)
     else:
-        if state.wounds == 0:
+        if state.wounds == 0 and not (args.source == "rest" and state.trial_recovery):
             raise Rejected("the character has no wounds to heal")
         if args.source == "rest":
             amount = state.wounds
@@ -243,26 +245,77 @@ def _grant_xp(sim: Simulation, args: GrantXp) -> dict[str, Any]:
     sim.emit("xp_gained", {"amount": amount, "kind": args.kind, "reason": args.reason})
     leveled = False
     while state.level % 10 != 0 and state.xp >= xp_to_next(state.level):
-        gains: dict[str, int] = {}
-        if state.class_id:
-            cls = next(c for c in sim.rules.data.classes if c.id == state.class_id)
-            gains = {cls.primary: table.level_gains.primary, cls.secondary: table.level_gains.secondary}
-        sim.emit(
-            "level_up",
-            {
-                "level": state.level + 1,
-                "xp_spent": xp_to_next(state.level),
-                "gains": gains,
-                "free_points": table.level_gains.free_points,
-            },
-        )
+        _level_up(sim)
         leveled = True
     return {
         "kind": args.kind,
         "level": state.level,
         "leveled_up": leveled,
-        "trial_required": state.level % 10 == 0 and state.xp >= xp_to_next(state.level),
+        "trial_required": state.trial_ready,
     }
+
+
+def _level_up(sim: Simulation) -> None:
+    state = sim.state
+    table = sim.rules.data.rewards
+    cls = sim.rules.data.class_of(state.class_id)
+    gains = (
+        {cls.primary: table.level_gains.primary, cls.secondary: table.level_gains.secondary} if cls else {}
+    )
+    sim.emit(
+        "level_up",
+        {
+            "level": state.level + 1,
+            "xp_spent": xp_to_next(state.level),
+            "gains": gains,
+            "free_points": table.level_gains.free_points,
+        },
+    )
+    offer_skills(sim)
+
+
+_TRIAL_RESULTS = {
+    Outcome.TRIUMPH: "ascend",
+    Outcome.SUCCESS: "ascend",
+    Outcome.SUCCESS_AT_COST: "setback",
+    Outcome.FAILURE: "breaking",
+}
+_INJURY_AMOUNT = 10
+
+
+def attempt_trial(sim: Simulation) -> dict[str, Any]:
+    """The Ascension Trial, a player's choice (D-037). Set at the next tier, on the class's primary stat."""
+    state = sim.state
+    if not state.trial_ready:
+        raise Rejected("no Ascension Trial is due")
+    if state.trial_recovery:
+        raise Rejected("the character must recover before trying again")
+    cls = sim.rules.data.class_of(state.class_id)
+    if cls is None:
+        raise Rejected("a character needs a class to attempt a Trial")
+    checked = _request_check(
+        sim,
+        RequestCheck(
+            stat=cls.primary,
+            difficulty=Difficulty.ROUTINE,
+            challenge_tier=state.tier + 1,
+            stakes="the Ascension Trial",
+        ),
+    )
+    result = _TRIAL_RESULTS[Outcome(checked["outcome"])]
+    if result == "setback":
+        sim.emit("xp_lost", {"amount": state.xp, "reason": "a Setback in the Ascension Trial"})
+    elif result == "breaking":
+        stat = sim.rng.choose_distinct("world", STATS, 1)[0]
+        amount = min(_INJURY_AMOUNT, state.stats[stat])
+        sim.emit(
+            "injury_gained", {"stat": stat, "amount": amount, "reason": "a Breaking in the Ascension Trial"}
+        )
+    if result == "ascend":
+        _level_up(sim)
+    evolution_due = result == "ascend" and bool(evolution_options(state, sim.rules.data))
+    sim.emit("trial_resolved", {"result": result, "evolution_due": evolution_due})
+    return {"result": result, "level": state.level, "evolution_due": state.needs_evolution}
 
 
 def _adjust_standing(sim: Simulation, args: AdjustStanding) -> dict[str, Any]:
@@ -315,7 +368,8 @@ def _character_tags(sim: Simulation) -> set[str]:
     state, data = sim.state, sim.rules.data
     names = [*_rolled_tags(state), state.profession or ""]
     names += [o.name for o in data.oaths if o.id in state.oaths]
-    names += [c.name for c in data.classes if c.id == state.class_id]
+    current = data.class_of(state.class_id)
+    names += [current.name] if current else []
     names += [p.name for p in data.peoples if p.id == state.people]
     return {name.lower() for name in names if name}
 

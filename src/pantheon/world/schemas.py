@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Stat = Literal["vigor", "agility", "intellect", "resolve", "presence"]
+Rarity = Literal["common", "uncommon", "rare", "epic", "legendary", "mythic", "divine"]
 _ID = r"^[a-z][a-z0-9_]*$"
 
 
@@ -45,6 +46,39 @@ class BaseClass(_Strict):
     name: str
     primary: Stat
     secondary: Stat
+    fragments_to_fuse: int = Field(default=3, ge=1)
+
+
+class Skill(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    affinity: str | None = None
+    rarity: Rarity
+    classes: tuple[str, ...] = ()
+
+
+class Title(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    stat: Stat | None = None
+    stat_bonus: int = Field(default=0, ge=0)
+    check_kind: str | None = None
+    check_bonus: int = Field(default=0, ge=0)
+    needs_witness: bool = True
+
+
+class Evolution(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    from_class: str
+    primary: Stat
+    secondary: Stat
+    fragments_to_fuse: int = Field(default=3, ge=1)
+    needs_affinity: dict[str, int] = Field(default_factory=dict)
+    needs_stat: dict[str, int] = Field(default_factory=dict)
+    needs_oath: str | None = None
+    needs_skill: str | None = None
+    needs_title: str | None = None
 
 
 class People(_Strict):
@@ -123,6 +157,13 @@ class GameData(_Strict):
     professions: Professions
     origins: Origins
     rewards: Rewards
+    skills: tuple[Skill, ...] = ()
+    titles: tuple[Title, ...] = ()
+    evolutions: tuple[Evolution, ...] = ()
 
     def god_ids(self) -> tuple[str, ...]:
         return tuple(g.id for g in self.gods)
+
+    def class_of(self, class_id: str | None) -> BaseClass | Evolution | None:
+        """A base class or an evolved one, by id. The engine treats both the same after evolving."""
+        return next((c for c in (*self.classes, *self.evolutions) if c.id == class_id), None)
