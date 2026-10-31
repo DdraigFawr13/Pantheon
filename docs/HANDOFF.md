@@ -55,4 +55,4 @@ Known from the first live turn (timeline 685eeb5a): about 23,000 tokens in and 4
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-034 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031 Assumed).
+- 2026-10-30 D-007 to D-035 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031 Assumed).
