@@ -5,3 +5,4 @@ level_gains: {primary: 2, secondary: 1, free_points: 1}
 standing: {slight: 2, notable: 5, grave: 15}
 damage_percent: {failure: 25, success_at_cost: 10, hazard: 15}
 heal_percent: {aid: 25}
+petition: {granted: 5, ignored: 2, days: 7}

@@ -114,13 +114,14 @@ Layers 1 and 2 form the cache prefix; the cache breakpoint sits at the end of la
 | `snapshot` | `timeline_id`, `turn`, `state_json` (every 10 turns, replay accelerator) |
 | `turn` | `timeline_id`, `turn`, `player_input`, `narration`, `is_fallback`, `tokens_in`, `tokens_cached`, `tokens_out` |
 | `summary` | `timeline_id`, `level` (`scene` or `chapter`), `span_start`, `span_end`, `text` |
+| `rng_checkpoint` | `timeline_id`, `turn`, `stream`, `state` (each RNG stream that moved in a turn, for forks; D-038) |
 | `lore` | `id`, `type`, `visibility`, `tags`, `reveal_gate`, `body` (FTS5; rebuilt from `world/` on start, never written by play) |
 
 **Source and projections.** `event` is the only source of game state (ENG-06). Hooks, NPCs, locations, clocks, flags, inventory, released secrets and the calendar are projections: rebuilt by folding events, cached in snapshots, never written directly. `turn` and `summary` are not game state but are non-reproducible text, so forks copy them (ENG-08). `created_at` is metadata only and never read by rules (ENG-11).
 
 **Events record outcomes.** `check_resolved` stores the dice, modifiers, total and outcome; `xp_gained` stores the amount the engine set. Replay never calls the RNG. A timeline keeps the `rules_version` it was created under; changing rules affects new timelines, and old ones upgrade only through an explicit upgrader.
 
-Event types (initial): `opening_gods_drawn`, `check_resolved`, `xp_gained`, `level_up`, `trial_begun`, `trial_resolved`, `class_evolved`, `stat_point_allocated`, `skill_offered`, `skill_learned`, `skill_used`, `skill_evolved`, `shard_absorbed`, `fragments_fused`, `affinity_raised`, `loot_granted`, `title_granted`, `profession_xp_gained`, `item_crafted`, `oath_offered`, `oath_sworn`, `oath_conflict_raised`, `oath_conflict_resolved`, `oath_breached`, `burden_tested`, `petition_sent`, `petition_resolved`, `bounty_accepted`, `bounty_completed`, `standing_changed`, `rumour_recorded`, `flag_set`, `item_changed`, `currency_changed`, `effect_applied`, `injury_gained`, `downed`, `last_breath`, `died`, `reckoning`, `time_advanced`, `clock_advanced`, `npc_introduced`, `location_introduced`, `hook_registered`, `hook_resolved`, `beat_fired`, `secret_released`, `actions_suggested`, `tool_call_dropped`, `rift_closed`.
+Event types (initial): `opening_gods_drawn`, `check_resolved`, `xp_gained`, `level_up`, `trial_begun`, `trial_resolved`, `class_evolved`, `stat_point_allocated`, `skill_offered`, `skill_learned`, `skill_used`, `skill_evolved`, `shard_absorbed`, `fragments_fused`, `affinity_raised`, `loot_granted`, `title_granted`, `profession_xp_gained`, `item_crafted`, `oath_offered`, `oath_sworn`, `oath_conflict_raised`, `oath_conflict_resolved`, `oath_breached`, `burden_tested`, `petition_resolved` (a petition is a `hook_registered` with a god and a deadline; D-038), `bounty_accepted`, `bounty_completed`, `standing_changed`, `rumour_recorded`, `flag_set`, `item_changed`, `currency_changed`, `effect_applied`, `injury_gained`, `downed`, `last_breath`, `died`, `reckoning`, `time_advanced`, `clock_advanced`, `clock_engaged`, `npc_introduced`, `location_introduced`, `hook_registered`, `hook_resolved`, `beat_fired`, `secret_released`, `actions_suggested`, `tool_call_dropped`, `rift_closed`.
 
 ## 6. Tool contracts (narrator to engine)
 
@@ -135,11 +136,13 @@ All arguments are validated by Pydantic. Unknown tools are rejected. Where the n
 | `grant_xp` | `kind` (for example `minor`, `major`, `milestone`), `reason` | Amount from the XP table; per-turn cap; returns level state |
 | `adjust_standing` | `entity` (god/faction/npc), `kind` (`slight`/`notable`/`grave`), `direction` (`+`/`-`), `witness` (`npc:<id>`/`evidence:<item>`/`record:<office>`/`none`), `reason` | Delta from the Standing table; clamps to [-100, 100]; with `witness: none` records a rumour instead (D-013) |
 | `grant_title` | `title_id`, `witness`, `reason` | Validates the title's condition against state; needs a witness |
-| `send_petition` | `god`, `ask`, `due_condition` | Registers a petition as a hook; granting or ignoring it adjusts Standing |
+| `send_petition` | `god`, `ask`, `due_condition` | Registers a petition as a hook, from a sworn god, one open per god; passing its deadline counts as ignored and lowers Standing (D-038) |
+| `resolve_petition` | `hook_id`, `granted`, `reason` | Closes an open petition and adjusts Standing; not in the turn it arrived (D-038) |
+| `engage_clock` | `clock_id`, `reason` | Records that a tested deed this turn touched a clock's threads, so it is not neglected this season; once per clock per day (D-038) |
 | `test_burden` | `oath_id`, `situation`, `kept` (bool) | Records the narrator's judgement; `kept: false` applies the Breach. The `burden_tested` event keeps `situation`, and the status panel and `pantheon log` show it, so the player can see why a blessing was suspended (GAME-04) |
 | `adjust_inventory` | `item`, `quantity` (+/-), `reason` | Narrator chooses the item and count (ENG-09); rejects removing what is not held and counts above the per-turn bound |
 | `adjust_currency` | `amount` (+/-), `reason` | Narrator chooses the amount; rejects overdraft and gains above the bound for the character's tier |
-| `advance_time` | `span` (`minutes`/`hours`/`rest`/`day`/`days`), `count?`, `reason` | Advances the calendar; ticks time-driven clocks, Oath timers and daily Boons |
+| `advance_time` | `span` (`minutes`/`hours`/`rest`/`day`/`days`), `count?`, `reason` | Advances the calendar; ticks time-driven clocks and lapses overdue petitions. `rest` also heals. Oath timers and daily Boons wait for canon rules (D-038) |
 | `set_flag` | `key`, `value`, `reason` | A registered key (section 7) only when its `set_by` is `narrator` and its `accept` rule holds; any other key only under `story.` and only `true` or `false` |
 | `register_hook` | `description`, `due_condition`, `source_choice` | Stores in consequence ledger (NAR-05) |
 | `advance_clock` | `clock_id`, `cause` (`check_id` or `beat_id` from this turn), `reason` | One segment. Accepts only when the clock's data lists the cause's kind (for example a failed check against that faction, or a beat tagged with the clock), and at most once per clock per in-world day. This is the computable form of "only when the story supports it" (`world/factions.md`) |
@@ -171,7 +174,7 @@ The evaluator shall use a restricted expression grammar (comparison, `and`, `or`
 
 ## 8. Timeline forks
 
-A fork creates a new `timeline` row with `parent_id` and `fork_turn`, copies events, `turn` rows and snapshots with `turn <= N` and `summary` rows with `span_end <= N`, restores the nearest earlier snapshot, replays to N, and restores the RNG state recorded at N. Fork cost is proportional to the replay distance from the nearest snapshot.
+A fork creates a new `timeline` row with `parent_id` and `fork_turn`, copies events, `turn` rows, snapshots and `rng_checkpoint` rows with `turn <= N` and `summary` rows with `span_end <= N`, and sets the RNG state recorded at N. Loading it restores the nearest earlier snapshot and replays to N, so cost is proportional to the replay distance from that snapshot. Player commands after turn N are stamped N + 1, so a fork at N does not include them. A save that recorded no RNG state at N refuses the fork (D-038).
 
 ## 9. Testing strategy
 

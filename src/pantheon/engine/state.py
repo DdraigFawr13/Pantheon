@@ -25,6 +25,9 @@ class Hook(BaseModel):
     description: str
     due_condition: str
     source_choice: str = ""
+    petition_god: str | None = None
+    deadline_day: int = 0
+    resolved: bool = False
 
 
 class Action(BaseModel):
@@ -83,6 +86,14 @@ class GameState(BaseModel):
     rumours: list[str] = Field(default_factory=list)
     suggested: list[Action] = Field(default_factory=list)
     checks_made: int = 0
+    minutes: int = 0
+    clocks: dict[str, int] = Field(default_factory=dict)
+    clocks_engaged: dict[str, int] = Field(default_factory=dict)
+
+    @property
+    def day(self) -> int:
+        """Whole days since the start of play (ENG-11)."""
+        return self.minutes // 1440
 
     @property
     def tier(self) -> int:
@@ -207,6 +218,14 @@ def apply_event(state: GameState, type_: str, payload: dict[str, Any]) -> None:
             state.flags[payload["key"]] = payload["value"]
         case "hook_registered":
             state.hooks.append(Hook(**payload))
+        case "petition_resolved":
+            next(h for h in state.hooks if h.id == payload["hook_id"]).resolved = True
+        case "time_advanced":
+            state.minutes += payload["minutes"]
+        case "clock_advanced":
+            state.clocks[payload["clock"]] = payload["value"]
+        case "clock_engaged":
+            state.clocks_engaged[payload["clock"]] = payload["counted_day"]
         case "actions_suggested":
             state.suggested = [Action(**a) for a in payload["actions"]]
         case "tool_call_dropped":

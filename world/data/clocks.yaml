@@ -1,0 +1,6 @@
+# Global clocks, transcribed from world/factions.md (Global clocks). A test checks that the two agree.
+- {id: seat_vote, name: The Seat Vote, segments: 6, start: 1, filled: "The council moves to a formal vote on an Heir. Each segment reflects shifting god positions."}
+- {id: rift_tide, name: The Rift Tide, segments: 8, start: 2, filled: "An Overflow: a major Rift breaks its seal and spills monsters into a settled region."}
+- {id: grain_war, name: The Grain War, segments: 6, start: 2, filled: "Open war between the Ironmarch and the Hale Kingdoms."}
+- {id: ember_fever, name: The Ember Fever, segments: 5, start: 0, filled: "A plague tied to a Rift source; the Ashen Convent quarantines a region."}
+- {id: lanterns_price, name: The Lantern's Price, segments: 4, start: 0, filled: "A prophecy comes due; Ilvane collects."}
