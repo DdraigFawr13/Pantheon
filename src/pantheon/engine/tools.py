@@ -15,14 +15,17 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from pantheon.engine.checks import (
     Approach,
+    CheckOdds,
     CheckRequest,
     Difficulty,
     OvercomeClaim,
     OvercomeKind,
+    check_odds,
     resolve_check,
 )
-from pantheon.engine.state import STANDING_MAX, STANDING_MIN, STATS, Action, xp_to_next
+from pantheon.engine.state import STANDING_MAX, STANDING_MIN, STATS, Action, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Simulation
+from pantheon.world.schemas import GameData
 
 MAX_REJECTION_DETAIL = 3
 MAX_STANDING_PER_TURN = 2
@@ -116,8 +119,13 @@ class SuggestedAction(_Args):
     cost: str | None = Field(default=None, description="A visible cost or risk, in words with no digits.")
     tag: str | None = Field(
         default=None,
-        description="What this action rests on: a stat, a skill, or the name of an Oath, class, profession "
-        "or people the character has. Omit it when nothing applies.",
+        description="An Oath, class, profession or people the character has, when this line is one only they "
+        "could choose. A check shows its own stat or skill, so omit the tag for those.",
+    )
+    check: RequestCheck | None = Field(
+        default=None,
+        description="The check this action would roll, if it is uncertain; the game shows the odds and rolls "
+        "exactly this when picked. Omit it for talking, asking and looking, which never roll.",
     )
 
 
@@ -127,8 +135,7 @@ class SuggestActions(_Args):
     actions: list[SuggestedAction]
 
 
-def _request_check(sim: Simulation, args: RequestCheck) -> dict[str, Any]:
-    state = sim.state
+def _check_request(state: GameState, data: GameData, args: RequestCheck) -> CheckRequest:
     overcome = None
     if args.overcome == "oath":
         if not state.oaths:
@@ -137,22 +144,29 @@ def _request_check(sim: Simulation, args: RequestCheck) -> dict[str, Any]:
     elif args.overcome == "terrain":
         overcome = OvercomeClaim(OvercomeKind.TERRAIN)
     elif args.overcome == "divine_favor":
-        god_ids = sim.rules.data.god_ids()
-        best = max((state.standing.get(g, 0) for g in god_ids), default=0)
+        best = max((state.standing.get(g, 0) for g in data.god_ids()), default=0)
         overcome = OvercomeClaim(OvercomeKind.DIVINE_FAVOR, standing=best)
-    skill_rank = state.skills.get((args.skill or "").lower(), 0)
-    result = resolve_check(
-        sim.rng,
-        CheckRequest(
-            difficulty=args.difficulty,
-            stat=state.stats[args.stat],
-            skill_rank=skill_rank,
-            actor_tier=state.tier,
-            challenge_tier=args.challenge_tier,
-            approach=args.approach,
-            overcome=overcome,
-        ),
+    return CheckRequest(
+        difficulty=args.difficulty,
+        stat=state.stats[args.stat],
+        skill_rank=state.skills.get((args.skill or "").lower(), 0),
+        actor_tier=state.tier,
+        challenge_tier=args.challenge_tier,
+        approach=args.approach,
+        overcome=overcome,
     )
+
+
+def check_preview(state: GameState, data: GameData, check: dict[str, Any]) -> CheckOdds:
+    """The odds a stored action's check has right now, for the screen (D-036)."""
+    return check_odds(_check_request(state, data, RequestCheck.model_validate(check)))
+
+
+def _request_check(sim: Simulation, args: RequestCheck) -> dict[str, Any]:
+    state = sim.state
+    request = _check_request(state, sim.rules.data, args)
+    skill_rank = request.skill_rank
+    result = resolve_check(sim.rng, request)
     check_id = f"c{state.checks_made + 1}"
     sim.checks[check_id] = result.outcome
     event = {
@@ -299,11 +313,32 @@ def _register_hook(sim: Simulation, args: RegisterHook) -> dict[str, Any]:
 def _character_tags(sim: Simulation) -> set[str]:
     """What a suggested action may be tagged with: only what this character really has (D-033)."""
     state, data = sim.state, sim.rules.data
-    names = [*STATS, *state.skills, state.profession or ""]
+    names = [*_rolled_tags(state), state.profession or ""]
     names += [o.name for o in data.oaths if o.id in state.oaths]
     names += [c.name for c in data.classes if c.id == state.class_id]
     names += [p.name for p in data.peoples if p.id == state.people]
     return {name.lower() for name in names if name}
+
+
+def _rolled_tags(state: GameState) -> set[str]:
+    """Tags that promise a roll, so they must come with a check (D-036)."""
+    return {*STATS, *state.skills}
+
+
+def _settled_action(action: SuggestedAction, state: GameState, tags: set[str]) -> Action:
+    tag = action.tag
+    if tag is not None and tag.lower() not in tags:
+        raise Rejected(f"this character has no {tag!r} to tag an action with")
+    rolled = tag is not None and tag.lower() in _rolled_tags(state)
+    if not state.offer_resolved:  # Nothing rolls before the Dual Offer is answered.
+        return Action(
+            label=action.label, violent=action.violent, cost=action.cost, tag=None if rolled else tag
+        )
+    if rolled and action.check is None:
+        raise Rejected(f"the tag {tag!r} promises a roll, so give that action a check")
+    if action.check is not None and tag is None:
+        tag = action.check.skill or action.check.stat
+    return Action(**{**action.model_dump(mode="json"), "tag": tag})
 
 
 def _suggest_actions(sim: Simulation, args: SuggestActions) -> dict[str, Any]:
@@ -317,16 +352,17 @@ def _suggest_actions(sim: Simulation, args: SuggestActions) -> dict[str, Any]:
     if any(len(a.label.split()) > MAX_ACTION_WORDS for a in actions):
         raise Rejected(f"keep each action to {MAX_ACTION_WORDS} words")
     tags = _character_tags(sim)
-    unknown = [a.tag for a in actions if a.tag is not None and a.tag.lower() not in tags]
-    if unknown:
-        raise Rejected(f"this character has no {unknown[0]!r} to tag an action with")
+    settled = [_settled_action(a, sim.state, tags) for a in actions]
+    for action in settled:
+        if action.check is not None:
+            check_preview(sim.state, sim.rules.data, action.check)
     if all(a.violent for a in actions):
         raise Rejected("at least one action must be non-violent")
     if not any(a.cost for a in args.actions):
         raise Rejected("at least one action must name a visible cost or risk in its cost field")
     if any(_DIGIT.search(a.label + (a.cost or "")) for a in actions):
         raise Rejected("action labels and costs must not contain digits; the engine owns the numbers")
-    sim.emit("actions_suggested", {"actions": [Action(**a.model_dump()).model_dump() for a in actions]})
+    sim.emit("actions_suggested", {"actions": [a.model_dump() for a in settled]})
     sim.suggested = True
     return {"count": len(actions)}
 

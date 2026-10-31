@@ -13,6 +13,7 @@ AUTO_SUCCESS_GAP = 3
 AUTO_FAIL_GAP = -3
 OVERCOME_GAP = -2
 DIVINE_FAVOR_STANDING = 60
+ALWAYS_SUCCEEDS = 5
 
 
 class Difficulty(StrEnum):
@@ -105,7 +106,7 @@ def base_chance(difficulty: Difficulty, stat: int, skill_rank: int, actor_tier: 
 
 
 def outcome_for(chance: int, roll: int) -> Outcome:
-    if roll <= 5:
+    if roll <= ALWAYS_SUCCEEDS:
         return Outcome.TRIUMPH  # Always succeeds, then upgrades one step (D-028).
     if chance - roll >= 30:
         return Outcome.TRIUMPH
@@ -126,20 +127,45 @@ def _validate(request: CheckRequest) -> None:
         raise ValueError(f"stat must not be negative, got {request.stat}")
 
 
-def resolve_check(rng: RngStreams, request: CheckRequest) -> CheckResult:
-    """Validate, then roll on the `checks` stream. A rejected request consumes no randomness (D-022)."""
+@dataclass(frozen=True, slots=True)
+class CheckOdds:
+    """What a check will do before it rolls. `outcome` is set when the tier gap settles it (D-036)."""
+
+    outcome: Outcome | None
+    tier_gap: int
+    overcome_applied: bool
+    chance: int | None
+
+    @property
+    def shown(self) -> int | None:
+        """The chance as a player sees it: low rolls always succeed, and the d100 stops at 100."""
+        return None if self.chance is None else max(ALWAYS_SUCCEEDS, min(100, self.chance))
+
+
+def check_odds(request: CheckRequest) -> CheckOdds:
+    """The one calculation behind both the odds on screen and the roll (GAME-02)."""
     _validate(request)
     tier_gap = request.actor_tier - request.challenge_tier
     overcome_applied = False
 
     if tier_gap >= AUTO_SUCCESS_GAP:
-        return CheckResult(Outcome.SUCCESS, True, tier_gap, False, None, None, False)
+        return CheckOdds(Outcome.SUCCESS, tier_gap, False, None)
     if tier_gap <= AUTO_FAIL_GAP and request.approach is Approach.FORCE:
         if request.overcome is None or not request.overcome.satisfied(request.challenge_tier):
-            return CheckResult(Outcome.FAILURE, True, tier_gap, False, None, None, False)
+            return CheckOdds(Outcome.FAILURE, tier_gap, False, None)
         tier_gap = OVERCOME_GAP
         overcome_applied = True
 
     chance = base_chance(request.difficulty, request.stat, request.skill_rank, request.actor_tier, tier_gap)
+    return CheckOdds(None, tier_gap, overcome_applied, chance)
+
+
+def resolve_check(rng: RngStreams, request: CheckRequest) -> CheckResult:
+    """Validate, then roll on the `checks` stream. A rejected request consumes no randomness (D-022)."""
+    odds = check_odds(request)
+    if odds.outcome is not None or odds.chance is None:
+        assert odds.outcome is not None
+        return CheckResult(odds.outcome, True, odds.tier_gap, False, None, None, False)
     roll = rng.roll("checks", 100)
-    return CheckResult(outcome_for(chance, roll), False, tier_gap, overcome_applied, chance, roll, roll >= 96)
+    outcome = outcome_for(odds.chance, roll)
+    return CheckResult(outcome, False, odds.tier_gap, odds.overcome_applied, odds.chance, roll, roll >= 96)

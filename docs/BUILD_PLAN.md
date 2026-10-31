@@ -97,9 +97,9 @@ Built right after M1a, before the rest of M1, so the plan's top risks are tested
 
 ## M1.6: Writing style (D-033, D-034)
 
-**First build, done on `style-pass-1`:** new narrator prompt and turn instructions (third person, past tense, plain prose, engine numbers allowed), 3 to 4 options tagged with what the character really has, plain Oath terms on the menu, the drawn sheet on swearing and level-up.
+**First build, merged in PR #11:** new narrator prompt and turn instructions (third person, past tense, plain prose, engine numbers allowed), 3 to 4 options tagged with what the character really has, plain Oath terms on the menu, the drawn sheet on swearing and level-up, commands on screen.
 
-**Second build, after the owner plays the first:** mid-story Ledger notices with chance and roll, a moment for high-stakes rolls, real odds on options, `/inspect`, and titles.
+**Second build, on `style-pass-2` (D-036):** real odds on options that roll exactly what they show, mid-story Ledger notices with chance and roll, and `inspect`. Titles move to M1b; the moment for high-stakes rolls waits for M2.5.
 
 **You test:** play the opening and a few scenes with `start.bat`, and say whether it reads right and is fun.
 

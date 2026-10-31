@@ -14,6 +14,7 @@ from pantheon.llm.client import LLMReply, ToolCall
 from pantheon.llm.mock import MockClient
 from pantheon.narrator.assemble import assemble, history_window
 from pantheon.narrator.loop import TurnOutcome, take_turn
+from pantheon.narrator.notices import CHECK_MARKER, check_notice
 from pantheon.narrator.validators import prose_problems, strip_action_list
 from pantheon.storage.db import Database, TurnRecord
 from pantheon.world.loader import load_world
@@ -99,6 +100,50 @@ def test_d031_a_turn_rolls_then_narrates_the_outcome_then_records_it() -> None:
     assert referee["tools"] == narrator["tools"] == scribe["tools"]  # A constant list keeps the cache valid.
     assert "The engine has decided" in str(narrator["messages"][-1]["content"])
     assert scribe["fast"]
+
+
+CHOSEN = {"stat": "agility", "difficulty": "routine", "challenge_tier": 1, "stakes": "the climb"}
+
+
+def test_d036_a_chosen_option_rolls_its_own_check_and_skips_the_referee() -> None:
+    outcome, client = run([LLMReply(text=PROSE), SUGGEST], chosen_check=CHOSEN)
+    resolved = [p for t, p in outcome.events if t == "check_resolved"]
+    assert len(resolved) == 1 and resolved[0]["stat"] == "agility"
+    assert len(client.calls) == 2
+    assert "Referee step" not in str(client.calls[0]["messages"])
+    assert "The engine has decided" in str(client.calls[0]["messages"])
+
+
+def test_d036_a_bad_chosen_check_falls_back_to_the_referee() -> None:
+    bad = {**CHOSEN, "stat": "luck"}
+    outcome, client = run([NONE, LLMReply(text=PROSE), SUGGEST], chosen_check=bad)
+    assert outcome.state.checks_made == 0 and not outcome.is_fallback
+    assert "Referee step" in str(client.calls[0]["messages"])
+
+
+def test_d036_the_notice_lands_where_the_narrator_marked_the_moment() -> None:
+    marked = f"She braced her foot and pulled.\n\n{CHECK_MARKER}\n\nThe leg came free, and she rolled clear."
+    outcome, client = run([CHECK, LLMReply(text=marked), SUGGEST])
+    roll = next(p for t, p in outcome.events if t == "check_resolved")
+    assert CHECK_MARKER not in outcome.narration
+    assert check_notice(roll) in outcome.narration
+    before, after = outcome.narration.split(check_notice(roll))
+    assert "pulled" in before and "rolled clear" in after
+    assert CHECK_MARKER in str(client.calls[1]["messages"][-1]["content"])  # It was asked for.
+
+
+def test_d036_stray_markers_never_reach_the_player() -> None:
+    outcome, _ = run(
+        [NONE, LLMReply(text=f"She waited.\n\n{CHECK_MARKER}\n\nNothing happened at all."), SUGGEST]
+    )
+    assert CHECK_MARKER not in outcome.narration
+    roll = {"stat": "agility", "outcome": "success", "automatic": True, "complication": False}
+    assert check_notice(roll) == "***Agility check: success, decided by the tier gap***"
+
+
+def test_d036_no_marker_leaves_the_prose_alone() -> None:
+    outcome, _ = run([CHECK, LLMReply(text=PROSE), SUGGEST])
+    assert outcome.narration == PROSE
 
 
 def test_d031_a_plain_question_rolls_nothing() -> None:

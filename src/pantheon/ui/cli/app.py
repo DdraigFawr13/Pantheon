@@ -16,6 +16,7 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 
 from pantheon.config import Config, load_config
+from pantheon.engine.checks import Outcome
 from pantheon.engine.commands import (
     CharacterChoices,
     allocate_point,
@@ -26,13 +27,14 @@ from pantheon.engine.commands import (
 )
 from pantheon.engine.opening import draw_opening_gods
 from pantheon.engine.rng import RngStreams
-from pantheon.engine.state import STATS, EventRecord, GameState, xp_to_next
+from pantheon.engine.state import STATS, Action, EventRecord, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
-from pantheon.engine.tools import resolve_offer
+from pantheon.engine.tools import check_preview, resolve_offer
 from pantheon.llm.anthropic_adapter import AnthropicClient
 from pantheon.llm.client import LLMClient
 from pantheon.narrator.assemble import history_window
 from pantheon.narrator.loop import TurnOutcome, take_turn
+from pantheon.narrator.notices import check_notice
 from pantheon.storage.db import Database, TurnRecord
 from pantheon.world.loader import World, load_world
 
@@ -46,12 +48,13 @@ OPENING_INPUT = (
 )
 _REFUSE_TERMS = "No class or level. You grow through shards, gear, allies and reputation."
 _BAR_WIDTH = 10
-_COMMANDS = "[dim]Commands: sheet · hooks · help · quit[/dim]"
+_COMMANDS = "[dim]Commands: inspect 2 · sheet · hooks · help · quit[/dim]"
 _BARE_COMMANDS = {"sheet": "/sheet", "hooks": "/hooks", "help": "/help", "?": "/help", "quit": "/quit"}
+_BARE_INSPECT = re.compile(r"inspect(\s+\S+)?", re.I)
 _HELP = (
     "Type a number from the list, or describe what you do in your own words.\n"
-    "Commands: sheet (your character) · hooks (what may come back) · help (this) · quit (saves first)\n"
-    "The Oath choices are numbers on the list."
+    "Commands: inspect 2 (look at option 2, free) · sheet (your character) · hooks (what may come back)\n"
+    "help (this) · quit (saves first). The Oath choices are numbers on the list."
 )
 _SAVED = "Saved. `pantheon play` resumes here."
 
@@ -183,21 +186,13 @@ def _sheet(state: GameState, world: World) -> Panel:
     return Panel("\n".join(lines), title="The Ledger" if state.oaths else "Unwritten", border_style="yellow")
 
 
-def _check_line(p: dict[str, Any]) -> str:
-    outcome = str(p["outcome"]).replace("_", " ") + (" + complication" if p.get("complication") else "")
-    stat = str(p["stat"]).capitalize()
-    if p.get("automatic"):
-        return f"{stat} check: {outcome}, decided by the tier gap"
-    return f"{stat} check: chance {p['chance']}, roll {p['roll']}: {outcome}"
-
-
 def ledger_lines(events: list[EventRecord]) -> list[str]:
     """What the engine decided this turn, shown beside the prose (GAME-04)."""
     lines = []
     for type_, p in events:
         match type_:
             case "check_resolved":
-                lines.append(_check_line(p))
+                lines.append(check_notice(p).strip("*"))
             case "xp_gained":
                 lines.append(f"+{p['amount']} XP ({p['reason']})")
             case "level_up":
@@ -244,14 +239,57 @@ def _player_choices(sim: Simulation, ask: Ask, console: Console) -> None:
 def _show(outcome: TurnOutcome, console: Console) -> None:
     console.print(Panel(Markdown(outcome.narration), border_style="red" if outcome.is_fallback else "blue"))
     for line in ledger_lines(outcome.events):
-        console.print(f"  {line}")
+        if line not in outcome.narration:  # A check the narrator placed in the story is already on screen.
+            console.print(f"  {line}")
 
 
-def _show_actions(state: GameState, console: Console) -> None:
+def _odds_text(state: GameState, world: World, action: Action) -> str:
+    """The odds on a suggested action, from the same calculation as the roll (D-036)."""
+    assert world.data is not None
+    if action.check is None:
+        return ""
+    odds = check_preview(state, world.data, action.check)
+    if odds.shown is not None:
+        return f" {odds.shown}%"
+    return " sure" if odds.outcome is Outcome.SUCCESS else " no chance"
+
+
+def _show_actions(state: GameState, world: World, console: Console) -> None:
     console.print(_status_line(state))
     for number, action in enumerate(state.suggested, 1):
-        tag = f"[bold]\\[{action.tag.upper()}][/bold] " if action.tag else ""
+        odds = _odds_text(state, world, action)
+        tag = f"[bold]\\[{action.tag.upper()}{odds}][/bold] " if action.tag else ""
         console.print(f"  {number}. {tag}{action.label}")
+
+
+def _inspect(state: GameState, world: World, rest: str) -> str:
+    """Everything known about one option, without using game time."""
+    if not rest.strip():
+        return "Name an option, such as inspect 2."
+    number = int(rest) if rest.isdigit() else 0
+    if not 1 <= number <= len(state.suggested):
+        return f"There is no option {rest}."
+    action = state.suggested[number - 1]
+    lines = [f"[bold]{action.label}[/bold]"]
+    if action.check is None:
+        lines.append("No roll.")
+    else:
+        check = action.check
+        stat = str(check["stat"])
+        skill = f" + {check['skill']}" if check.get("skill") else ""
+        odds = _odds_text(state, world, action).strip()
+        lines.append(
+            f"{stat.capitalize()} {state.stats[stat]}{skill} · {check['difficulty']} · "
+            f"challenge Tier {check['challenge_tier']} · {odds}"
+        )
+        if check.get("stakes"):
+            lines.append(f"At stake: {check['stakes']}")
+    shown_above = {*STATS, (action.check or {}).get("skill")}
+    if action.tag and action.tag.lower() not in shown_above:
+        lines.append(f"Rests on: {action.tag}")
+    if action.cost:
+        lines.append(f"Cost or risk: {action.cost}")
+    return "\n".join(lines)
 
 
 def offer_choices(state: GameState, world: World) -> list[tuple[str, str]]:
@@ -333,7 +371,7 @@ class Game:
         _player_choices(sim, self.ask, self.console)
         self._commit_commands(sim)
 
-    def turn(self, player_input: str) -> None:
+    def turn(self, player_input: str, chosen_check: dict[str, Any] | None = None) -> None:
         turn = self.db.last_turn(self.tid) + 1
         with self.console.status("The world answers..."):
             outcome = take_turn(
@@ -348,6 +386,7 @@ class Game:
                 max_rounds=self.config.max_tool_rounds,
                 max_retries=self.config.max_tool_retries,
                 violence=self.config.violence,
+                chosen_check=chosen_check,
             )
         record = TurnRecord(
             turn,
@@ -389,6 +428,8 @@ class Game:
         match command.lower():
             case "/sheet":
                 self.console.print(_sheet(self.state, self.world))
+            case "/inspect":
+                self.console.print(_inspect(self.state, self.world, rest))
             case "/hooks":
                 for hook in self.state.hooks:
                     self.console.print(
@@ -412,7 +453,7 @@ class Game:
             last = self.db.recent_turns(self.tid, 1)[0][1]
             self.console.print(Panel(Markdown(last), border_style="blue"))
         while True:
-            _show_actions(self.state, self.console)
+            _show_actions(self.state, self.world, self.console)
             offers = offer_choices(self.state, self.world)
             first = len(self.state.suggested) + 1
             terms = offer_terms(self.state, self.world)
@@ -425,6 +466,8 @@ class Game:
             if not line:
                 continue
             line = _BARE_COMMANDS.get(line.lower(), line)
+            if _BARE_INSPECT.fullmatch(line):
+                line = f"/{line}"
             choice = None
             if line.isdigit() and first <= int(line) < first + len(offers):
                 choice = offers[int(line) - first][0]
@@ -444,15 +487,17 @@ class Game:
             if line.lower() == "/quit":
                 self.console.print(_SAVED)
                 return
+            chosen_check = None
             if line.isdigit() and 1 <= int(line) <= len(self.state.suggested):
                 action = self.state.suggested[int(line) - 1]
-                line = f"{action.label} ({action.tag})" if action.tag else action.label
+                chosen_check = action.check
+                line = f"{action.label} ({action.tag})" if action.tag and not action.check else action.label
             elif line.startswith("/"):
                 text = self._command(line)
                 if text is None:
                     continue
                 line = text
-            self.turn(line)
+            self.turn(line, chosen_check)
 
 
 def _play(args: argparse.Namespace, console: Console, ask: Ask, client: LLMClient | None) -> int:

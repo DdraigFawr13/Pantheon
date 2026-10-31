@@ -16,12 +16,47 @@ from pantheon.engine.checks import (
     OvercomeClaim,
     OvercomeKind,
     base_chance,
+    check_odds,
     outcome_for,
     par,
     resolve_check,
     stat_edge,
 )
 from pantheon.engine.rng import RngStreams
+
+
+@given(
+    stat=st.integers(0, 120),
+    skill=st.integers(0, 5),
+    actor=st.integers(0, 8),
+    challenge=st.integers(0, 8),
+    difficulty=st.sampled_from(Difficulty),
+    approach=st.sampled_from(Approach),
+    seed=st.integers(1, 1000),
+)
+def test_d036_the_odds_shown_are_the_odds_rolled(
+    stat: int, skill: int, actor: int, challenge: int, difficulty: Difficulty, approach: Approach, seed: int
+) -> None:
+    request = CheckRequest(difficulty, stat, skill, actor, challenge, approach)
+    odds = check_odds(request)
+    result = resolve_check(RngStreams.from_seed(seed), request)
+    assert odds.chance == result.chance
+    assert odds.tier_gap == result.tier_gap
+    if odds.outcome is None:
+        assert not result.automatic
+    else:
+        assert result.automatic and odds.outcome == result.outcome
+
+
+@pytest.mark.parametrize(("chance", "shown"), [(-40, 5), (3, 5), (62, 62), (140, 100)])
+def test_d036_the_shown_chance_respects_the_always_succeed_band(chance: int, shown: int) -> None:
+    odds = check_odds(CheckRequest(Difficulty.ROUTINE, 80, 0, 4, 4, Approach.OTHER))
+    assert dataclasses.replace(odds, chance=chance).shown == shown
+
+
+def test_d036_a_settled_check_has_no_chance_to_show() -> None:
+    certain = check_odds(CheckRequest(Difficulty.ROUTINE, 20, 0, 4, 1, Approach.OTHER))
+    assert certain.outcome is Outcome.SUCCESS and certain.chance is None and certain.shown is None
 
 
 class FixedRolls(RngStreams):

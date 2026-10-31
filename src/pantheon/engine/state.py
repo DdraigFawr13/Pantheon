@@ -32,6 +32,7 @@ class Action(BaseModel):
     violent: bool = False
     cost: str | None = None
     tag: str | None = None
+    check: dict[str, Any] | None = None
 
 
 class GameState(BaseModel):

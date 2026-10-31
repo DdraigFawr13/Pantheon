@@ -19,6 +19,7 @@ from pantheon.engine.tools import ToolResult, apply_tool, tool_definitions
 from pantheon.llm.client import LLMClient, LLMReply, LLMUnavailable
 from pantheon.narrator import fallback
 from pantheon.narrator.assemble import assemble, state_view
+from pantheon.narrator.notices import CHECK_MARKER, place_notices
 from pantheon.narrator.validators import prose_problems, repeats_earlier_turn, strip_action_list
 from pantheon.world.loader import World
 
@@ -30,7 +31,8 @@ _REFEREE_PROMPT = (
 )
 _NARRATE_OUTCOME = (
     "[The engine has decided: {outcomes}. Narrate exactly that result, and do not soften it. "
-    "Write the prose now.]"
+    f"Put {CHECK_MARKER} on its own line at the exact moment the result happens; the game prints the dice "
+    "there. Write the prose now.]"
 )
 _OUTCOME_MEANINGS = {
     "triumph": "a triumph, better than hoped",
@@ -44,8 +46,9 @@ _SCRIBE_PROMPT = (
     "a check_id or hazard:<name>). adjust_standing only if a named person or god who matters saw a deed. "
     "register_hook only for a new choice or person who should matter later. Always finish with "
     "suggest_actions: 3 to 4 actions that fit this exact moment, one non-violent, one with a cost or risk in "
-    "its cost field, no digits. Each label is one brief plain line. Give each a tag naming the stat, skill, "
-    "Oath, class, profession or people it rests on, from the sheet; leave the tag out if nothing applies.]"
+    "its cost field, no digits. Each label is one brief plain line. Give an uncertain action a check (stat, "
+    "difficulty, challenge_tier, stakes); talking, asking and looking have none. A line only this character "
+    "could choose gets a tag naming its Oath, class, profession or people, from the sheet.]"
 )
 _SCRIBE_TOOLS = (
     "grant_xp",
@@ -57,9 +60,10 @@ _SCRIBE_TOOLS = (
 )
 _SUGGEST_PROMPT = (
     "[Now call suggest_actions with 3 to 4 next actions for the player, each one brief plain line. Include a "
-    "non-violent action and one with a visible cost or risk in its cost field. Tag each with the stat, "
-    "skill, Oath, class, profession or people it rests on, from the sheet. Use no digits. Write no more "
-    "prose.]"
+    "non-violent action and one with a visible cost or risk in its cost field. Give an uncertain action a "
+    "check (stat, difficulty, challenge_tier, stakes); talking, asking and looking have none. A line only "
+    "this character could choose gets a tag naming its Oath, class, profession or people, from the sheet. "
+    "Use no digits. Write no more prose.]"
 )
 
 
@@ -141,6 +145,18 @@ class _Turn:
                     self.log.append(f"rejected {call.name}: {result.reason}")
             results.append({"type": "tool_result", "tool_use_id": call.id, "content": json.dumps(payload)})
         return results
+
+    def roll_chosen(self, messages: list[dict[str, Any]], check: dict[str, Any]) -> bool:
+        """Roll the check the player saw on the option they picked (D-036). False if it no longer applies."""
+        result = apply_tool(self.sim, "request_check", check)
+        if not result.accepted:
+            self.log.append(f"rejected chosen check: {result.reason}")
+            return False
+        self.allowed |= _numbers_in(result.data)
+        self.outcomes.append(result.data["outcome"])
+        note = _NARRATE_OUTCOME.format(outcomes=_OUTCOME_MEANINGS[result.data["outcome"]])
+        messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{note}"}
+        return True
 
     def referee(self, messages: list[dict[str, Any]]) -> None:
         """Roll before any prose exists, so the story has to follow the dice (ENG-02, ENG-04)."""
@@ -231,6 +247,7 @@ def take_turn(
     max_rounds: int = 3,
     max_retries: int = 2,
     violence: str = "moderate",
+    chosen_check: dict[str, Any] | None = None,
 ) -> TurnOutcome:
     """Play one turn without touching storage. The caller commits the outcome atomically (OPS-03)."""
     rng = RngStreams.from_state(rng_state)
@@ -242,10 +259,13 @@ def take_turn(
     narration: str | None = None
     try:
         # Until the player answers the Dual Offer the scene is only talk, so there is nothing to roll.
-        if state.offer_resolved and not player_input.startswith("["):  # Bracketed text is the game speaking.
+        rolled = chosen_check is not None and run.roll_chosen(messages, chosen_check)
+        # Bracketed text is the game speaking.
+        if not rolled and state.offer_resolved and not player_input.startswith("["):
             run.referee(messages)
         narration = run.narrate(messages)
         if narration is not None:
+            narration = place_notices(narration, sim.events)
             names = _SCRIBE_TOOLS if state.offer_resolved else ("suggest_actions",)
             if not sim.checks:  # XP rewards a tested deed, so a talking turn cannot farm it.
                 names = tuple(n for n in names if n != "grant_xp")

@@ -4,7 +4,7 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1.6 writing style: the first build (D-033 to D-035) is merged in PR #11, with M1a and M1.5 before it (PRs #9, #10). The owner's API key works, and the owner has played one turn of the new style. The second style build has not started.
+M1.6 writing style: the first build (D-033 to D-035) is merged in PR #11, with M1a and M1.5 before it (PRs #9, #10). The second build (D-036) is on branch `style-pass-2`, waiting for the owner's play and merge. The owner's API key works, and one turn of the new style is saved.
 
 ## Just done
 
@@ -24,11 +24,7 @@ M1.6 writing style: the first build (D-033 to D-035) is merged in PR #11, with M
 
 ## Next
 
-1. Second style build, recommended but not yet approved by the owner in so many words, on a fresh branch from `main` (`docs/BUILD_PLAN.md` M1.6):
-   - Real odds on options, such as `[AGILITY 62%]`. Each suggested action carries its check; the engine works out the chance with the same code that rolls it (GAME-02), and picking it rolls exactly that and skips the referee. A stat or skill tag needs a check. Before the Dual Offer is answered nothing rolls, so strip checks and stat tags then. This fixes the live defect of `[INTELLECT]` on a question that never rolls. Show the chance clamped to 5 to 100 % (`checks.py` `outcome_for`).
-   - Mid-story notices: the narrator marks the moment and the engine prints the line; fall back to after the prose if the marker is missing. Don't store the marker in the turn text.
-   - `/inspect <number>`, free of game time, using the stored cost field.
-   - Proposed to the owner, not confirmed: titles move to M1b because no title data exists; the high-stakes roll moment waits for the phone page. Update BUILD_PLAN and republish the plan page if confirmed (D-018).
+1. Owner plays `style-pass-2`, then merges its PR. It has only run against `MockClient`: watch whether Haiku gives checks, places `<<CHECK>>`, and keeps labels to 12 words without many retries (D-036). The owner has not confirmed moving titles to M1b or the high-stakes moment to M2.5.
 2. Then M1b, as the owner chose. Tune `world/data/rewards.yaml` from play.
 3. Whenever the owner plays a longer session, save it to `docs/playtests/` from `data/pantheon.db`: this completes M1.5's and M1.6's live transcript. Tables: `turn`, `event` (`payload_json`).
 

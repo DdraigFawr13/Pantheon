@@ -214,3 +214,9 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Accepted (2026-10-30; owner: "the commands are just a little hard to remember")
 - **Decision:** Every prompt lists the commands. The whole line `sheet`, `hooks`, `help`, `?` or `quit` works without a slash, while the same word in a sentence stays an action. Oath choices are made by number. Action labels are capped at 12 words.
 - **Why:** the owner's first real play of the new style. The opening turn also offered a 16-word option, longer than the brief entries the owner asked for.
+
+## D-036 Options show real odds, and notices land mid-story
+
+- **Status:** Accepted (2026-10-30; owner's approved workshop answers, then "continue" on the recommended order). The two moves below are Assumed.
+- **Decision:** A suggested action may carry a check. The engine works out its odds with `check_odds`, the same function the roll uses (GAME-02), and picking the action rolls exactly that check and skips the referee. A stat or skill tag needs a check, and nothing rolls before the Dual Offer is answered, so those tags and checks are stripped until then. Shown chances are limited to 5 to 100 %, because low rolls always succeed. The narrator marks the moment of a result with `<<CHECK>>` and the engine prints the line there; if the marker is missing, the line prints after the prose. `inspect <number>` describes an option without using game time. Assumed: titles move to M1b because no title data exists, and the moment for high-stakes rolls waits for the phone page.
+- **Why:** the first live turn tagged a question with `[INTELLECT]` although questions never roll. The owner chose stats and odds on options, dice on every check and notices at the moment they happen.

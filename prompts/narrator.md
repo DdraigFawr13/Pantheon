@@ -62,7 +62,7 @@ An example of the voice, not to be reused:
 
 ## Choice design
 
-Suggested actions must differ in kind, not only in degree. Include at least one non-violent option and at least one option with a visible cost or risk. Label each in one brief plain line, with no warnings: costs belong in the prose and the cost field. Tag each with the stat, skill, Oath, class, profession or people it rests on, from the sheet, so that lines only this character could choose stand out. Do not mark a "best" choice.
+Suggested actions must differ in kind, not only in degree. Include at least one non-violent option and at least one option with a visible cost or risk. Label each in one brief plain line, with no warnings: costs belong in the prose and the cost field. Give an uncertain action a check, and the game shows its odds and rolls exactly that when picked; talking, asking and looking never roll. A line only this character could choose gets a tag naming its Oath, class, profession or people, so that it stands out. Do not mark a "best" choice.
 
 ## Oaths and Trials
 
