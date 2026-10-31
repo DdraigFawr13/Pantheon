@@ -119,7 +119,7 @@ M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is t
 - Shards: absorb, fuse fragments, skill evolution at rank 5.
 - Player commands (`allocate_point`, `pick_skill`, `absorb_shard`, `fuse_fragments`, `choose_evolution`).
 
-**M1c Event log, replay, fork, versions** (ENG-06, ENG-08, ENG-10, ENG-11)
+**M1c Event log, replay, fork, versions** (ENG-06, ENG-08, ENG-10, ENG-11). Built on `m1c-replay-fork-calendar` (D-038). Oath timers and daily Boons wait for canon rules, and training gains for G-27.
 - One command funnel: validate, then roll, then mutate, then append. A rejected tool call fails at validate and consumes no randomness (D-022).
 - Events store resolved outcomes; state is a pure fold; snapshots every 10 turns.
 - Save versions upgrade one step at a time through a migration chain; a save newer than the game is refused, never overwritten (ENG-10, GAME-05).
@@ -134,7 +134,7 @@ M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is t
 - `rewards.yaml`: XP per kind scaled by tier to hit D-014 pacing; Standing deltas; damage by outcome and rarity; Tier 1 loot tables. A small simulation script checks that the tables reach Tier 2 in about 8 hours of typical play (estimate inputs recorded in DECISIONS as Assumed).
 
 **M1f Dev CLI**
-- `pantheon roll`, `pantheon sheet`, `pantheon log`, `pantheon fork N`, no LLM.
+- `pantheon roll`, `pantheon sheet`, `pantheon log`, no LLM. `pantheon fork N` came early, with M1c.
 
 **Acceptance:** roadmap M1; engine coverage at least 90 %. **You test:** read a transcript of a level-up, a shard absorption and an evolution; optional: run the CLI.
 

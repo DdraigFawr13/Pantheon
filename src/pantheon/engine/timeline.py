@@ -8,7 +8,7 @@ from typing import Any
 
 from pantheon.engine.checks import Outcome
 from pantheon.engine.rng import RngStreams
-from pantheon.engine.state import EventRecord, GameState, apply_event
+from pantheon.engine.state import STANDING_MAX, STANDING_MIN, EventRecord, GameState, apply_event
 from pantheon.world.schemas import GameData
 
 
@@ -33,6 +33,7 @@ class Simulation:
         self.damaged_by: set[str] = set()
         self.xp_this_turn = 0
         self.suggested = False
+        self.rested = False
         self.exempt_from_limits = False
         self.call_counts: Counter[str] = Counter()
 
@@ -47,3 +48,11 @@ class Simulation:
     def emit(self, type_: str, payload: dict[str, Any]) -> None:
         apply_event(self.state, type_, payload)
         self.events.append((type_, payload))
+
+
+def change_standing(sim: Simulation, entity: str, delta: int, reason: str) -> None:
+    current = sim.state.standing.get(entity, 0)
+    value = max(STANDING_MIN, min(STANDING_MAX, current + delta))
+    sim.emit(
+        "standing_changed", {"entity": entity, "delta": value - current, "value": value, "reason": reason}
+    )

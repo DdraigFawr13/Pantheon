@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from pantheon.engine.calendar import clock_value, date_of
 from pantheon.engine.state import GameState, xp_to_next
 from pantheon.world.loader import World
 
@@ -28,6 +29,7 @@ _REMINDER = (
 def state_view(state: GameState) -> dict[str, Any]:
     """The curated sheet the narrator sees (D-022): no roll logs and nothing gated."""
     return {
+        "date": date_of(state.day).view(),
         "name": state.name,
         "people": state.people,
         "origin": state.origin,
@@ -73,10 +75,17 @@ def _due_material(state: GameState, world: World) -> str:
             "the player a menu for swearing or refusing, so never present that choice in prose or in "
             "suggest_actions; suggest questions, bargains and reactions instead."
         )
+    open_hooks = [h for h in state.hooks if not h.resolved]
     lines += [
         f"- Hook {h.id} (turn {h.turn}): {h.description}. Due: {h.due_condition}."
-        for h in state.hooks[-_MAX_HOOKS_SHOWN:]
+        for h in open_hooks[-_MAX_HOOKS_SHOWN:]
     ]
+    for clock in world.data.clocks:
+        value = clock_value(state, world.data, clock.id)
+        if value >= clock.segments:
+            lines.append(f"- {clock.name} has filled: {clock.filled}")
+        elif value > clock.start:
+            lines.append(f"- {clock.name} has moved: {value} of {clock.segments} segments.")
     return "\n".join(lines) or "(nothing due)"
 
 

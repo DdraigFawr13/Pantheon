@@ -1,4 +1,4 @@
-"""`pantheon` command line: `new` creates a timeline; `play` runs character creation and the game."""
+"""`pantheon` command line: `new` creates a timeline, `play` runs the game, `fork` branches from a turn."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 
 from pantheon.config import Config, load_config
+from pantheon.engine.calendar import date_of, format_date
 from pantheon.engine.checks import Outcome
 from pantheon.engine.commands import (
     CharacterChoices,
@@ -36,7 +37,7 @@ from pantheon.llm.client import LLMClient
 from pantheon.narrator.assemble import history_window
 from pantheon.narrator.loop import TurnOutcome, take_turn
 from pantheon.narrator.notices import check_notice
-from pantheon.storage.db import Database, TurnRecord
+from pantheon.storage.db import Database, SaveError, TurnRecord
 from pantheon.world.loader import World, load_world
 
 type Ask = Callable[[str], str]
@@ -164,7 +165,7 @@ def _status_line(state: GameState) -> str:
     if state.level:
         progress = f"Tier {state.tier} · Level {state.level} · XP {state.xp}/{xp_to_next(state.level)}"
     health = f"HP {state.hp}/{state.max_hp}" + (" [red]DOWNED[/red]" if state.downed else "")
-    return f"[dim]{state.name} · {progress} · {health}[/dim]"
+    return f"[dim]{format_date(date_of(state.day))} · {state.name} · {progress} · {health}[/dim]"
 
 
 def _bar(label: str, value: int, maximum: int) -> str:
@@ -179,7 +180,7 @@ def _sheet(state: GameState, world: World) -> Panel:
     lines = [
         f"[bold]{state.name}[/bold], {state.age}, {state.people}",
         f"Class: {current.name if current else 'none'} · Profession: {state.profession or 'none'}",
-        f"Tier {state.tier} · Level {state.level}",
+        f"Tier {state.tier} · Level {state.level} · {format_date(date_of(state.day))}",
         _bar("HP", state.hp, state.max_hp),
         _bar("Mana", state.max_mana, state.max_mana),
         _bar("Stamina", state.max_stamina, state.max_stamina),
@@ -247,6 +248,13 @@ def ledger_lines(events: list[EventRecord]) -> list[str]:
                 lines.append(f"[bold]Ascension Trial: {p['result'].capitalize()}[/bold]")
             case "class_evolved":
                 lines.append(f"[bold]Class evolved:[/bold] {p['class_id']}, {p['stat']} +{p['bonus']}")
+            case "time_advanced":
+                lines.append(f"[dim]Time passes ({p['reason']}).[/dim]")
+            case "clock_advanced":
+                state = "[bold]has filled[/bold]" if p["filled"] else "moves"
+                lines.append(f"{p['name']} {state}: {p['value']} of {p['segments']}")
+            case "petition_resolved":
+                lines.append(f"Petition {'granted' if p['granted'] else 'not granted'} ({p['reason']})")
             case _:
                 pass
     return lines
@@ -493,7 +501,7 @@ class Game:
             case "/trial":
                 return self._attempt_trial()
             case "/hooks":
-                for hook in self.state.hooks:
+                for hook in (h for h in self.state.hooks if not h.resolved):
                     self.console.print(
                         f"  {hook.id}. {hook.description} [dim](due {hook.due_condition})[/dim]"
                     )
@@ -514,6 +522,7 @@ class Game:
         else:
             last = self.db.recent_turns(self.tid, 1)[0][1]
             self.console.print(Panel(Markdown(last), border_style="blue"))
+            self.player_choices()  # A choice left open by quitting, or by forking at that turn.
         while True:
             _show_actions(self.state, self.world, self.console)
             offers = offer_choices(self.state, self.world)
@@ -580,7 +589,7 @@ def _play(args: argparse.Namespace, console: Console, ask: Ask, client: LLMClien
         client = AnthropicClient(config.narrator_model, config.base_url, config.think)
     rules = Rules(world.data, {k: f.set_by for k, f in world.flags.items()})
     with Database.open(Path(args.db) if args.db else config.db_path) as db:
-        tid = db.latest_timeline()
+        tid = db.find_timeline(args.timeline) if args.timeline else db.latest_timeline()
         if tid is None or args.fresh:
             tid = _create_timeline(db, world, config, args.seed, console)
         try:
@@ -596,21 +605,47 @@ def _play(args: argparse.Namespace, console: Console, ask: Ask, client: LLMClien
     return 0
 
 
+def _fork(args: argparse.Namespace, console: Console) -> int:
+    config = load_config(Path(args.config) if args.config else None)
+    with Database.open(Path(args.db) if args.db else config.db_path) as db:
+        parent = db.find_timeline(args.timeline) if args.timeline else db.latest_timeline()
+        if parent is None:
+            console.print("[red]There is no timeline to fork yet.[/red]")
+            return 1
+        tid = db.fork(parent, args.turn)
+    console.print(
+        f"New timeline [bold]{tid[:8]}[/bold] from turn {args.turn} of {parent[:8]}. "
+        f"`pantheon play` continues it; `pantheon play --timeline {parent[:8]}` returns to the original."
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClient | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pantheon")
     sub = parser.add_subparsers(dest="command", required=True)
     new = sub.add_parser("new", help="create a timeline")
     play = sub.add_parser("play", help="play the latest timeline; a new game starts when there is none")
+    fork = sub.add_parser("fork", help="branch a new timeline from the end of a turn")
+    fork.add_argument("turn", type=int, help="the turn to branch from")
     for command in (new, play):
         command.add_argument("--seed", type=int, default=0, help="seed (0 = config or random)")
+    for command in (new, play, fork):
         command.add_argument("--db", help="database path (default: data/pantheon.db)")
         command.add_argument("--config", help="config file (default: config.toml)")
+    for command in (play, fork):
+        command.add_argument("--timeline", help="the start of a timeline's id (default: the latest)")
     play.add_argument("--fresh", action="store_true", help="start a new timeline instead of resuming")
     args = parser.parse_args(argv)
     console = Console()
-    if args.command == "new":
-        return _new(args, console)
-    return _play(args, console, ask or console.input, client)
+    try:
+        if args.command == "new":
+            return _new(args, console)
+        if args.command == "fork":
+            return _fork(args, console)
+        return _play(args, console, ask or console.input, client)
+    except SaveError as exc:
+        console.print(f"[red]{exc}[/red]")
+        return 1
 
 
 if __name__ == "__main__":

@@ -44,7 +44,10 @@ _SCRIBE_PROMPT = (
     "[Scribe step, no more story. Record only what this scene really did; most turns need just one or two "
     "calls. grant_xp if a check was passed or survived, if offered. apply_effect if the player was hurt (use "
     "a check_id or hazard:<name>). adjust_standing only if a named person or god who matters saw a deed. "
-    "register_hook only for a new choice or person who should matter later. Always finish with "
+    "register_hook only for a new choice or person who should matter later. advance_time whenever the scene "
+    "took real time, such as a journey or a sleep (rest also heals). send_petition if a sworn god asked a "
+    "small thing; resolve_petition when one was done or refused. engage_clock if a tested deed touched a "
+    "global clock's threads. Always finish with "
     "suggest_actions: 3 to 4 actions that fit this exact moment, one non-violent, one with a cost or risk in "
     "its cost field, no digits. Each label is one brief plain line. Give an uncertain action a check (stat, "
     "difficulty, challenge_tier, stakes); talking, asking and looking have none. A line only this character "
@@ -56,6 +59,10 @@ _SCRIBE_TOOLS = (
     "adjust_standing",
     "register_hook",
     "set_flag",
+    "advance_time",
+    "send_petition",
+    "resolve_petition",
+    "engage_clock",
     "suggest_actions",
 )
 _SUGGEST_PROMPT = (
