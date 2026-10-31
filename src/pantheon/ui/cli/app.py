@@ -46,7 +46,13 @@ OPENING_INPUT = (
 )
 _REFUSE_TERMS = "No class or level. You grow through shards, gear, allies and reputation."
 _BAR_WIDTH = 10
-_HELP = "Type an action, or a number from the list. Commands: /sheet /hooks /swear <god> /refuse /help /quit"
+_COMMANDS = "[dim]Commands: sheet · hooks · help · quit[/dim]"
+_BARE_COMMANDS = {"sheet": "/sheet", "hooks": "/hooks", "help": "/help", "?": "/help", "quit": "/quit"}
+_HELP = (
+    "Type a number from the list, or describe what you do in your own words.\n"
+    "Commands: sheet (your character) · hooks (what may come back) · help (this) · quit (saves first)\n"
+    "The Oath choices are numbers on the list."
+)
 _SAVED = "Saved. `pantheon play` resumes here."
 
 
@@ -389,7 +395,9 @@ class Game:
                         f"  {hook.id}. {hook.description} [dim](due {hook.due_condition})[/dim]"
                     )
             case "/swear":
-                return self._settle_offer(rest)
+                if rest:
+                    return self._settle_offer(rest)
+                self.console.print("Use the numbers on the list to swear an Oath.")
             case "/refuse":
                 return self._settle_offer("refuse")
             case _:
@@ -412,9 +420,11 @@ class Game:
                 self.console.print(f"  {number}. [bold]{label}[/bold]")
                 self.console.print(f"     [dim]{terms[choice_id]}[/dim]")
             self.console.print("  [dim]Or type your own.[/dim]")
+            self.console.print(f"  {_COMMANDS}")
             line = self.ask("\nWhat do you do? ").strip()
             if not line:
                 continue
+            line = _BARE_COMMANDS.get(line.lower(), line)
             choice = None
             if line.isdigit() and first <= int(line) < first + len(offers):
                 choice = offers[int(line) - first][0]

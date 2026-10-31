@@ -166,6 +166,29 @@ def test_d033_swearing_and_levelling_show_the_full_sheet(tmp_path: Path, capsys:
     assert "█" in out
 
 
+def test_d035_commands_work_without_a_slash_and_are_on_screen(tmp_path: Path, capsys: Any) -> None:
+    code, state, _ = play(tmp_path, [*NEW_GAME, "sheet", "hooks", "help", "?", "QUIT"], talk())
+    assert code == 0 and state.name == "Wren"
+    out = capsys.readouterr().out
+    assert "Unwritten" in out  # The sheet's title before an Oath.
+    assert "Debt:" in out  # A hook from character creation.
+    assert "sheet" in out and "quit" in out
+    assert out.count("Commands:") >= 2
+
+
+def test_d035_a_word_inside_a_sentence_is_still_an_action(tmp_path: Path) -> None:
+    lines = [*NEW_GAME, "4", "1", "1", "help the dying man", "/quit"]
+    _code, _state, tid = play(tmp_path, lines, [*talk(), *narration(), *narration()])
+    with Database.open(tmp_path / "game.db") as db:
+        assert db.recent_turns(tid, 1)[0][0] == "help the dying man"
+
+
+def test_d035_swear_with_no_god_lists_the_choices(tmp_path: Path, capsys: Any) -> None:
+    _code, state, _ = play(tmp_path, [*NEW_GAME, "/swear", "/quit"], talk())
+    assert state.level == 0
+    assert "Use the numbers" in capsys.readouterr().out
+
+
 def test_typed_oath_asks_first_and_a_no_keeps_the_turn(tmp_path: Path) -> None:
     lines = [*NEW_GAME, "I swear to no one", "/quit"]
     _code, state, _ = play(tmp_path, lines, [*talk(), *narration()])

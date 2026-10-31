@@ -30,6 +30,7 @@ MAX_HOOKS_PER_TURN = 2
 _FLAG_KEY = re.compile(r"^story\.[a-z][a-z0-9_.]*$")
 _DIGIT = re.compile(r"\d")
 _OATH_CHOICE = re.compile(r"\b(swear|accept|refuse)\b", re.I)
+MAX_ACTION_WORDS = 12
 
 
 @dataclass(frozen=True)
@@ -110,7 +111,7 @@ class RegisterHook(_Args):
 
 
 class SuggestedAction(_Args):
-    label: str = Field(description="One line, with no digits.")
+    label: str = Field(description=f"One brief line of at most {MAX_ACTION_WORDS} words, with no digits.")
     violent: bool = False
     cost: str | None = Field(default=None, description="A visible cost or risk, in words with no digits.")
     tag: str | None = Field(
@@ -313,6 +314,8 @@ def _suggest_actions(sim: Simulation, args: SuggestActions) -> dict[str, Any]:
         minimum = 1
     if not minimum <= len(actions) <= 4:
         raise Rejected("offer 3 to 4 actions")
+    if any(len(a.label.split()) > MAX_ACTION_WORDS for a in actions):
+        raise Rejected(f"keep each action to {MAX_ACTION_WORDS} words")
     tags = _character_tags(sim)
     unknown = [a.tag for a in actions if a.tag is not None and a.tag.lower() not in tags]
     if unknown:

@@ -329,6 +329,12 @@ def test_d033_action_tags_must_be_something_the_character_has(tag: str, ok: bool
         assert sim.state.suggested[0].tag == tag
 
 
+def test_d033_action_labels_stay_brief() -> None:
+    long = {"label": "Bargain with the god and ask what the dead man can tell you if you speak now"}
+    sim = sworn()
+    assert not apply_tool(sim, "suggest_actions", {"actions": [GOOD, long, {"label": "Run"}]}).accepted
+
+
 def test_d031_oath_choices_are_filtered_from_suggestions_until_the_offer_is_answered() -> None:
     actions = [{"label": "Swear to Veshra", "cost": "a Burden"}, {"label": "Ask why"}, {"label": "Hide"}]
     sim = fresh()

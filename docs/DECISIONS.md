@@ -208,3 +208,9 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Accepted (2026-10-30; owner: blind pick "Y, clearly", then "Better writer for prose, cheap model for the rest")
 - **Decision:** Claude Haiku 5.5 runs the referee, prose and scribe steps. This answers D-032's open question for now. The prompt forbids invented belongings and injuries after Haiku's sample did both.
 - **Why:** in one blind trial on the same brief and engine roll, the owner clearly preferred the Haiku sample to the Sonnet 5.5 sample. Both ran through subagents, not the game's adapter, so this is one sample and not a measurement. Haiku is about 20 times cheaper per token at list price.
+
+## D-035 Commands stay on screen and need no slash
+
+- **Status:** Accepted (2026-10-30; owner: "the commands are just a little hard to remember")
+- **Decision:** Every prompt lists the commands. The whole line `sheet`, `hooks`, `help`, `?` or `quit` works without a slash, while the same word in a sentence stays an action. Oath choices are made by number. Action labels are capped at 12 words.
+- **Why:** the owner's first real play of the new style. The opening turn also offered a 16-word option, longer than the brief entries the owner asked for.
