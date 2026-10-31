@@ -30,4 +30,5 @@ Format: `- G-<n> · <gap> · <where it shows> · <status>`
 - G-24 · Overcome Conditions only lift the force auto-fail, so force can beat cleverness far above your tier: a Tier 1 at par with a Routine check against Tier 5 has chance 20 by force with a condition, but -20 by any other approach, which passes only on 01 to 05 · `world/power_tiers.md` Checks · open: built as written (D-028)
 - G-25 · Origins' "starting gear" is named but no list exists · `world/protagonist_seed.md` Start state · open: the slice starts with no gear on the sheet
 - G-26 · A Riftborn character's birth rift affinity has no list of rifts to pick from · `world/peoples.md` · open: the slice offers any basic affinity
+- G-28 · No foe tables: which foes exist, their tiers, threat and intents · `world/power_tiers.md` Combat · open: the narrator names foes within engine bounds (D-039); M3.5's rift batch adds real ones
 - G-27 · The owner wants training and travel to skip time in one turn with a summary, but canon does not say what training gives · `world/power_tiers.md` · open: M1c built time skips without training gains (D-033, D-038)

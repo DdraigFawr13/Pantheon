@@ -12,6 +12,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
 
+from pantheon.engine.combat import downed_exchange
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import EventRecord, GameState
 from pantheon.engine.timeline import Rules, Simulation
@@ -28,6 +29,16 @@ _REFEREE_PROMPT = (
     "or deceptive whose result is not certain, call request_check now and choose the stat, difficulty and "
     "challenge_tier. If the action names a stat in brackets, use that stat. Asking a question, talking, "
     "looking around and walking somewhere safe are never checks: for those, reply with the single word NONE.]"
+)
+_FIGHT_REFEREE_PROMPT = (
+    "[Referee step, no story yet. A fight is on, so unless the player is only talking, call fight_move now. "
+    "move is attack (with target, a foe's id from the Due list), guard or flee; stat is the stat the action "
+    "really uses; skill only if a skill on the sheet applies. Reply with the single word NONE only for pure "
+    "talk, in which case no exchange happens.]"
+)
+_DOWNED_NOTE = (
+    "[The character is Downed and cannot act; what the player typed is only what they try. The engine has "
+    "decided: {summary} Narrate exactly that.]"
 )
 _NARRATE_OUTCOME = (
     "[The engine has decided: {outcomes}. Narrate exactly that result, and do not soften it. "
@@ -47,11 +58,13 @@ _SCRIBE_PROMPT = (
     "register_hook only for a new choice or person who should matter later. advance_time whenever the scene "
     "took real time, such as a journey or a sleep (rest also heals). send_petition if a sworn god asked a "
     "small thing; resolve_petition when one was done or refused. engage_clock if a tested deed touched a "
-    "global clock's threads. Always finish with "
+    "global clock's threads. start_fight when foes attack or the player attacks them, and end_fight only if "
+    "the story ends one early; the engine sets all fight damage. Always finish with "
     "suggest_actions: 3 to 4 actions that fit this exact moment, one non-violent, one with a cost or risk in "
     "its cost field, no digits. Each label is one brief plain line. Give an uncertain action a check (stat, "
     "difficulty, challenge_tier, stakes); talking, asking and looking have none. A line only this character "
-    "could choose gets a tag naming its Oath, class, profession or people, from the sheet.]"
+    "could choose gets a tag naming its Oath, class, profession or people, from the sheet. During a fight, "
+    "give each action a fight (move, target, stat) instead of a check.]"
 )
 _SCRIBE_TOOLS = (
     "grant_xp",
@@ -63,6 +76,8 @@ _SCRIBE_TOOLS = (
     "send_petition",
     "resolve_petition",
     "engage_clock",
+    "start_fight",
+    "end_fight",
     "suggest_actions",
 )
 _SUGGEST_PROMPT = (
@@ -70,7 +85,8 @@ _SUGGEST_PROMPT = (
     "non-violent action and one with a visible cost or risk in its cost field. Give an uncertain action a "
     "check (stat, difficulty, challenge_tier, stakes); talking, asking and looking have none. A line only "
     "this character could choose gets a tag naming its Oath, class, profession or people, from the sheet. "
-    "Use no digits. Write no more prose.]"
+    "During a fight, give each action a fight (move, target, stat) instead of a check. Use no digits. Write "
+    "no more prose.]"
 )
 
 
@@ -110,6 +126,7 @@ class _Turn:
         self.tokens = [0, 0, 0]
         self.log: list[str] = []
         self.outcomes: list[str] = []
+        self.details: list[str] = []
         self.recent: list[str] = []
         # The template renders tools before the history, so a changing list empties the model's cache (D-031).
         self.tools = tool_definitions()
@@ -147,6 +164,7 @@ class _Turn:
                     self.log.append(f"ok {call.name}")
                     if "outcome" in result.data:
                         self.outcomes.append(result.data["outcome"])
+                        self.details += [result.data["summary"]] if "summary" in result.data else []
                 else:
                     self.rejections[call.name] += 1
                     self.log.append(f"rejected {call.name}: {result.reason}")
@@ -155,30 +173,41 @@ class _Turn:
 
     def roll_chosen(self, messages: list[dict[str, Any]], check: dict[str, Any]) -> bool:
         """Roll the check the player saw on the option they picked (D-036). False if it no longer applies."""
-        result = apply_tool(self.sim, "request_check", check)
+        result = apply_tool(self.sim, "fight_move" if "move" in check else "request_check", check)
         if not result.accepted:
             self.log.append(f"rejected chosen check: {result.reason}")
             return False
         self.allowed |= _numbers_in(result.data)
         self.outcomes.append(result.data["outcome"])
         note = _NARRATE_OUTCOME.format(outcomes=_OUTCOME_MEANINGS[result.data["outcome"]])
-        messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{note}"}
+        summary = f" {result.data['summary']}" if "summary" in result.data else ""
+        messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{note}{summary}"}
         return True
+
+    def downed(self, messages: list[dict[str, Any]]) -> None:
+        """A hostile exchange runs whatever the player typed, since the Downed cannot act."""
+        data = downed_exchange(self.sim)
+        self.allowed |= _numbers_in(data)
+        note = _DOWNED_NOTE.format(summary=data["summary"])
+        messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{note}"}
 
     def referee(self, messages: list[dict[str, Any]]) -> None:
         """Roll before any prose exists, so the story has to follow the dice (ENG-02, ENG-04)."""
+        in_fight = self.sim.state.fight is not None
+        prompt = _FIGHT_REFEREE_PROMPT if in_fight else _REFEREE_PROMPT
         trial = [
             *messages[:-1],
-            {"role": "user", "content": f"{messages[-1]['content']}\n\n{_REFEREE_PROMPT}"},
+            {"role": "user", "content": f"{messages[-1]['content']}\n\n{prompt}"},
         ]
         for _ in range(self.max_retries + 1):
             reply = self.call(trial, self.tools, fast=True)
             if not reply.tool_calls:
                 return
-            results = self.run_tools(reply, {"request_check"})
+            results = self.run_tools(reply, {"fight_move" if in_fight else "request_check"})
             trial += [{"role": "assistant", "content": reply.blocks()}, {"role": "user", "content": results}]
             if self.outcomes:
                 note = ", then ".join(_OUTCOME_MEANINGS[o] for o in self.outcomes)
+                note = " ".join([note, *self.details])
                 messages += [
                     {"role": "assistant", "content": reply.blocks()},
                     {
@@ -265,8 +294,13 @@ def take_turn(
     run.allowed = _numbers_in(state_view(state))  # Prose may quote the engine's own sheet (D-033).
     narration: str | None = None
     try:
+        rolled = False
+        if state.fight is not None and state.downed:
+            run.downed(messages)
+            rolled = True
+        elif chosen_check is not None:
+            rolled = run.roll_chosen(messages, chosen_check)
         # Until the player answers the Dual Offer the scene is only talk, so there is nothing to roll.
-        rolled = chosen_check is not None and run.roll_chosen(messages, chosen_check)
         # Bracketed text is the game speaking.
         if not rolled and state.offer_resolved and not player_input.startswith("["):
             run.referee(messages)
@@ -276,7 +310,10 @@ def take_turn(
             names = _SCRIBE_TOOLS if state.offer_resolved else ("suggest_actions",)
             if not sim.checks:  # XP rewards a tested deed, so a talking turn cannot farm it.
                 names = tuple(n for n in names if n != "grant_xp")
-            run.scribe(messages, narration, names, max_rounds)
+            if any(type_ == "reckoning" for type_, _ in sim.events):  # The dead earn nothing for dying.
+                names = ("suggest_actions",)
+            if not sim.state.dead:
+                run.scribe(messages, narration, names, max_rounds)
     except LLMUnavailable as exc:
         run.log.append(f"model unavailable: {exc}")
     if narration is not None and not sim.suggested:

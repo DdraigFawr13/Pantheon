@@ -163,7 +163,18 @@ def gate_path_problems(world: World) -> list[str]:
     return problems
 
 
-_TABLES = ("gods", "affinities", "oaths", "classes", "peoples", "professions", "origins", "rewards", "clocks")
+_TABLES = (
+    "gods",
+    "affinities",
+    "oaths",
+    "classes",
+    "peoples",
+    "professions",
+    "origins",
+    "rewards",
+    "clocks",
+    "combat",
+)
 _LATER_TABLES = ("skills", "titles", "evolutions")  # Canon batches in M3.5; the game runs without them.
 
 

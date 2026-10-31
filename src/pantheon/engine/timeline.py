@@ -20,6 +20,7 @@ class Rejected(ValueError):
 class Rules:
     data: GameData
     flag_setters: dict[str, str]
+    permadeath: bool = False
 
 
 class Simulation:

@@ -1,0 +1,22 @@
+# Combat numbers (world/power_tiers.md, Combat, Stats and pools, Death). Regeneration, overspending, marks and the
+# final Reckoning are canon; everything else is a first guess for the owner's play to tune (D-039).
+threats:
+  minion: {hits: 1, difficulty: routine}
+  standard: {hits: 2, difficulty: routine}
+  elite: {hits: 3, difficulty: hard}
+intents:
+  - {id: strike, label: "a plain strike", weight: 5, damage_percent: 15}
+  - {id: heavy, label: "a heavy blow, plain to see", weight: 2, damage_percent: 30}
+  - {id: guard, label: "a guarded stance", weight: 2, damage_percent: 0, guards: true}
+tier_gap_damage_percent: 5
+max_foes: 4
+max_tier_above: 2
+attack_hits: {triumph: 2, success: 1, success_at_cost: 1, failure: 0}
+block_percent: {triumph: 100, success: 100, success_at_cost: 50, failure: 0}
+guard_difficulty: routine
+flee_difficulty: hard
+pool_regen_percent: 5
+overspend_limit_percent: 50
+injury_chance_per_percent: 2
+last_breath_marks: 3
+final_reckoning: 4
