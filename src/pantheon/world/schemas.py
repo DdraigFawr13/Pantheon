@@ -139,6 +139,12 @@ class LevelGains(_Strict):
     free_points: int = Field(ge=0)
 
 
+class PetitionTerms(_Strict):
+    granted: int = Field(ge=0)
+    ignored: int = Field(ge=0)
+    days: int = Field(gt=0)
+
+
 class Rewards(_Strict):
     xp: dict[str, int]
     xp_per_turn_cap: int = Field(gt=0)
@@ -146,6 +152,21 @@ class Rewards(_Strict):
     standing: dict[str, int]
     damage_percent: dict[str, int]
     heal_percent: dict[str, int]
+    petition: PetitionTerms
+
+
+class Clock(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    segments: int = Field(gt=0)
+    start: int = Field(ge=0)
+    filled: str
+
+    @model_validator(mode="after")
+    def _starts_within_its_segments(self) -> Clock:
+        if self.start > self.segments:
+            raise ValueError(f"clock {self.id}: start is above its segments")
+        return self
 
 
 class GameData(_Strict):
@@ -157,6 +178,7 @@ class GameData(_Strict):
     professions: Professions
     origins: Origins
     rewards: Rewards
+    clocks: tuple[Clock, ...]
     skills: tuple[Skill, ...] = ()
     titles: tuple[Title, ...] = ()
     evolutions: tuple[Evolution, ...] = ()
