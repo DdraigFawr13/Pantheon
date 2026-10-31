@@ -13,6 +13,14 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from pantheon.engine.calendar import (
+    MINUTES_PER_DAY,
+    REST_MINUTES,
+    clock_value,
+    counted_days,
+    date_of,
+    pass_time,
+)
 from pantheon.engine.checks import (
     Approach,
     CheckOdds,
@@ -25,13 +33,21 @@ from pantheon.engine.checks import (
     resolve_check,
 )
 from pantheon.engine.progression import evolution_options, offer_skills
-from pantheon.engine.state import STANDING_MAX, STANDING_MIN, STATS, Action, GameState, xp_to_next
-from pantheon.engine.timeline import Rejected, Simulation
+from pantheon.engine.state import STATS, Action, GameState, xp_to_next
+from pantheon.engine.timeline import Rejected, Simulation, change_standing
 from pantheon.world.schemas import GameData
 
 MAX_REJECTION_DETAIL = 3
 MAX_STANDING_PER_TURN = 2
 MAX_HOOKS_PER_TURN = 2
+MAX_TIME_CALLS_PER_TURN = 2
+_SPANS = {  # Minutes in one, and the most one call may ask for.
+    "minutes": (1, 240),
+    "hours": (60, 24),
+    "rest": (REST_MINUTES, 1),
+    "day": (MINUTES_PER_DAY, 1),
+    "days": (MINUTES_PER_DAY, 90),
+}
 _FLAG_KEY = re.compile(r"^story\.[a-z][a-z0-9_.]*$")
 _DIGIT = re.compile(r"\d")
 _OATH_CHOICE = re.compile(r"\b(swear|accept|refuse)\b", re.I)
@@ -113,6 +129,37 @@ class RegisterHook(_Args):
     description: str
     due_condition: str = Field(description="When this should come due, in plain words.")
     source_choice: str = ""
+
+
+class AdvanceTime(_Args):
+    """Move the calendar when time really passes: a walk, a journey, a night's sleep. rest also heals."""
+
+    span: Literal["minutes", "hours", "rest", "day", "days"]
+    count: int = Field(default=1, ge=1, description="How many of that span; rest and day are always 1.")
+    reason: str
+
+
+class SendPetition(_Args):
+    """A god the character is sworn to asks a small thing through a Vessel or an omen."""
+
+    god: str = Field(description="Lower-case id of a god the character has sworn to.")
+    ask: str = Field(description="The task, refusal or offering asked for, in a few words.")
+    due_condition: str = Field(description="When it should be done, in plain words.")
+
+
+class ResolvePetition(_Args):
+    """Close an open petition after the player granted or refused it. Time lapses one left ignored."""
+
+    hook_id: int
+    granted: bool
+    reason: str
+
+
+class EngageClock(_Args):
+    """Record that a tested deed this turn touched a global clock's threads, so it is not neglected."""
+
+    clock_id: str = Field(description="seat_vote, rift_tide, grain_war, ember_fever or lanterns_price.")
+    reason: str
 
 
 class SuggestedAction(_Args):
@@ -220,7 +267,11 @@ def _apply_effect(sim: Simulation, args: ApplyEffect) -> dict[str, Any]:
         if state.wounds == 0 and not (args.source == "rest" and state.trial_recovery):
             raise Rejected("the character has no wounds to heal")
         if args.source == "rest":
+            if sim.rested:
+                raise Rejected("the character has already rested this turn")
             amount = state.wounds
+            sim.rested = True
+            pass_time(sim, REST_MINUTES, "rest", args.reason)
         elif args.source.startswith("aid:"):
             amount = min(math.ceil(state.max_hp * table.heal_percent["aid"] / 100), state.wounds)
         else:
@@ -327,13 +378,77 @@ def _adjust_standing(sim: Simulation, args: AdjustStanding) -> dict[str, Any]:
             "note": "No witness, so this spreads as a rumour and Standing does not change.",
         }
     delta = sim.rules.data.rewards.standing[args.kind] * (1 if args.direction == "+" else -1)
-    current = sim.state.standing.get(args.entity, 0)
-    value = max(STANDING_MIN, min(STANDING_MAX, current + delta))
-    sim.emit(
-        "standing_changed",
-        {"entity": args.entity, "delta": value - current, "value": value, "reason": args.reason},
-    )
+    change_standing(sim, args.entity, delta, args.reason)
     return {"entity": args.entity, "rumour": False}
+
+
+def _advance_time(sim: Simulation, args: AdvanceTime) -> dict[str, Any]:
+    state = sim.state
+    minutes_each, most = _SPANS[args.span]
+    if args.count > most:
+        raise Rejected(f"at most {most} {args.span} in one call")
+    if args.span == "rest" and sim.rested:
+        raise Rejected("the character has already rested this turn")
+    sim.count_call("advance_time", MAX_TIME_CALLS_PER_TURN)
+    if args.span == "rest" and (state.wounds or state.trial_recovery):
+        _apply_effect(sim, ApplyEffect(kind="heal", source="rest", reason=args.reason))
+    else:
+        sim.rested = sim.rested or args.span == "rest"
+        pass_time(sim, minutes_each * args.count, args.span, args.reason)
+    date = date_of(state.day)
+    return {"date": date.view()}
+
+
+def _send_petition(sim: Simulation, args: SendPetition) -> dict[str, Any]:
+    state, data = sim.state, sim.rules.data
+    gods = {o.god for o in data.oaths if o.id in state.oaths}
+    if args.god not in gods:
+        raise Rejected(f"{args.god} has no Oath from this character, so it sends no petitions")
+    if any(h.petition_god == args.god and not h.resolved for h in state.hooks):
+        raise Rejected(f"{args.god} already has an open petition")
+    name = next(g.name for g in data.gods if g.id == args.god)
+    return {
+        "hook_id": _add_hook(
+            sim,
+            f"{name} asks: {args.ask}",
+            args.due_condition,
+            f"petition from {name}",
+            petition_god=args.god,
+            deadline_day=state.day + data.rewards.petition.days,
+        )
+    }
+
+
+def _resolve_petition(sim: Simulation, args: ResolvePetition) -> dict[str, Any]:
+    state = sim.state
+    hook = next((h for h in state.hooks if h.id == args.hook_id and h.petition_god), None)
+    if hook is None or hook.petition_god is None:
+        raise Rejected(f"hook {args.hook_id} is not a petition")
+    if hook.resolved:
+        raise Rejected(f"petition {args.hook_id} is already closed")
+    if hook.turn == sim.turn:
+        raise Rejected("a petition cannot be closed in the turn it arrives")
+    sim.count_call("adjust_standing", MAX_STANDING_PER_TURN)
+    terms = sim.rules.data.rewards.petition
+    sim.emit("petition_resolved", {"hook_id": hook.id, "granted": args.granted, "reason": args.reason})
+    change_standing(sim, hook.petition_god, terms.granted if args.granted else -terms.ignored, args.reason)
+    return {"hook_id": hook.id, "granted": args.granted}
+
+
+def _engage_clock(sim: Simulation, args: EngageClock) -> dict[str, Any]:
+    state, data = sim.state, sim.rules.data
+    if not sim.checks:
+        raise Rejected("only a tested deed this turn can touch a clock's threads")
+    clock = next((c for c in data.clocks if c.id == args.clock_id), None)
+    if clock is None:
+        raise Rejected(f"there is no clock {args.clock_id}")
+    if clock_value(state, data, clock.id) >= clock.segments:
+        raise Rejected(f"{clock.name} is already filled")
+    today = counted_days(state.day)
+    if state.clocks_engaged.get(clock.id) == today:
+        raise Rejected(f"{clock.name} has already been touched today")
+    sim.emit("clock_engaged", {"clock": clock.id, "counted_day": today, "reason": args.reason})
+    return {"clock": clock.id}
 
 
 def _set_flag(sim: Simulation, args: SetFlag) -> dict[str, Any]:
@@ -346,7 +461,13 @@ def _set_flag(sim: Simulation, args: SetFlag) -> dict[str, Any]:
 
 
 def _register_hook(sim: Simulation, args: RegisterHook) -> dict[str, Any]:
-    if any(h.description == args.description for h in sim.state.hooks):
+    return {"hook_id": _add_hook(sim, args.description, args.due_condition, args.source_choice)}
+
+
+def _add_hook(
+    sim: Simulation, description: str, due_condition: str, source_choice: str, **petition: Any
+) -> int:
+    if any(h.description == description for h in sim.state.hooks):
         raise Rejected("that hook is already registered")
     sim.count_call("register_hook", MAX_HOOKS_PER_TURN)
     hook_id = len(sim.state.hooks) + 1
@@ -355,12 +476,13 @@ def _register_hook(sim: Simulation, args: RegisterHook) -> dict[str, Any]:
         {
             "id": hook_id,
             "turn": sim.turn,
-            "description": args.description,
-            "due_condition": args.due_condition,
-            "source_choice": args.source_choice,
+            "description": description,
+            "due_condition": due_condition,
+            "source_choice": source_choice,
+            **petition,
         },
     )
-    return {"hook_id": hook_id}
+    return hook_id
 
 
 def _character_tags(sim: Simulation) -> set[str]:
@@ -479,6 +601,10 @@ _TOOLS: dict[str, tuple[type[_Args], Callable[[Simulation, Any], dict[str, Any]]
     "adjust_standing": (AdjustStanding, _adjust_standing),
     "set_flag": (SetFlag, _set_flag),
     "register_hook": (RegisterHook, _register_hook),
+    "advance_time": (AdvanceTime, _advance_time),
+    "send_petition": (SendPetition, _send_petition),
+    "resolve_petition": (ResolvePetition, _resolve_petition),
+    "engage_clock": (EngageClock, _engage_clock),
     "suggest_actions": (SuggestActions, _suggest_actions),
 }
 
