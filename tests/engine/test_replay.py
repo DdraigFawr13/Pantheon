@@ -64,6 +64,20 @@ CALLS = st.one_of(
         )
     ),
     st.just(("register_hook", {"description": "a debt", "due_condition": "later"})),
+    st.lists(
+        st.fixed_dictionaries(
+            {
+                "name": st.just("Foe"),
+                "tier": st.integers(0, 4),
+                "threat": st.sampled_from(["minion", "elite", "nonsense"]),
+            }
+        ),
+        max_size=5,
+    ).map(lambda foes: ("start_fight", {"foes": foes, "reason": "x"})),
+    st.tuples(st.sampled_from(["attack", "guard", "flee", "dance"]), st.sampled_from(["f1", "f2", None])).map(
+        lambda v: ("fight_move", {"move": v[0], "target": v[1], "stat": "agility"})
+    ),
+    st.just(("end_fight", {"reason": "x"})),
     st.just(("not_a_tool", {})),
 )
 SCRIPT = st.lists(st.lists(CALLS, max_size=4), min_size=11, max_size=14)
@@ -108,6 +122,11 @@ def assert_bounds(state: GameState) -> None:
     for clock in DATA.clocks:
         assert 0 <= clock_value(state, DATA, clock.id) <= clock.segments
     assert len({h.id for h in state.hooks}) == len(state.hooks)
+    if state.fight is not None:
+        assert state.fight.standing  # A fight with nobody left has ended.
+        assert all(f.hits_left >= 0 for f in state.fight.foes)
+    assert state.mana <= state.max_mana
+    assert state.stamina <= state.max_stamina
 
 
 @given(SCRIPT)

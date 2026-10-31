@@ -4,7 +4,7 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1c forks, save upgrades and calendar (D-038) is in PR #15, waiting for the owner's merge. PR #14 is the same work on its old base, to close unmerged. M1a, M1.5, M1.6 and M1b are merged (PRs #9 to #13). The owner's API key works, but only one turn of the new style is saved, from before PR #12: real odds and mid-story dice have not run on the live model, nor have M1c's new tools.
+M1d combat and death (D-039) is on `m1d-combat`, waiting for the owner's merge; this session's permission check blocks agents from merging, so the owner merges. M1a to M1c, M1.5 and M1.6 are merged (PRs #9 to #13, #15). The owner's API key works, but only one turn of the new style is saved, from before PR #12: real odds and mid-story dice have not run on the live model, nor have the M1c and M1d tools.
 
 ## Just done
 
@@ -24,10 +24,12 @@ M1c forks, save upgrades and calendar (D-038) is in PR #15, waiting for the owne
 
 - 2026-10-30 M1c: `pantheon fork N` and `play --timeline`, schema 2 with a step-by-step upgrade and a backup, refusal of unreadable saves, calendar and `advance_time`, five clocks with the neglect rule, petitions. Hypothesis checks that replay through a real save equals live state. Tried on a copy of the owner's save: all events and turns kept, original unchanged. Its two old timelines cannot fork before their last recorded dice (D-038).
 
+- 2026-10-30 M1d: fights in exchanges with engine-drawn intents shown on screen, attack, guard and flee, skill costs and cooldowns, pool regeneration, overspending and Injury, Downed, Last Breath, the Reckoning ladder and permadeath. All numbers are first guesses in `world/data/combat.yaml`. Only `MockClient` has run it.
+
 ## Next
 
-1. Owner merges PR #15, and plays a longer session. On the live model, watch whether Haiku gives checks, places `<<CHECK>>`, keeps labels to 12 words without many retries (D-036), and calls `advance_time` when time passes. The first `pantheon play` after the merge upgrades the save and leaves `data/pantheon.db.schema1.bak`. The owner has not confirmed moving the high-stakes moment to M2.5. Titles are built in M1b's engine, as moved.
-2. Next in the plan is M1d (combat), then M1e (rewards and loot). Loot in M1e is what first makes shards reachable. Tune `world/data/rewards.yaml` from play.
+1. Owner merges the M1d PR, and plays a longer session with a fight. On the live model, watch whether Haiku gives checks, places `<<CHECK>>`, keeps labels to 12 words without many retries (D-036), calls `advance_time` when time passes, starts fights with `start_fight`, gives moves in `suggest_actions`, and picks `fight_move` rather than NONE when the player acts. A NONE on an attack would narrate a blow that the engine never ran. The first `pantheon play` upgrades the save and leaves `data/pantheon.db.schema1.bak`. The owner has not confirmed moving the high-stakes moment to M2.5. Titles are built in M1b's engine, as moved.
+2. Next in the plan is M1e (rewards and loot), then M1f (dev CLI). Loot in M1e is what first makes shards reachable. Tune `world/data/rewards.yaml` from play.
 3. Whenever the owner plays a longer session, save it to `docs/playtests/` from `data/pantheon.db`: this completes M1.5's and M1.6's live transcript. Tables: `turn`, `event` (`payload_json`).
 
 Known from the first live turn (timeline 685eeb5a): about 23,000 tokens in and 4,800 out, about half a cent at list price (estimate from those counts); the prose read well. Watch for invented belongings and injuries (LESSONS).
@@ -55,4 +57,4 @@ Known from the first live turn (timeline 685eeb5a): about 23,000 tokens in and 4
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-038 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037, D-038 Assumed).
+- 2026-10-30 D-007 to D-039 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037 to D-039 Assumed).

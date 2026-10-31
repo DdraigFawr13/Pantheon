@@ -18,6 +18,7 @@ from rich.panel import Panel
 from pantheon.config import Config, load_config
 from pantheon.engine.calendar import date_of, format_date
 from pantheon.engine.checks import Outcome
+from pantheon.engine.combat import intent_label
 from pantheon.engine.commands import (
     CharacterChoices,
     allocate_point,
@@ -66,6 +67,17 @@ _HELP = (
     "help (this) · quit (saves first). The Oath choices are numbers on the list."
 )
 _SAVED = "Saved. `pantheon play` resumes here."
+_FIGHT_ENDS = {
+    "victory": "no foe is left standing",
+    "fled": "you got away",
+    "story": "it broke off",
+    "reckoning": "you died",
+    "death": "you died",
+}
+_DEAD = (
+    "[bold]This character is dead.[/bold] `pantheon fork N` branches from an earlier turn; "
+    "`pantheon play --fresh` starts a new game."
+)
 
 
 def _new(args: argparse.Namespace, console: Console) -> int:
@@ -169,7 +181,7 @@ def _status_line(state: GameState) -> str:
 
 
 def _bar(label: str, value: int, maximum: int) -> str:
-    filled = round(_BAR_WIDTH * value / maximum) if maximum else 0
+    filled = max(0, round(_BAR_WIDTH * value / maximum)) if maximum else 0
     return f"{label:<8}{'█' * filled}{'░' * (_BAR_WIDTH - filled)} {value}/{maximum}"
 
 
@@ -182,8 +194,8 @@ def _sheet(state: GameState, world: World) -> Panel:
         f"Class: {current.name if current else 'none'} · Profession: {state.profession or 'none'}",
         f"Tier {state.tier} · Level {state.level} · {format_date(date_of(state.day))}",
         _bar("HP", state.hp, state.max_hp),
-        _bar("Mana", state.max_mana, state.max_mana),
-        _bar("Stamina", state.max_stamina, state.max_stamina),
+        _bar("Mana", state.mana, state.max_mana),
+        _bar("Stamina", state.stamina, state.max_stamina),
         *([_bar("XP", state.xp, xp_to_next(state.level))] if state.level else []),
         f"Coin: {state.coin} silver",
         " · ".join(f"{s.capitalize()} {state.stats[s]}" for s in STATS),
@@ -192,6 +204,8 @@ def _sheet(state: GameState, world: World) -> Panel:
         "Oaths: " + (", ".join(oaths[o] for o in state.oaths) or "none"),
         "Standing: " + (", ".join(f"{e} {v:+d}" for e, v in state.standing.items()) or "none"),
     ]
+    if state.reckonings:
+        lines.append(f"Reckonings: {state.reckonings}")
     if state.titles:
         lines.append("Titles: " + ", ".join(state.titles))
     if state.injuries:
@@ -255,6 +269,22 @@ def ledger_lines(events: list[EventRecord]) -> list[str]:
                 lines.append(f"{p['name']} {state}: {p['value']} of {p['segments']}")
             case "petition_resolved":
                 lines.append(f"Petition {'granted' if p['granted'] else 'not granted'} ({p['reason']})")
+            case "fight_started":
+                lines.append(f"[bold]A fight begins:[/bold] {', '.join(f['name'] for f in p['foes'])}")
+            case "foe_hit":
+                lines.append(f"{p['name']} takes {p['hits']} hit{'s' if p['hits'] > 1 else ''}")
+            case "overspend_rolled":
+                lines.append(f"Overspent {p['skill']}: {p['chance']}% Injury risk, rolled {p['roll']}")
+            case "fight_ended":
+                lines.append(f"[bold]The fight ends:[/bold] {_FIGHT_ENDS[p['result']]}")
+            case "last_breath":
+                lines.append(f"[red bold]Last Breath {p['marks']}[/red bold]")
+            case "level_lost":
+                lines.append(f"[red]Level lost: now Level {p['level']}[/red]")
+            case "reckoning":
+                lines.append(f"[red bold]Reckoning {p['count']}.[/red bold] You wake at the last shrine.")
+            case "died":
+                lines.append("[red bold]The Ledger closes. This death is final.[/red bold]")
             case _:
                 pass
     return lines
@@ -301,8 +331,22 @@ def _odds_text(state: GameState, world: World, action: Action) -> str:
     return " sure" if odds.outcome is Outcome.SUCCESS else " no chance"
 
 
+def _show_fight(state: GameState, world: World, console: Console) -> None:
+    """Each foe's intent comes from the engine, so the player always sees it (D-014, GAME-04)."""
+    assert world.data is not None
+    if state.fight is None:
+        return
+    console.print(f"[bold]Exchange {state.fight.exchange}[/bold]")
+    for foe in state.fight.standing:
+        hits = f"{foe.hits_left} hit{'s' if foe.hits_left > 1 else ''} left"
+        console.print(f"  {foe.name} (Tier {foe.tier}, {hits}) shows {intent_label(world.data, foe.intent)}")
+    if state.downed:
+        console.print(f"  [red bold]You are Downed.[/red bold] Last Breaths: {state.last_breath}")
+
+
 def _show_actions(state: GameState, world: World, console: Console) -> None:
     console.print(_status_line(state))
+    _show_fight(state, world, console)
     if state.trial_ready:
         console.print(
             "[bold]An Ascension Trial is ready.[/bold] Type [bold]trial[/bold] when you choose to face it."
@@ -524,6 +568,9 @@ class Game:
             self.console.print(Panel(Markdown(last), border_style="blue"))
             self.player_choices()  # A choice left open by quitting, or by forking at that turn.
         while True:
+            if self.state.dead:
+                self.console.print(_DEAD)
+                return
             _show_actions(self.state, self.world, self.console)
             offers = offer_choices(self.state, self.world)
             first = len(self.state.suggested) + 1
@@ -587,7 +634,7 @@ def _play(args: argparse.Namespace, console: Console, ask: Ask, client: LLMClien
             )
             return 1
         client = AnthropicClient(config.narrator_model, config.base_url, config.think)
-    rules = Rules(world.data, {k: f.set_by for k, f in world.flags.items()})
+    rules = Rules(world.data, {k: f.set_by for k, f in world.flags.items()}, config.permadeath)
     with Database.open(Path(args.db) if args.db else config.db_path) as db:
         tid = db.find_timeline(args.timeline) if args.timeline else db.latest_timeline()
         if tid is None or args.fresh:

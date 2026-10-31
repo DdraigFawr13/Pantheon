@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from pantheon.engine.calendar import clock_value, date_of
+from pantheon.engine.combat import intent_label
 from pantheon.engine.state import GameState, xp_to_next
 from pantheon.world.loader import World
 
@@ -42,7 +43,9 @@ def state_view(state: GameState) -> dict[str, Any]:
         "stats": state.stats,
         "hp": state.hp,
         "max_hp": state.max_hp,
+        "mana": state.mana,
         "max_mana": state.max_mana,
+        "stamina": state.stamina,
         "max_stamina": state.max_stamina,
         "xp": state.xp,
         "xp_to_next": xp_to_next(state.level) if state.level else 0,
@@ -75,6 +78,12 @@ def _due_material(state: GameState, world: World) -> str:
             "the player a menu for swearing or refusing, so never present that choice in prose or in "
             "suggest_actions; suggest questions, bargains and reactions instead."
         )
+    if state.fight is not None:
+        lines.append(f"A fight is on, exchange {state.fight.exchange}. Each foe's shown intent:")
+        lines += [
+            f"- {f.id}: {f.name}, Tier {f.tier}, {f.threat}, shows {intent_label(world.data, f.intent)}."
+            for f in state.fight.standing
+        ]
     open_hooks = [h for h in state.hooks if not h.resolved]
     lines += [
         f"- Hook {h.id} (turn {h.turn}): {h.description}. Due: {h.due_condition}."
