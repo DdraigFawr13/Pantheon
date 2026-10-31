@@ -4,7 +4,7 @@ Updated: 2026-10-30. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1c forks, save upgrades and calendar (D-038) is on `m1c-replay-fork-calendar`, stacked on `m1b-progression` (M1b, D-037, PR #13). Neither is merged: both wait for the owner. M1a, M1.5 and M1.6 are merged (PRs #9 to #12). The owner's API key works, but only one turn of the new style is saved, from before PR #12: real odds and mid-story dice have not run on the live model, nor have M1c's new tools. Merge #13 first; if it is squashed, rebase the M1c branch onto `main` before merging it.
+M1c forks, save upgrades and calendar (D-038) is in PR #14, waiting for the owner's merge. M1a, M1.5, M1.6 and M1b are merged (PRs #9 to #13). The owner's API key works, but only one turn of the new style is saved, from before PR #12: real odds and mid-story dice have not run on the live model, nor have M1c's new tools.
 
 ## Just done
 
@@ -26,7 +26,7 @@ M1c forks, save upgrades and calendar (D-038) is on `m1c-replay-fork-calendar`, 
 
 ## Next
 
-1. Owner merges the M1b and M1c PRs, and plays a longer session. On the live model, watch whether Haiku gives checks, places `<<CHECK>>`, keeps labels to 12 words without many retries (D-036), and calls `advance_time` when time passes. The first `pantheon play` after the merge upgrades the save and leaves `data/pantheon.db.schema1.bak`. The owner has not confirmed moving the high-stakes moment to M2.5. Titles are built in M1b's engine, as moved.
+1. Owner merges PR #14, and plays a longer session. On the live model, watch whether Haiku gives checks, places `<<CHECK>>`, keeps labels to 12 words without many retries (D-036), and calls `advance_time` when time passes. The first `pantheon play` after the merge upgrades the save and leaves `data/pantheon.db.schema1.bak`. The owner has not confirmed moving the high-stakes moment to M2.5. Titles are built in M1b's engine, as moved.
 2. Next in the plan is M1d (combat), then M1e (rewards and loot). Loot in M1e is what first makes shards reachable. Tune `world/data/rewards.yaml` from play.
 3. Whenever the owner plays a longer session, save it to `docs/playtests/` from `data/pantheon.db`: this completes M1.5's and M1.6's live transcript. Tables: `turn`, `event` (`payload_json`).
 
