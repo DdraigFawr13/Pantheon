@@ -55,6 +55,9 @@ class Skill(_Strict):
     affinity: str | None = None
     rarity: Rarity
     classes: tuple[str, ...] = ()
+    pool: Literal["mana", "stamina"] | None = None
+    cost: int = Field(default=0, ge=0)
+    cooldown: int = Field(default=0, ge=0)
 
 
 class Title(_Strict):
@@ -169,6 +172,39 @@ class Clock(_Strict):
         return self
 
 
+CheckDifficulty = Literal["routine", "hard", "severe", "heroic"]
+
+
+class Threat(_Strict):
+    hits: int = Field(gt=0)
+    difficulty: CheckDifficulty
+
+
+class Intent(_Strict):
+    id: str = Field(pattern=_ID)
+    label: str
+    weight: int = Field(gt=0)
+    damage_percent: int = Field(ge=0)
+    guards: bool = False
+
+
+class Combat(_Strict):
+    threats: dict[str, Threat]
+    intents: tuple[Intent, ...]
+    tier_gap_damage_percent: int = Field(ge=0)
+    max_foes: int = Field(gt=0)
+    max_tier_above: int = Field(ge=0)
+    attack_hits: dict[str, int]
+    block_percent: dict[str, int]
+    guard_difficulty: CheckDifficulty
+    flee_difficulty: CheckDifficulty
+    pool_regen_percent: int = Field(ge=0)
+    overspend_limit_percent: int = Field(ge=0)
+    injury_chance_per_percent: int = Field(ge=0)
+    last_breath_marks: int = Field(gt=0)
+    final_reckoning: int = Field(gt=0)
+
+
 class GameData(_Strict):
     gods: tuple[God, ...]
     affinities: Affinities
@@ -179,6 +215,7 @@ class GameData(_Strict):
     origins: Origins
     rewards: Rewards
     clocks: tuple[Clock, ...]
+    combat: Combat
     skills: tuple[Skill, ...] = ()
     titles: tuple[Title, ...] = ()
     evolutions: tuple[Evolution, ...] = ()
