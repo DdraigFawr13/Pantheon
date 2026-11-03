@@ -1,10 +1,11 @@
 # Adapted from the AI-Master-Instructions template with the efficient-github-actions skill.
-# Tier 1 (every PR and main push): drift check, ruff, mypy on the engine, pytest with coverage. One Linux job.
+# Tier 1 (every ready PR update and main push; drafts skip, CI-06): drift check, ruff, mypy on the engine, pytest with coverage. One Linux job.
 # Tier 3 (manual "Run workflow" only): the same tests on Windows, where the game runs (D-021).
 name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore: ["docs/**", "README.md"]
   push:
     branches: [main]
@@ -20,6 +21,8 @@ concurrency:
 
 jobs:
   check:
+    # CI-06: draft PRs skip; marking the PR ready runs it.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

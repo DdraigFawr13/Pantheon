@@ -148,7 +148,7 @@ M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is t
 6. Character creation from `world/protagonist_seed.md` and `world/peoples.md`; the opening scene with the two drawn gods (D-017); the rival set up from the refused Oath (D-013).
 7. Tallyhouse bounty board as data (hooks and beats) with witnessed Standing and rumours.
 8. CLI play with streaming prose and a status panel rendered from state.
-9. Before any live-model playtest: an estimate of its cost from your configured model's prices, for your approval (SAFE-04). Ollama runs cost nothing per turn.
+9. Before any live-model playtest: an estimate of its cost from your configured model's prices, for your approval (SAFE-01). Ollama runs cost nothing per turn.
 10. Side-by-side check: the same 10-turn scripted scenario on Claude and on your chosen Ollama model, scored for tool-call compliance and the NAR-03 and NAR-04 validators, so the default narrator is picked on evidence (D-020).
 
 **Acceptance:** roadmap M2 (10-turn scripted playtest against `MockClient`; rejections retried at most twice; no unsupplied numbers; outage gives a fallback turn). **You test:** play the opening in the terminal, or wait for M2.5.

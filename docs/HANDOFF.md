@@ -1,10 +1,10 @@
 # Handoff
 
-Updated: 2026-10-30. A fresh session must be able to continue from this file alone. Keep it to 60 lines; move finished entries to `docs/archive/handoff-YYYY-MM.md`.
+Updated: 2026-11-03. A fresh session must be able to continue from this file alone. Keep it to 60 lines; move finished entries to `docs/archive/handoff-YYYY-MM.md`.
 
 ## Phase
 
-M1c forks, save upgrades and calendar (D-038) is in PR #15, waiting for the owner's merge. PR #14 is the same work on its old base, to close unmerged. M1a, M1.5, M1.6 and M1b are merged (PRs #9 to #13). The owner's API key works, but only one turn of the new style is saved, from before PR #12: real odds and mid-story dice have not run on the live model, nor have M1c's new tools.
+M1c (D-038) is merged (PR #15). AI-Master-Instructions upgrade v0.5.0 to v4.4.0 (D-040) is a draft PR on `claude/hooks-s5-v4.4.0`, waiting for the owner's approval. M1a, M1.5, M1.6 and M1b are merged (PRs #9 to #13). The owner's API key works, but only one turn of the new style is saved, from before PR #12: real odds and mid-story dice have not run on the live model, nor have M1c's new tools.
 
 ## Just done
 
@@ -13,7 +13,6 @@ M1c forks, save upgrades and calendar (D-038) is in PR #15, waiting for the owne
 - 2026-10-30 PR #2 merged. Canon batch: `world/power_tiers.md` rewritten as the d100 System; peoples, economy and calendar drafted; Delves renamed rifts; sealed affinity added under `world/sealed/` and checked by a reviewer agent; random opening gods (D-017); SPEC (ENG-04/05/07, WLD-04), architecture tools, narrator prompt and roadmap (M2.5, M3.5) updated.
 - 2026-10-30 Owner's GPU check: Ollama 0.40.13 uses Vulkan on the RX 6700 XT; `qwen3:8b` ran at 100 % GPU (37 of 37 layers, 5.6 GB at a 4,096-token context, about 68 tokens/s on one short prompt) with coherent replies. `moondream` gave garbage on a text-only prompt; `qwen3:8b` did not. Local models are viable; narration quality is judged in M2.
 - 2026-10-30 Whole-repo audit (`docs/audit/2026-10-30-repo-audit.md`) and its fixes in PR #7: the three M0 blockers (D-024: flag registry in `world/data/flags.yaml` and `world/sealed/data/flags.yaml`, enforced by the loader and `tests/world/test_flags.py`; sealed type and path guard), design fixes (D-025), branch-name practice (D-026), canon corrections and gaps G-10 to G-22. Sealed and secret changes passed the reviewer agent.
-
 - 2026-10-30 M0: uv project, package layout, world loader and reveal-gate grammar, names-only data tables, SQLite store, `pantheon new` with the seeded opening-god draw; 51 tests, engine coverage 100 %, CI runs ruff, mypy and pytest.
 
 - 2026-10-30 M1a: `engine/checks.py` (ENG-04, ENG-05) with band edges, tier gaps -4 to +4, Overcome Conditions and a pinned-hash determinism test (ENG-03). Assumptions in D-028; new gaps G-23, G-24. `.gitattributes` fixes the false drift failure on Windows clones.
@@ -24,9 +23,12 @@ M1c forks, save upgrades and calendar (D-038) is in PR #15, waiting for the owne
 
 - 2026-10-30 M1c: `pantheon fork N` and `play --timeline`, schema 2 with a step-by-step upgrade and a backup, refusal of unreadable saves, calendar and `advance_time`, five clocks with the neglect rule, petitions. Hypothesis checks that replay through a real save equals live state. Tried on a copy of the owner's save: all events and turns kept, original unchanged. Its two old timelines cannot fork before their last recorded dice (D-038).
 
+- 2026-11-03 Master upgrade to v4.4.0 (D-040): sync run twice, `--check` OK, 397 tests pass at 97.65 % coverage, guard hook asks on `git push --force`. CI now skips draft PRs.
+
 ## Next
 
-1. Owner merges PR #15, and plays a longer session. On the live model, watch whether Haiku gives checks, places `<<CHECK>>`, keeps labels to 12 words without many retries (D-036), and calls `advance_time` when time passes. The first `pantheon play` after the merge upgrades the save and leaves `data/pantheon.db.schema1.bak`. The owner has not confirmed moving the high-stakes moment to M2.5. Titles are built in M1b's engine, as moved.
+0. Owner approves and merges the v4.4.0 upgrade PR (#17). From then on, force pushes, branch deletes, test deletions and synced-file edits ask in the app first. It changes one BUILD_PLAN id (SAFE-04 to SAFE-01); the plan page was not republished, because it shows `m1d-combat` (D-039), which main lacks. Republish after both merge.
+1. Owner plays a longer session. On the live model, watch whether Haiku gives checks, places `<<CHECK>>`, keeps labels to 12 words without many retries (D-036), and calls `advance_time` when time passes. The first `pantheon play` after the merge upgrades the save and leaves `data/pantheon.db.schema1.bak`. The owner has not confirmed moving the high-stakes moment to M2.5. Titles are built in M1b's engine, as moved.
 2. Next in the plan is M1d (combat), then M1e (rewards and loot). Loot in M1e is what first makes shards reachable. Tune `world/data/rewards.yaml` from play.
 3. Whenever the owner plays a longer session, save it to `docs/playtests/` from `data/pantheon.db`: this completes M1.5's and M1.6's live transcript. Tables: `turn`, `event` (`payload_json`).
 
@@ -55,4 +57,4 @@ Known from the first live turn (timeline 685eeb5a): about 23,000 tokens in and 4
 
 ## Decisions since the last plan update
 
-- 2026-10-30 D-007 to D-038 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037, D-038 Assumed).
+- 2026-11-03 D-007 to D-038, D-040 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037, D-038 Assumed).
