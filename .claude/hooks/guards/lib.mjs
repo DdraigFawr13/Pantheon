@@ -236,7 +236,8 @@ export function errorNote(message) {
 }
 
 /**
- * Run the checks for one hook event. Returns { stdout, warnings, errors }.
+ * Run the checks for one hook event. A check with `events` runs only for those events.
+ * Returns { stdout, warnings, errors }.
  * Never throws: any failure becomes an error note.
  */
 export function run(event, checks, input, { env = process.env, clock = createClock(), errors: earlier = [] } = {}) {
@@ -252,6 +253,7 @@ export function run(event, checks, input, { env = process.env, clock = createClo
   const tool = input?.tool_name;
   for (const check of checks) {
     if (check.tools && !check.tools.includes(tool)) continue;
+    if (check.events && !check.events.includes(event)) continue;
     if (clock.over()) {
       errors.push({ check: 'runtime', message: 'deadline passed; remaining checks skipped' });
       break;

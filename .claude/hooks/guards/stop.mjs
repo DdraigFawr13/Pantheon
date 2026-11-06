@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Stop hook: the done-gate (gate.page, gate.handoff). Nudges once through additionalContext;
+// Stop hook: the done-gate (gate.page, gate.handoff, gate.ci). Nudges once through additionalContext;
 // never blocks. Fails open. Synced from AI-Master-Instructions (hook/guards).
 const CHECKS = ['./checks/gates.mjs'];
 
