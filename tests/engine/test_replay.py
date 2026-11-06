@@ -14,9 +14,9 @@ from pantheon.engine.state import STANDING_MAX, STANDING_MIN, GameState, replay
 from pantheon.engine.timeline import Rules, Simulation
 from pantheon.engine.tools import apply_tool, resolve_offer
 from pantheon.storage.db import Database, TurnRecord
-from pantheon.world.loader import load_world
+from tests.conftest import WORLD as SHARED_WORLD
 
-WORLD = load_world(Path(__file__).resolve().parents[2] / "world")
+WORLD = SHARED_WORLD
 assert WORLD.data is not None
 DATA = WORLD.data
 RULES = Rules(DATA, {k: f.set_by for k, f in WORLD.flags.items()})

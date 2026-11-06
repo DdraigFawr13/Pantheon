@@ -127,6 +127,11 @@ def _validate(request: CheckRequest) -> None:
         raise ValueError(f"stat must not be negative, got {request.stat}")
 
 
+def shown_chance(chance: int) -> int:
+    """A raw chance as a player sees it: low rolls always succeed, and the d100 stops at 100."""
+    return max(ALWAYS_SUCCEEDS, min(100, chance))
+
+
 @dataclass(frozen=True, slots=True)
 class CheckOdds:
     """What a check will do before it rolls. `outcome` is set when the tier gap settles it (D-036)."""
@@ -139,7 +144,7 @@ class CheckOdds:
     @property
     def shown(self) -> int | None:
         """The chance as a player sees it: low rolls always succeed, and the d100 stops at 100."""
-        return None if self.chance is None else max(ALWAYS_SUCCEEDS, min(100, self.chance))
+        return None if self.chance is None else shown_chance(self.chance)
 
 
 def check_odds(request: CheckRequest) -> CheckOdds:

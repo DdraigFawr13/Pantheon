@@ -17,9 +17,9 @@ from pantheon.narrator.loop import TurnOutcome, take_turn
 from pantheon.narrator.notices import CHECK_MARKER, check_notice
 from pantheon.narrator.validators import prose_problems, strip_action_list
 from pantheon.storage.db import Database, TurnRecord
-from pantheon.world.loader import load_world
+from tests.conftest import WORLD as SHARED_WORLD
 
-WORLD = load_world(Path(__file__).resolve().parents[2] / "world")
+WORLD = SHARED_WORLD
 assert WORLD.data is not None
 RULES = Rules(WORLD.data, {k: f.set_by for k, f in WORLD.flags.items()})
 PROSE = "You haul yourself up the broken steps, and the dark gives way to grey light."
@@ -91,7 +91,7 @@ CHECK = tools(
 
 def test_d031_a_turn_rolls_then_narrates_the_outcome_then_records_it() -> None:
     outcome, client = run([CHECK, LLMReply(text=PROSE), SUGGEST])
-    assert outcome.narration == PROSE and not outcome.is_fallback
+    assert outcome.narration == PROSE and not outcome.is_fallback  # D-036: no marker leaves the prose alone.
     assert [t for t, _ in outcome.events] == ["check_resolved", "actions_suggested"]
     assert outcome.state.checks_made == 1 and len(outcome.state.suggested) == 3
     assert (outcome.tokens_in, outcome.tokens_cached, outcome.tokens_out) == (20, 10, 4)
@@ -137,13 +137,11 @@ def test_d036_stray_markers_never_reach_the_player() -> None:
         [NONE, LLMReply(text=f"She waited.\n\n{CHECK_MARKER}\n\nNothing happened at all."), SUGGEST]
     )
     assert CHECK_MARKER not in outcome.narration
+
+
+def test_d036_an_automatic_check_notice_says_it_was_decided_by_the_tier_gap() -> None:
     roll = {"stat": "agility", "outcome": "success", "automatic": True, "complication": False}
     assert check_notice(roll) == "***Agility check: success, decided by the tier gap***"
-
-
-def test_d036_no_marker_leaves_the_prose_alone() -> None:
-    outcome, _ = run([CHECK, LLMReply(text=PROSE), SUGGEST])
-    assert outcome.narration == PROSE
 
 
 def test_d031_a_plain_question_rolls_nothing() -> None:
@@ -178,9 +176,10 @@ def test_d030_actions_are_requested_when_the_scribe_skips_them() -> None:
     assert "suggest_actions" in str(client.calls[-1]["messages"][-1]["content"])
 
 
-def test_d030_a_scribe_that_refuses_leaves_the_prose_standing() -> None:
+def test_d030_a_scribe_that_refuses_leaves_the_prose_standing_and_clears_the_old_actions() -> None:
     outcome, _ = run([NONE, LLMReply(text=PROSE), LLMReply(text="No."), LLMReply(text="No.")])
     assert outcome.narration == PROSE and not outcome.is_fallback
+    assert outcome.state.suggested == []  # D-031: a turn with no actions clears the old ones.
 
 
 def test_only_suggest_actions_counts_before_the_dual_offer_is_answered() -> None:
@@ -205,11 +204,6 @@ def test_d031_tool_calls_in_the_prose_step_do_not_count() -> None:
     )
     assert outcome.narration == PROSE and outcome.state.xp == 0
     assert "prose only" in str(client.calls[2]["messages"][-1]["content"])
-
-
-def test_d031_a_turn_with_no_actions_clears_the_old_ones() -> None:
-    outcome, _ = run([NONE, LLMReply(text=PROSE), LLMReply(text="No."), LLMReply(text="No.")])
-    assert outcome.state.suggested == []
 
 
 def test_nar06_rejections_retry_at_most_twice_then_drop_and_log() -> None:
@@ -287,6 +281,11 @@ def test_d031_history_grows_then_resets() -> None:
 def test_nar04_numbers_returned_by_the_engine_are_allowed() -> None:
     outcome, _ = run([NONE, LLMReply(text="Forty silver, you think."), SUGGEST])
     assert not outcome.is_fallback
+    state, _ = sworn_state()
+    counted = f"The fall left her at {state.hp} hit points, and she tucked the fear away."
+    assert prose_problems(counted, set())  # Without the engine's number this prose is rejected.
+    outcome, _ = run([NONE, LLMReply(text=counted), SUGGEST])
+    assert outcome.narration == counted and not outcome.is_fallback
 
 
 @pytest.mark.parametrize(
@@ -362,19 +361,24 @@ def test_d030_a_list_in_mid_prose_is_cut_and_the_prose_after_it_stays() -> None:
     assert strip_action_list(text) == "The voices wait.\n\nHale's grip tightens."
 
 
-def test_nar01_layers_are_in_fixed_order_with_a_stable_cached_prefix() -> None:
+def test_nar01_layers_are_in_fixed_order() -> None:
     state, _ = sworn_state()
     system, messages = assemble(state, WORLD, [("I run.", "You run.")], "I hide.")
-    assert system[0]["cache_control"] == {"type": "ephemeral"}
     assert "Narrator system prompt" not in system[0]["text"]
     assert "The Ledger is the System" in system[0]["text"]
     assert "{{" not in system[0]["text"] + system[1]["text"]
-    assert (
-        '"name":"Wren"' not in system[0]["text"] + system[1]["text"]
-    )  # The sheet changes, so it is not in the system.
     assert '"name":"Wren"' in messages[-1]["content"]
     assert messages[-1]["content"].index("Character sheet") < messages[-1]["content"].index("I hide.")
     assert [m["role"] for m in messages] == ["user", "assistant", "user"]
+
+
+def test_ops04_the_system_prefix_is_cached_and_stable_while_the_sheet_changes() -> None:
+    state, _ = sworn_state()
+    system, messages = assemble(state, WORLD, [("I run.", "You run.")], "I hide.")
+    assert system[0]["cache_control"] == {"type": "ephemeral"}
+    # The sheet changes every turn, so it lives in the last message and not in the cached system.
+    assert '"name":"Wren"' not in system[0]["text"] + system[1]["text"]
+    assert '"name":"Wren"' in messages[-1]["content"]
     other, _ = assemble(state.model_copy(update={"xp": 99}), WORLD, [], "I hide.")
     assert other[0] == system[0]
 
@@ -408,7 +412,7 @@ def test_nar02_no_secret_or_sealed_text_reaches_a_prompt() -> None:
 
 def test_nar_ten_turn_scripted_playtest_commits_and_replays(tmp_path: Path) -> None:
     """Roadmap M2 acceptance, with an outage on turn 7: no lost events, no unsupplied numbers."""
-    state, rng = sworn_state()
+    _, rng = sworn_state()
     with Database.open(tmp_path / "play.db") as db:
         tid = db.create_timeline(seed=11, rng_state=rng)
         sim = Simulation(GameState(), RngStreams.from_seed(11), RULES, 0)
@@ -472,6 +476,5 @@ def test_nar_ten_turn_scripted_playtest_commits_and_replays(tmp_path: Path) -> N
             db.conn.execute("DELETE FROM snapshot")
         assert db.load_state(tid) == final  # From the whole log (ENG-06).
         assert db.last_turn(tid) == 10
-        assert final.xp + 100 * 1 >= 25 * 9
         assert len(final.hooks) >= 9
-    assert state.level == 1
+    assert (final.level, final.xp) == (2, 125)

@@ -34,7 +34,7 @@ packages = ["src/pantheon"]
 [tool.ruff]
 line-length = 110
 target-version = "py312"
-extend-exclude = [".claude", "scripts/render_plan.py", "docs", "world", "prompts", "*.md"]
+extend-exclude = [".claude", "docs", "world", "prompts", "*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
@@ -42,7 +42,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src/pantheon/engine"]
+files = ["src/pantheon"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

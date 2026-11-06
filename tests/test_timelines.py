@@ -6,8 +6,8 @@ from typing import Any
 from pantheon.engine.state import GameState, Hook
 from pantheon.llm.client import ToolCall
 from pantheon.llm.mock import MockClient
-from pantheon.narrator.assemble import _due_material, state_view
-from pantheon.narrator.loop import _numbers_in
+from pantheon.narrator.assemble import due_material, state_view
+from pantheon.narrator.loop import numbers_in
 from pantheon.narrator.validators import prose_problems
 from pantheon.storage.db import Database
 from pantheon.ui.cli.app import ledger_lines, main
@@ -109,7 +109,7 @@ def test_narrator_is_told_of_moved_and_filled_clocks_and_only_open_hooks() -> No
             Hook(id=2, turn=1, description="Closed debt", due_condition="soon", resolved=True),
         ],
     )
-    due = _due_material(state, WORLD)
+    due = due_material(state, WORLD)
     assert "The Rift Tide has moved: 3 of 8" in due
     assert "The Lantern's Price has filled: A prophecy comes due" in due
     assert "Open debt" in due
@@ -118,6 +118,7 @@ def test_narrator_is_told_of_moved_and_filled_clocks_and_only_open_hooks() -> No
 
 
 def test_nar04_prose_may_state_the_date_on_the_sheet() -> None:
-    allowed = _numbers_in(state_view(GameState()))
+    allowed = numbers_in(state_view(GameState()))
     assert prose_problems("It was 1 Seedtide, 1,140 years after the Severance.", allowed) == []
-    assert prose_problems("It was 9 Seedtide.", allowed) != []
+    problems = prose_problems("It was 9 Seedtide.", allowed)
+    assert problems and all("the number 9 " in p for p in problems)

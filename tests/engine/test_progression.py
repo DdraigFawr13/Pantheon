@@ -4,22 +4,21 @@ The content here is a test fixture, not canon: the real lists are M3.5's canon b
 """
 
 import json
-from pathlib import Path
 from typing import Any
 
 import pytest
-from hypothesis import given, settings
-from hypothesis import strategies as st
 
 from pantheon.engine.checks import Outcome
 from pantheon.engine.commands import CharacterChoices, choose_class, choose_profession, create_character
 from pantheon.engine.progression import (
+    RARITIES,
     absorb_shard,
     affinity_cap,
     choose_evolution,
     evolution_options,
     fuse_fragments,
     grant_title,
+    offer_skills,
     pick_skill,
     skill_rank_cap,
 )
@@ -27,10 +26,10 @@ from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import GameState, Shard, replay, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
 from pantheon.engine.tools import apply_tool, attempt_trial, resolve_offer
-from pantheon.world.loader import load_world
 from pantheon.world.schemas import Evolution, GameData, Skill, Title
+from tests.conftest import WORLD as SHARED_WORLD
 
-WORLD = load_world(Path(__file__).resolve().parents[2] / "world")
+WORLD = SHARED_WORLD
 assert WORLD.data is not None
 CONTENT: GameData = WORLD.data.model_copy(
     update={
@@ -164,8 +163,6 @@ def test_d037_no_content_means_no_offer_and_no_randomness() -> None:
     before = sim.rng.state()
     sim.emit("level_up", {"level": 1, "xp_spent": 0, "gains": {}, "free_points": 0})
     sim.emit("class_chosen", {"class_id": "wayfinder"})
-    from pantheon.engine.progression import offer_skills
-
     offer_skills(sim)
     assert sim.state.skill_offers == [] and sim.rng.state() == before
 
@@ -297,7 +294,7 @@ def test_d013_the_unwritten_can_absorb_shards() -> None:
     assert sim.state.affinities["flame"] == 1
 
 
-def test_absorbing_a_missing_shard_is_rejected() -> None:
+def test_eng07_absorbing_a_missing_shard_is_rejected() -> None:
     with pytest.raises(Rejected):
         absorb_shard(sworn(), 4)
 
@@ -401,7 +398,7 @@ def test_eng07_evolving_changes_the_class_adds_five_and_later_gains_follow_it() 
     assert sim.state.class_id == "tide_walker" and not sim.state.needs_evolution
     assert sim.state.stats["agility"] == agility + 5
     sim.emit("xp_gained", {"amount": xp_to_next(11), "kind": "x", "reason": "x"})
-    apply_tool(sim, "grant_xp", {"kind": "minor", "reason": "a push"})
+    assert apply_tool(sim, "grant_xp", {"kind": "minor", "reason": "a push"}).accepted
     assert sim.state.level == 12
     assert sim.state.stats["presence"] == presence + 1  # Tide Walker's secondary stat.
 
@@ -422,22 +419,42 @@ def test_d037_with_no_evolution_data_the_class_carries_on() -> None:
 Step = tuple[str, Any]
 
 
-@settings(max_examples=40, deadline=None)
-@given(
-    st.lists(
-        st.one_of(
-            st.tuples(st.just("give"), st.sampled_from(["flame", "tide"])),
-            st.tuples(st.just("frag"), st.sampled_from(["flame", "tide"])),
-            st.tuples(st.just("absorb"), st.integers(0, 3)),
-            st.tuples(st.just("fuse"), st.sampled_from(["flame", "tide"])),
-            st.tuples(st.just("title"), st.sampled_from(["stair_survivor", "unwitnessed"])),
-        ),
-        max_size=25,
-    )
-)
-def test_eng06_replay_equals_live_state_and_caps_hold(steps: list[Step]) -> None:
+SEQUENCES: dict[str, list[Step]] = {
+    "absorb_past_the_cap": [("give", "tide"), ("absorb", 0), ("give", "tide"), ("absorb", 0)] * 4,
+    "fragments_fuse_then_absorb": [
+        *[("frag", "flame")] * 3,
+        ("absorb", 0),
+        ("fuse", "flame"),
+        ("absorb", 0),
+        ("fuse", "flame"),
+        ("absorb", 3),
+    ],
+    "too_few_fragments_and_missing_shards": [
+        ("frag", "tide"),
+        ("frag", "tide"),
+        ("fuse", "tide"),
+        ("absorb", 2),
+    ],
+    "titles_twice": [("title", "stair_survivor"), ("title", "stair_survivor"), ("title", "unwitnessed")],
+    "mixed": [
+        ("give", "flame"),
+        ("title", "unwitnessed"),
+        ("frag", "tide"),
+        ("absorb", 0),
+        *[("frag", "tide")] * 2,
+        ("fuse", "tide"),
+        ("give", "flame"),
+        ("absorb", 1),
+        ("absorb", 0),
+        ("title", "stair_survivor"),
+    ],
+}
+
+
+@pytest.mark.parametrize("name", sorted(SEQUENCES))
+def test_eng06_replay_equals_live_state_and_caps_hold(name: str) -> None:
     sim = sworn()
-    for action, value in steps:
+    for action, value in SEQUENCES[name]:
         try:
             if action == "give":
                 give(sim, "affinity", value)
@@ -451,6 +468,25 @@ def test_eng06_replay_equals_live_state_and_caps_hold(steps: list[Step]) -> None
                 grant_title(sim, value, witness="npc:hale")
         except Rejected:
             pass
-    assert all(rank <= affinity_cap(sim.state) for rank in sim.state.affinities.values())
+        assert all(rank <= affinity_cap(sim.state) for rank in sim.state.affinities.values())
     assert replay(sim.events).model_dump() == sim.state.model_dump()
     json.dumps([payload for _, payload in sim.events])
+
+
+def test_eng07_an_unknown_skill_id_is_rejected() -> None:
+    sim = sworn()
+    pick_skill(sim, sim.state.skill_offers[0][0])  # Clear the class offer; the queue is first in, first out.
+    sim.emit("skill_offered", {"level": 3, "options": ["no_such_skill"]})
+    with pytest.raises(Rejected, match="unknown skill: no_such_skill"):
+        pick_skill(sim, "no_such_skill")
+
+
+def test_eng07_a_top_rarity_skill_cannot_evolve_further() -> None:
+    sim = sworn()
+    set_level(sim, 51)  # Tier 6, so only the rarity rule can refuse.
+    sim.emit("affinity_raised", {"affinity": "tide", "rank": 5})
+    sim.emit("skill_gained", {"skill": "tide_lord", "rank": 5, "rarity": RARITIES[-1]})
+    give(sim, "skill", "tide_lord", RARITIES[-1])
+    with pytest.raises(Rejected, match="cannot evolve further"):
+        absorb_shard(sim, 0)
+    assert sim.state.skill_rarity["tide_lord"] == RARITIES[-1] and sim.state.skills["tide_lord"] == 5

@@ -24,7 +24,8 @@ class AnthropicClient:
         self.model = model
         self.local = bool(base_url)
         self.think = think
-        self.client = client or anthropic.Anthropic(
+        # Any: the SDK's block unions are wider than the two block types this adapter reads.
+        self.client: Any = client or anthropic.Anthropic(
             base_url=base_url or None,
             api_key="ollama" if base_url else None,
             timeout=TIMEOUT_SECONDS,
@@ -54,7 +55,7 @@ class AnthropicClient:
         if self.local and tokens_in + tokens_cached < estimate_tokens(system, messages) * TRUNCATED_BELOW:
             raise LLMUnavailable(
                 f"the local model read only {tokens_in + tokens_cached} tokens of the prompt; "
-                "start Ollama with OLLAMA_CONTEXT_LENGTH=32768 (start.bat does this)"
+                "start Ollama with OLLAMA_CONTEXT_LENGTH=32768 (D-027)"
             )
         text = "".join(b.text for b in reply.content if b.type == "text").strip()
         calls = tuple(ToolCall(b.id, b.name, dict(b.input)) for b in reply.content if b.type == "tool_use")

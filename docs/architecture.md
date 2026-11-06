@@ -43,6 +43,8 @@ The central decision is how much of the story is authored versus improvised. Thr
 
 ## 3. Turn loop
 
+This is the API narrator's loop (`pantheon play`). In session play (D-041), a Claude Code session is the narrator and runs the same steps one command at a time (`pantheon session begin`, `tool`, `narrate`, `commit`), behind the play guard, with saves on the `saves` branch; D-041 and D-044 hold the details.
+
 ```python
 def take_turn(timeline, player_input):
     state = timeline.state()                                 # read-only view

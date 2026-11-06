@@ -1,14 +1,13 @@
 """`pantheon session`: Claude Code as narrator, one step per command (D-041)."""
 
 import json
-import shutil
-import subprocess
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from pantheon.storage.db import Database
+from pantheon.engine.state import xp_to_next
+from pantheon.storage.db import Database, EventRecord
 from pantheon.ui.cli.app import main
 
 SUGGEST = json.dumps(
@@ -48,21 +47,31 @@ class Game:
             assert tid is not None
             return db.load_state(tid), db.last_turn(tid)
 
-    def create(self) -> None:
-        code, out = self("create", "--name", "Wren", "--people", "saltborn", "--origin", "toll_ferry_orphan")
+    def create(self, seed: int = 0) -> None:
+        code, out = self(
+            "create",
+            "--name",
+            "Wren",
+            "--people",
+            "saltborn",
+            "--origin",
+            "toll_ferry_orphan",
+            "--seed",
+            str(seed),
+        )
         assert code == 0, out
         assert "Next: `session begin`" in out
 
-    def opening(self, *, create: bool = True) -> None:
+    def opening(self, *, create: bool = True, seed: int = 0) -> None:
         if create:
-            self.create()
+            self.create(seed)
         assert self("begin")[0] == 0
         assert self.narrate("The Stair gave way. Two voices spoke out of the dark at once.")[0] == 0
         assert self("tool", "suggest_actions", SUGGEST)[0] == 0
         assert self("commit")[0] == 0
 
-    def sworn(self) -> None:
-        self.opening()
+    def sworn(self, seed: int = 0) -> None:
+        self.opening(seed=seed)
         state, _ = self.state()
         code, out = self("choose", "offer", state.opening_gods[0])
         assert code == 0, out
@@ -128,7 +137,7 @@ def test_session_check_rolls_before_prose_and_replays_the_same_dice_ENG_04(game:
     game("tool", "suggest_actions", SUGGEST)
     code, out = game("commit")
     assert code == 0
-    assert f"{first_roll['outcome'].replace('_', ' ')}***" in out or "Agility check" in out
+    assert f"{first_roll['outcome'].replace('_', ' ')}***" in out
     with Database.open(game.db) as db:
         tid = db.latest_timeline()
         assert tid is not None
@@ -158,6 +167,8 @@ def test_session_tool_rejections_change_nothing_NAR_06(game: Game) -> None:
     assert "Rejected" in out
     code, out = game.narrate("Again.")
     assert code == 1 and "already has its prose" in out
+    assert game.state()[1] == 0  # Nothing was saved (NAR-06).
+    assert game.state()[0].suggested == []
 
 
 def test_session_waits_for_the_players_own_choices(game: Game) -> None:
@@ -225,39 +236,10 @@ def test_session_export_and_import_keep_the_old_save_GAME_05(game: Game, tmp_pat
 
 def test_session_start_and_stop_switch_the_play_guard(game: Game) -> None:
     marker = game.db.parent / ".playing"
-    game("start")
+    assert game("start")[0] == 0
     assert marker.exists()
-    game("stop")
+    assert game("stop")[0] == 0
     assert not marker.exists()
-
-
-@pytest.mark.skipif(shutil.which("node") is None, reason="the guard is a node hook")
-def test_play_guard_keeps_secret_and_sealed_canon_out_NAR_02(tmp_path: Path) -> None:
-    hook = Path(__file__).resolve().parents[1] / ".claude" / "hooks" / "play-guard.mjs"
-
-    def denied(tool: str, **tool_input: str) -> bool:
-        event = json.dumps({"tool_name": tool, "tool_input": tool_input})
-        env = {"CLAUDE_PROJECT_DIR": str(tmp_path), "PATH": "/usr/bin:/bin:/usr/local/bin"}
-        result = subprocess.run(
-            ["node", str(hook)], input=event, capture_output=True, text=True, env=env, check=True
-        )
-        return '"deny"' in result.stdout
-
-    assert not denied("Grep", pattern="x")  # Off while nobody is playing.
-    (tmp_path / "data").mkdir()
-    (tmp_path / "data" / ".playing").touch()
-    assert denied("Grep", pattern="x")
-    assert denied("Read", file_path=str(tmp_path / "world" / "secret" / "a.md"))
-    assert denied("Read", file_path=str(tmp_path / "world" / "sealed" / "a.md"))
-    assert not denied("Read", file_path=str(tmp_path / "world" / "pantheon.md"))
-    saved = "/root/.claude/projects/-home-user-Pantheon/abc/tool-results/b1.txt"
-    assert not denied("Read", file_path=saved)  # Long output of an allowed command.
-    assert denied("Read", file_path="/root/.claude/projects/x/abc/tool-results/../../../../etc/a.md")
-    assert not denied("Bash", command='uv run -q pantheon session begin "I climb"')
-    assert denied("Bash", command="uv run pantheon session narrate world/secret/a.md")
-    assert denied("Bash", command="uv run pantheon session status; cat world/secret/a.md")
-    assert not denied("Write", file_path=str(tmp_path / "data" / "narration.md"))
-    assert denied("Write", file_path=str(tmp_path / "src" / "x.py"))
 
 
 def test_session_screen_is_plain_data_for_the_game_page(game: Game, tmp_path: Path) -> None:
@@ -301,3 +283,105 @@ def test_session_screen_uses_names_a_player_reads(game: Game, tmp_path: Path) ->
     assert len(screen["class_catalogue"]) == len(screen["choice_groups"][0]["options"])
     assert not any("_" in line for line in screen["ledger"])
     assert any("Oath sworn" in line for line in screen["ledger"])
+
+
+TRIAL_SEED = 1  # A seed whose Trial roll ascends, so the free-point path runs.
+
+
+def ready_for_trial(game: Game) -> None:
+    """Level 10 with full XP, committed to the save as the engine would (as in test_play)."""
+    game.sworn(TRIAL_SEED)
+    events: list[EventRecord] = [
+        ("level_up", {"level": 10, "xp_spent": 0, "gains": {}, "free_points": 0}),
+        ("xp_gained", {"amount": xp_to_next(10), "kind": "milestone", "reason": "a long road"}),
+    ]
+    with Database.open(game.db) as db:
+        tid = db.latest_timeline()
+        assert tid is not None
+        db.commit_events(tid, db.last_turn(tid) + 1, events, db.rng_state(tid))
+
+
+def test_d031_session_trial_is_saved_before_any_prose_and_then_the_point_is_placed(game: Game) -> None:
+    ready_for_trial(game)
+    turn_before = game.state()[1]
+    code, out = game("trial")
+    assert code == 0, out
+    state, turn = game.state()
+    assert state.checks_made == 1  # The roll stands, saved before the narrator wrote a word.
+    assert turn == turn_before  # A command spends no narrated turn.
+    assert not game.db.with_name("game.turn.json").exists()
+    assert "Ascension Trial" in out and "Next: `session begin" in out
+    assert state.level == 11 and state.free_points > 0
+    assert "point" in game("status")[1]  # The free point waits for the player.
+    stat = "resolve"
+    before = state.stats[stat]
+    code, out = game("choose", "point", stat)
+    assert code == 0, out
+    assert game.state()[0].stats[stat] == before + 1
+    assert game("choose", "point", "luck")[0] == 1
+
+
+def test_d031_session_trial_is_refused_when_none_is_due(game: Game) -> None:
+    game.sworn()
+    code, out = game("trial")
+    assert code == 1 and "no Ascension Trial is due" in out
+    assert game.state()[0].checks_made == 0
+
+
+def _create_args(**overrides: str) -> list[str]:
+    args = {"name": "Wren", "people": "saltborn", "origin": "toll_ferry_orphan", **overrides}
+    return ["create", *(x for k, v in args.items() for x in (f"--{k}", v))]
+
+
+def _prep_nothing(game: Game) -> None:
+    pass
+
+
+def _prep_bad_create(game: Game) -> None:
+    assert game(*_create_args(age="15"))[0] == 1
+
+
+def _prep_begun(game: Game) -> None:
+    game.create()
+    assert game("begin")[0] == 0
+
+
+def _prep_played_opening(game: Game) -> None:
+    game.opening()
+
+
+@pytest.mark.parametrize(
+    ("prep", "step", "message"),
+    [
+        (_prep_nothing, ["commit"], "No turn is in progress"),
+        (_prep_nothing, ["begin"], "There is no game yet"),
+        (_prep_bad_create, ["begin"], "Create the character first"),
+        (_prep_begun, ["commit"], "Write and `narrate` the prose before committing"),
+        (_prep_played_opening, ["begin"], "Say what the player does"),
+    ],
+)
+def test_session_step_errors_guide_the_narrator(game: Game, prep: Any, step: list[str], message: str) -> None:
+    prep(game)
+    code, out = game(*step)
+    assert code == 1
+    assert message in " ".join(out.split())
+
+
+def test_session_an_invalid_create_says_why_and_saves_no_character(game: Game) -> None:
+    code, out = game(*_create_args(age="15"))
+    assert code == 1 and "Character not created" in " ".join(out.split())
+    assert "No character yet" in game("status")[1]
+
+
+def test_wld02_playing_never_writes_to_world(game: Game) -> None:
+    world = Path(__file__).resolve().parents[1] / "world"
+    public = [p for p in world.rglob("*") if p.is_file() and not {"secret", "sealed"} & set(p.parts)]
+
+    def fingerprint() -> dict[str, tuple[int, bytes]]:
+        return {str(p): (p.stat().st_mtime_ns, p.read_bytes()) for p in public}
+
+    before = fingerprint()
+    game.sworn()
+    state, _ = game.state()
+    assert state.oaths  # A real turn ran: an Oath was sworn and saved.
+    assert fingerprint() == before

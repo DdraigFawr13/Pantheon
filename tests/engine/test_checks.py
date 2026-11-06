@@ -44,8 +44,13 @@ def test_d036_the_odds_shown_are_the_odds_rolled(
     assert odds.tier_gap == result.tier_gap
     if odds.outcome is None:
         assert not result.automatic
+        assert result.roll is not None
+        assert result.complication is (result.roll >= 96)
     else:
         assert result.automatic and odds.outcome == result.outcome
+        assert result.roll is None
+        assert result.chance is None
+        assert result.complication is False
 
 
 @pytest.mark.parametrize(("chance", "shown"), [(-40, 5), (3, 5), (62, 62), (140, 100)])
@@ -290,39 +295,6 @@ def test_d022_rejected_request_consumes_no_randomness(overrides: dict[str, objec
     with pytest.raises(ValueError):
         resolve_check(rng, request(**overrides))
     assert rng.calls == []
-
-
-@given(
-    difficulty=st.sampled_from(Difficulty),
-    stat=st.integers(0, 200),
-    skill_rank=st.integers(0, 5),
-    actor_tier=st.integers(0, 8),
-    challenge_tier=st.integers(0, 8),
-    approach=st.sampled_from(Approach),
-    roll=st.integers(1, 100),
-)
-def test_eng04_every_check_obeys_the_natural_roll_rules(
-    difficulty: Difficulty,
-    stat: int,
-    skill_rank: int,
-    actor_tier: int,
-    challenge_tier: int,
-    approach: Approach,
-    roll: int,
-) -> None:
-    result = resolve_check(
-        FixedRolls(roll),
-        CheckRequest(difficulty, stat, skill_rank, actor_tier, challenge_tier, approach),
-    )
-    if result.automatic:
-        assert result.roll is None
-        assert result.chance is None
-        assert result.complication is False
-        return
-    assert result.roll == roll
-    assert result.complication is (roll >= 96)
-    if roll <= 5:
-        assert result.outcome is Outcome.TRIUMPH
 
 
 def test_eng03_same_seed_and_inputs_give_the_same_results() -> None:

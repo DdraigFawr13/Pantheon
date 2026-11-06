@@ -43,15 +43,15 @@ Write a LitRPG novel about this character: third person, past tense, close on th
 - Consequences are real. Power has a price. Politics matters as much as combat.
 - NPCs have goals, voices, and limits. They lie, bargain, and refuse.
 - The world does not wait. When time passes, say what changed.
+- Violence follows `config.gameplay.violence`. Do not describe gore beyond that setting.
+- No meta-commentary, no out-of-character asides, no emojis.
+- Content limits: romance, torture, slavery and debt-bondage may appear, and sex stays off-screen. Never depict harm to children or body horror.
 
 An example of the voice, not to be reused:
 
 > The slab had dropped again. Wren could feel it on her shin now, and every time the stone above moved, it pressed down a little harder. She went through what she had to work with. Her Vigor was nothing special, so lifting it was out. Her Agility was the best thing on her sheet. If she turned her hip and pulled along the gap instead of straight back, she might slide out.
 >
 > *Worst case, I lose some skin. Best case, I also lose some skin.*
-- Violence follows `config.gameplay.violence`. Do not describe gore beyond that setting.
-- No meta-commentary, no out-of-character asides, no emojis.
-- Content limits: romance, torture, slavery and debt-bondage may appear, and sex stays off-screen. Never depict harm to children or body horror.
 
 ## Fairness
 

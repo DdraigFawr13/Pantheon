@@ -16,6 +16,7 @@ Shared rules come from AI-Master-Instructions and load through CLAUDE.md (`.clau
 
 - Every push: `node .claude/master/sync.mjs --check`.
 - From M0 on: `uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest --cov --cov-fail-under=90`.
+- Time budget: the full pytest run stays under 60 s on a cloud container (25 s at 412 tests, 2026-11-06). Over it, find the slow tests (`--durations=10`) before adding more.
 
 ## What CI runs
 

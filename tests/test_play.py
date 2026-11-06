@@ -11,16 +11,24 @@ from rich.console import Console
 
 from pantheon.config import load_env_file
 from pantheon.engine.rng import RngStreams
-from pantheon.engine.state import STATS, EventRecord, GameState, Injury, Shard, xp_to_next
+from pantheon.engine.state import STATS, Action, EventRecord, GameState, Injury, Shard, xp_to_next
 from pantheon.engine.timeline import Rules, Simulation
 from pantheon.llm.client import LLMReply, ToolCall
 from pantheon.llm.mock import MockClient
 from pantheon.storage.db import Database
-from pantheon.ui.cli.app import _player_choices, _sheet, ledger_lines, main, spoken_choice
-from pantheon.world.loader import load_world
+from pantheon.ui.cli.app import (
+    _player_choices,
+    inspect_option,
+    ledger_lines,
+    main,
+    odds_text,
+    sheet,
+    spoken_choice,
+)
 from pantheon.world.schemas import Evolution, Skill
+from tests.conftest import WORLD as SHARED_WORLD
 
-WORLD = load_world(Path(__file__).resolve().parents[1] / "world")
+WORLD = SHARED_WORLD
 PROSE = "The dark presses close."
 ACTIONS = [
     {"label": "Ask what it wants"},
@@ -213,16 +221,6 @@ def test_d036_inspect_describes_an_option_and_costs_no_turn(tmp_path: Path, caps
         assert db.last_turn(tid) == 2
 
 
-def test_d033_swearing_and_levelling_show_the_full_sheet(tmp_path: Path, capsys: Any) -> None:
-    grant = ToolCall("g", "grant_xp", {"kind": "milestone", "reason": "a great deed"})
-    check = ToolCall("c", "request_check", {"stat": "agility", "difficulty": "routine", "challenge_tier": 0})
-    lines = [*NEW_GAME, "4", "1", "1", "Do the deed", "2", "/quit"]
-    play(tmp_path, lines, [*talk(), *narration(), *narration(grant, check=check)])
-    out = capsys.readouterr().out
-    assert out.count("The Ledger") >= 2
-    assert "█" in out
-
-
 def test_d035_commands_work_without_a_slash_and_are_on_screen(tmp_path: Path, capsys: Any) -> None:
     code, state, _ = play(tmp_path, [*NEW_GAME, "sheet", "hooks", "help", "?", "QUIT"], talk())
     assert code == 0 and state.name == "Wren"
@@ -313,7 +311,7 @@ def test_d037_the_ledger_names_progress_and_the_sheet_lists_it(capsys: Any) -> N
         shards=[Shard(kind="affinity", target="flame")],
     )
     assert WORLD.data is not None
-    Console(width=120).print(_sheet(state, WORLD))
+    Console(width=120).print(sheet(state, WORLD))
     out = capsys.readouterr().out
     assert "Titles: survivor" in out and "Injuries: vigor -10" in out and "Shards: flame" in out
 
@@ -352,7 +350,9 @@ def test_typed_oath_asks_first_and_a_no_keeps_the_turn(tmp_path: Path) -> None:
     assert state.level == 0 and not state.offer_resolved
 
 
-def test_xp_level_up_prompts_for_the_free_point(tmp_path: Path, capsys: Any) -> None:
+def test_d033_swearing_and_levelling_show_the_full_sheet_and_prompt_for_the_free_point(
+    tmp_path: Path, capsys: Any
+) -> None:
     grant = ToolCall("g", "grant_xp", {"kind": "milestone", "reason": "a great deed"})
     lines = [*NEW_GAME, "4", "1", "1", "Do the deed", "2", "/quit"]
     check = ToolCall("c", "request_check", {"stat": "agility", "difficulty": "routine", "challenge_tier": 0})
@@ -360,6 +360,8 @@ def test_xp_level_up_prompts_for_the_free_point(tmp_path: Path, capsys: Any) -> 
     assert state.level == 2 and state.free_points == 0
     out = capsys.readouterr().out
     assert "Level 2!" in out and "Place your free point" in out
+    assert out.count("The Ledger") >= 2
+    assert "█" in out
 
 
 def test_resume_shows_the_last_turn_and_a_downed_character(tmp_path: Path, capsys: Any) -> None:
@@ -442,3 +444,80 @@ def test_d032_env_file_supplies_settings_but_a_real_variable_wins(tmp_path: Path
     assert "PANTHEON_EMPTY" not in os.environ
     monkeypatch.delenv("PANTHEON_A")
     load_env_file(tmp_path / "missing")
+
+
+def opening_god_name(tmp_path: Path) -> tuple[str, str]:
+    """The first god the seed-42 opening offers: its id and the name the player would type."""
+    (tmp_path / "probe").mkdir()
+    _code, probe, _ = play(tmp_path / "probe", [*NEW_GAME, "/quit"], talk())
+    assert WORLD.data is not None
+    god = probe.opening_gods[0]
+    return god, next(g.name for g in WORLD.data.gods if g.id == god)
+
+
+def test_typed_oath_answered_yes_swears_it(tmp_path: Path) -> None:
+    _god, name = opening_god_name(tmp_path)
+    lines = [*NEW_GAME, f"I swear to {name}", "y", "1", "1", "/quit"]
+    _code, state, _ = play(tmp_path, lines, [*talk(), *narration()])
+    assert state.level == 1 and len(state.oaths) == 1 and state.offer_resolved
+    assert state.flags.get("unwritten_path") is not True
+
+
+def test_refuse_command_leaves_the_character_unwritten(tmp_path: Path) -> None:
+    _code, state, _ = play(tmp_path, [*NEW_GAME, "/refuse", "/quit"], [*talk(), *narration()])
+    assert state.level == 0 and state.offer_resolved and state.flags["unwritten_path"] is True
+
+
+def test_swear_command_with_a_god_swears_that_gods_oath(tmp_path: Path) -> None:
+    god, _name = opening_god_name(tmp_path)
+    lines = [*NEW_GAME, f"/swear {god}", "1", "1", "/quit"]
+    _code, state, _ = play(tmp_path, lines, [*talk(), *narration()])
+    assert state.level == 1 and len(state.oaths) == 1
+
+
+def test_a_rejected_offer_says_why_and_keeps_the_turn(tmp_path: Path, capsys: Any) -> None:
+    lines = [*NEW_GAME, "/swear nobody", "/quit"]
+    _code, state, tid = play(tmp_path, lines, talk())
+    assert "choice must be refuse or one of" in " ".join(capsys.readouterr().out.split())
+    assert state.level == 0 and not state.offer_resolved
+    with Database.open(tmp_path / "game.db") as db:
+        assert db.last_turn(tid) == 1
+
+
+def test_a_blank_line_asks_again_and_spends_no_turn(tmp_path: Path) -> None:
+    _code, state, tid = play(tmp_path, [*NEW_GAME, "", "   ", "/quit"], talk())
+    assert state.level == 0
+    with Database.open(tmp_path / "game.db") as db:
+        assert db.last_turn(tid) == 1
+
+
+def odds_state(level: int) -> GameState:
+    return GameState(
+        stats=dict.fromkeys(STATS, 30),
+        level=level,
+        created=True,
+        flags={"opening.dual_offer_resolved": True},
+    )
+
+
+def test_d036_a_settled_check_shows_sure_and_an_impossible_one_shows_no_chance() -> None:
+    check = {"stat": "agility", "difficulty": "routine", "challenge_tier": 0, "stakes": "x"}
+    sure = Action(label="Walk the plank", check=check)
+    assert odds_text(odds_state(31), WORLD, sure) == " sure"
+    hopeless = Action(label="Lift the gate", check={**check, "challenge_tier": 5, "approach": "force"})
+    assert odds_text(odds_state(1), WORLD, hopeless) == " no chance"
+    plain = Action(label="Wait")
+    assert odds_text(odds_state(1), WORLD, plain) == ""
+
+
+def test_d036_inspect_says_what_a_tag_rests_on_and_shows_sure_odds() -> None:
+    state = odds_state(31)
+    check = {"stat": "agility", "difficulty": "routine", "challenge_tier": 0, "stakes": "the plank"}
+    state.suggested = [Action(label="Walk the plank", check=check, tag="Held Line", cost="a splinter")]
+    text = inspect_option(state, WORLD, "1")
+    assert "Rests on: Held Line" in text and "sure" in text
+    assert "Cost or risk: a splinter" in text
+
+
+def test_d037_the_ledger_marks_a_downed_character() -> None:
+    assert any("Downed" in line for line in ledger_lines([("downed", {})]))
