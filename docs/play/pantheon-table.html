@@ -118,6 +118,12 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .kv dt { color: var(--muted); } .kv dd { margin: 0; min-width: 0; }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font: .86rem/1.45 var(--mono); }
 .list li { border-top: 1px dashed var(--line); padding-top: 6px; } .list li:first-child { border-top: 0; padding-top: 0; }
+.codexbar { display: grid; gap: 8px; }
+.codexbar input { font: 1rem var(--prose); padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--page); color: var(--ink); width: 100%; min-width: 0; }
+.subtabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.subtabs button { font: 600 .78rem var(--mono); color: var(--muted); background: var(--page); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; white-space: nowrap; }
+.subtabs button[aria-selected="true"] { color: var(--brass); border-color: var(--brass); background: var(--brass-soft); }
+.codexlist { display: grid; gap: 14px; }
 .gear { display: grid; gap: 4px; }
 .gearbtn { justify-self: start; font: 600 .75rem var(--mono); color: var(--brass); background: none; border: 1px solid var(--brass); border-radius: 999px; padding: 2px 12px; cursor: pointer; }
 .pill { display: inline-block; font: 600 .7rem var(--mono); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; color: var(--muted); margin-left: 4px; }
@@ -499,43 +505,68 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     box.append(purse, items, shards);
   }
 
-  function renderCodex(s) {
-    // Game knowledge from the engine's public data; the bestiary lists only foes this character has met.
-    const box = $("tab-codex"); box.replaceChildren();
+  // The Codex keeps its own sub-tab and search, so a new screen from the game never clears what you typed.
+  let codexTab = "bestiary", codexQuery = "";
+  try { codexTab = localStorage.getItem("pantheon-codex") || "bestiary"; } catch {}
+  const CODEX_TABS = [["bestiary", "Bestiary"], ["classes", "Classes"], ["peoples", "Peoples"], ["gods", "The Hands"]];
+
+  function codexEntries(s) {
     const c = s.codex || {};
-    const entries = (items, make) => { const cl = el("div", "classlist"); items.forEach((it) => cl.append(make(it))); return cl; };
-    const head = (name, pills, current) => {
-      const h = el("div"); h.append(el("span", "cname", name));
-      pills.filter(Boolean).forEach((p) => h.append(el("span", "pill", p)));
-      if (current) h.append(el("span", "pill", current));
-      return h;
+    const entry = (name, pills, lines, current) => ({ name, pills: pills.filter(Boolean), lines: lines.filter(Boolean), current });
+    return {
+      bestiary: (c.bestiary || []).map((b) => entry(b.name, [`Tier ${b.tier}`, b.threat], [["sub", `Met ${b.met} · brought down ${b.down}`]])),
+      classes: (c.classes || s.class_catalogue || []).map((k) => entry(k.name, [k.stats], [["pblurb", k.blurb], ["ptrait", k.trait]], k.current && "Yours")),
+      peoples: (c.peoples || []).map((p) => entry(p.name, [p.stat], [["sub", `Innate affinity: ${p.affinity}`]], p.current && "Yours")),
+      gods: (c.gods || []).map((g) => entry(g.name, [g.affinities], [["sub", `Favours: ${g.favours}`],
+        ...(g.oaths || []).flatMap((o) => [["ptrait", `${o.name}: ${o.gift}`], ["sub", `Burden: ${o.burden}`]])], g.sworn && "Sworn")),
     };
-    const beasts = card("Bestiary", "Foes you have faced. More fills in as you fight.");
-    beasts.append((c.bestiary || []).length ? entries(c.bestiary, (b) => {
-      const row = el("div", "cls");
-      row.append(head(b.name, [`Tier ${b.tier}`, b.threat]), el("span", "sub", `Met ${b.met} · brought down ${b.down}`));
-      return row;
-    }) : list([], "No foes met yet."));
-    const classes = card("Classes", "How each base class plays. Yours is marked.");
-    classes.append(entries(c.classes || s.class_catalogue || [], (k) => {
-      const row = el("div", "cls" + (k.current ? " current" : ""));
-      row.append(head(k.name, [k.stats], k.current && "Yours"), el("span", "pblurb", k.blurb), el("span", "ptrait", k.trait));
-      return row;
-    }));
-    const peoples = card("Peoples", "What each people is born with.");
-    peoples.append(entries(c.peoples || [], (p) => {
-      const row = el("div", "cls" + (p.current ? " current" : ""));
-      row.append(head(p.name, [p.stat], p.current && "Yours"), el("span", "sub", `Innate affinity: ${p.affinity}`));
-      return row;
-    }));
-    const gods = card("The Hands", "The seven gods, what they favour, and the Oaths they offer.");
-    gods.append(entries(c.gods || [], (g) => {
-      const row = el("div", "cls" + (g.sworn ? " current" : ""));
-      row.append(head(g.name, [g.affinities], g.sworn && "Sworn"), el("span", "sub", `Favours: ${g.favours}`));
-      (g.oaths || []).forEach((o) => row.append(el("span", "ptrait", `${o.name}: ${o.gift}`), el("span", "sub", `Burden: ${o.burden}`)));
-      return row;
-    }));
-    box.append(beasts, classes, peoples, gods);
+  }
+
+  function renderCodex(s) {
+    const box = $("tab-codex");
+    if (!box.dataset.ready) {
+      box.dataset.ready = "1";
+      const bar = el("div", "codexbar");
+      const tabs = el("div", "subtabs"); tabs.setAttribute("role", "tablist"); tabs.id = "codexTabs";
+      CODEX_TABS.forEach(([id, label]) => {
+        const b = el("button", null, label); b.type = "button"; b.dataset.sub = id; b.setAttribute("role", "tab");
+        b.addEventListener("click", () => { codexTab = id; try { localStorage.setItem("pantheon-codex", id); } catch {} fillCodex(); });
+        tabs.append(b);
+      });
+      const search = el("input"); search.id = "codexSearch"; search.type = "search"; search.placeholder = "Search the Codex";
+      search.setAttribute("aria-label", "Search the Codex");
+      search.addEventListener("input", () => { codexQuery = search.value.trim().toLowerCase(); fillCodex(); });
+      bar.append(search, tabs);
+      box.append(bar, el("div", "codexlist"));
+    }
+    fillCodex();
+  }
+
+  function fillCodex() {
+    if (!screen) return;
+    const box = $("tab-codex"), listBox = box.querySelector(".codexlist");
+    const all = codexEntries(screen);
+    const matches = (e) => !codexQuery || [e.name, ...e.pills, ...e.lines.map((l) => l[1])].join(" ").toLowerCase().includes(codexQuery);
+    box.querySelectorAll("#codexTabs button").forEach((b) => {
+      const n = codexQuery ? all[b.dataset.sub].filter(matches).length : null;
+      b.textContent = CODEX_TABS.find(([id]) => id === b.dataset.sub)[1] + (n !== null ? ` (${n})` : "");
+      b.setAttribute("aria-selected", String(b.dataset.sub === codexTab));
+    });
+    const hints = { bestiary: "Foes you have faced. More fills in as you fight.", classes: "How each base class plays.", peoples: "What each people is born with.", gods: "The seven gods, what they favour, and the Oaths they offer." };
+    const items = all[codexTab].filter(matches);
+    const cl = el("div", "classlist");
+    items.forEach((e) => {
+      const row = el("div", "cls" + (e.current ? " current" : ""));
+      const h = el("div"); h.append(el("span", "cname", e.name));
+      e.pills.forEach((p) => h.append(el("span", "pill", p)));
+      if (e.current) h.append(el("span", "pill", e.current));
+      row.append(h, ...e.lines.map(([cls, text]) => el("span", cls, text)));
+      cl.append(row);
+    });
+    const empty = codexQuery ? `Nothing here matches “${codexQuery}”.` : codexTab === "bestiary" ? "No foes met yet." : "Nothing recorded yet.";
+    const panel = card(CODEX_TABS.find(([id]) => id === codexTab)[1], hints[codexTab]);
+    panel.append(items.length ? cl : el("p", "empty", empty));
+    listBox.replaceChildren(panel);
   }
 
   function renderCreate(setup) {
