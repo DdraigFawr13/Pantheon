@@ -6,7 +6,7 @@ Updated: 2026-11-06. A fresh session must be able to continue from this file alo
 
 M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are merged. PR #20 (master v4.11.0, D-043, two audits) and PR #21 (every audit finding fixed or recorded; the play guard denies by default, D-044) are merged. Still open from the audit: canon gaps G-28 to G-32 (the owner answers them); MEM-01 to MEM-04 have no tests until M3.
 
-**M1d, M1e and M1f are built on draft PR #19** (`claude/m1-build`), which merges #16 (D-039) and current `main`, and supersedes #16. M1 is complete there, pending the owner's approval to merge (GIT-07, GIT-08).
+**M1 is complete: M1d, M1e and M1f merged as PR #19** (owner approved 2026-11-06), which brought in #16 (D-039); #16 is closed as superseded. **Next: M2 (narrator loop)**, starting with an M1 audit offer (VER-09) and the owner's playtest with a fight.
 
 ## Just done
 
@@ -20,7 +20,7 @@ M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are me
 
 ## Next
 
-1. Owner reviews and approves PR #19; then finish it (GIT-08) and close #16 as superseded.
+1. New branch from `main` for the next unit of work (GIT-01). Offer the owner an M1 audit (VER-09) before M2. Then read BUILD_PLAN "M2: Narrator loop" and mark what M1.5 to M1.7 already built.
 2. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 3. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 4. Offer an audit of M1 (VER-09). Next milestone in the plan: M2 (narrator loop), much of which M1.5 to M1.7 built.
