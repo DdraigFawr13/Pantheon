@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sqlite3
 import time
@@ -336,6 +337,72 @@ class Session:
             due.append("evolution: " + ", ".join(e.id for e in evolution_options(state, data)))
         return due
 
+    def choice_groups(self, state: GameState) -> list[dict[str, Any]]:
+        """The same choices as `choices_due`, with display names, so the page can ask them all at once."""
+        assert self.world.data is not None
+        data = self.world.data
+        groups: list[dict[str, Any]] = []
+
+        def group(kind: str, title: str, options: list[tuple[str, str, str]], count: int = 1) -> None:
+            items = [{"id": i, "name": n, "detail": d} for i, n, d in options]
+            groups.append({"kind": kind, "title": title, "count": count, "options": items})
+
+        if state.needs_class:
+            group(
+                "class",
+                "Your class",
+                [
+                    (c.id, c.name, f"{c.primary.capitalize()} / {c.secondary.capitalize()}")
+                    for c in data.classes
+                ],
+            )
+        if state.needs_profession:
+            kinds = (
+                ("Gathering", data.professions.gathering),
+                ("Crafting", data.professions.crafting),
+                ("Service", data.professions.service),
+            )
+            group("profession", "Your profession", [(p, p.capitalize(), k) for k, ps in kinds for p in ps])
+        if state.free_points > 0:
+            group(
+                "point",
+                "Place your free point",
+                [(x, x.capitalize(), str(state.stats[x])) for x in STATS],
+                state.free_points,
+            )
+        if state.skill_offers:
+            names = {k.id: k for k in data.skills}
+            group(
+                "skill",
+                "Your class offers a skill",
+                [(o, names[o].name, names[o].rarity.capitalize()) for o in state.skill_offers[0]],
+            )
+        if state.needs_evolution:
+            group(
+                "evolution",
+                "Choose your evolved class",
+                [(e.id, e.name, "") for e in evolution_options(state, data)],
+            )
+        return groups
+
+    def pretty(self, text: str) -> str:
+        """Engine ids in Ledger lines become the names a player reads."""
+        assert self.world.data is not None
+        data = self.world.data
+        names = {o.id: o.name for o in data.oaths}
+        names |= {g.id: g.name for g in data.gods} | {c.id: c.name for c in data.classes}
+        names |= {p.id: p.name for p in data.peoples} | {o.id: o.name for o in data.origins.origins}
+
+        def swap(match: re.Match[str]) -> str:
+            word = match.group(0)
+            if word in names:
+                return names[word]
+            if word in STATS or word in data.affinities.basic or word in data.professions.all():
+                return word.capitalize()
+            return word.replace("_", " ") if "_" in word else word
+
+        return re.sub(r"\b[a-z][a-z_]*\b", swap, text)
+
     def menu(self) -> None:
         state = self.state()
         out = self.console.print
@@ -440,7 +507,7 @@ class Session:
         last = self.db.last_turn(tid)
         recent = self.db.recent_turns(tid, 1)
         logged = self.db.events(tid)
-        events = [(e["type"], e["payload"]) for e in logged if e["turn"] == last]
+        events = [(e["type"], e["payload"]) for e in logged if e["turn"] >= last]
         prose = recent[0][1] if recent else ""
         plain = [Text.from_markup(line).plain for line in ledger_lines(events)]
         oaths = {o.id: o.name for o in self.world.data.oaths}
@@ -485,7 +552,9 @@ class Session:
             "origin_name": origin.name if origin else state.origin,
             "flaw": state.flaw,
             "debt": state.debt,
-            "class_stats": f"{current.primary} / {current.secondary}" if current else "",
+            "class_stats": f"{current.primary.capitalize()} / {current.secondary.capitalize()}"
+            if current
+            else "",
             "skill_list": [
                 {
                     "name": skills[k].name if k in skills else k.replace("_", " ").capitalize(),
@@ -514,7 +583,7 @@ class Session:
             "people": state.people,
             "age": state.age,
             "class": current.name if current else "",
-            "profession": state.profession or "",
+            "profession": (state.profession or "").capitalize(),
             "tier": state.tier,
             "level": state.level,
             "xp": state.xp,
@@ -526,18 +595,19 @@ class Session:
             "downed": state.downed,
             "coin": state.coin,
             "stats": {s: state.stats[s] for s in STATS},
-            "affinities": state.affinities,
+            "affinities": {a.capitalize(): r for a, r in state.affinities.items()},
             "skills": state.skills,
             "oaths": [oaths[o] for o in state.oaths],
-            "standing": state.standing,
+            "standing": {self.pretty(e).capitalize(): v for e, v in state.standing.items()},
             "titles": list(state.titles),
             "injuries": [f"{i.stat} -{i.amount}" for i in state.injuries],
             "hooks": [h.description for h in state.hooks if not h.resolved],
             "prose": [line for line in prose.split("\n") if line.strip()] if prose else [],
-            "ledger": [line for line in plain if line not in prose],
+            "ledger": [self.pretty(line) for line in plain if line not in prose],
             "options": options,
             "offers": offers,
             "choices_due": self.choices_due(state),
+            "choice_groups": self.choice_groups(state),
             "trial_ready": state.trial_ready,
         }
 
@@ -557,7 +627,11 @@ class Session:
                 for p in data.peoples
             ],
             "origins": [
-                {"id": o.id, "name": o.name, "text": f"{o.stat} +2, {o.skill} 1. {o.complication}."}
+                {
+                    "id": o.id,
+                    "name": o.name,
+                    "text": f"{o.stat.capitalize()} +2, {o.skill.capitalize()} 1. {o.complication}.",
+                }
                 for o in data.origins.origins
             ],
             "stats": list(STATS),

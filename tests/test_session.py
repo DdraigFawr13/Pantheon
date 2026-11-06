@@ -285,3 +285,17 @@ def test_session_screen_offers_creation_and_then_a_full_sheet(game: Game, tmp_pa
     assert screen["created"] is True and screen["origin_name"] == "Toll-ferry orphan"
     assert screen["oath_list"][0]["burden"] and screen["skill_list"][0]["name"] == "Streetwise"
     assert screen["class_stats"]
+
+
+def test_session_screen_uses_names_a_player_reads(game: Game, tmp_path: Path) -> None:
+    game.opening()
+    state, _ = game.state()
+    game("choose", "offer", state.opening_gods[0])
+    out = tmp_path / "screen.json"
+    game("screen", str(out))
+    screen = json.loads(out.read_text(encoding="utf-8"))
+    kinds = [g["kind"] for g in screen["choice_groups"]]
+    assert kinds == ["class", "profession"]  # Both asked at once.
+    assert screen["choice_groups"][0]["options"][0]["name"][0].isupper()
+    assert not any("_" in line for line in screen["ledger"])
+    assert any("Oath sworn" in line for line in screen["ledger"])

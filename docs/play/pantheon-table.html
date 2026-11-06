@@ -46,6 +46,14 @@ h2 { font: 700 .95rem var(--display); letter-spacing: .08em; color: var(--muted)
 .note strong { font: 700 .78rem var(--display); letter-spacing: .06em; color: var(--mana); display: block; }
 .due { border: 1px solid var(--brass); border-radius: 6px; padding: 10px 12px; background: var(--brass-soft); }
 .due p { margin: 0 0 6px; font: .85rem var(--mono); }
+.due { display: grid; gap: 8px; }
+.due h2 { margin: 6px 0 0; }
+.picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.pick { display: grid; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); color: var(--ink); cursor: pointer; font: 1rem/1.25 var(--prose); }
+.pick .pdetail { font: .72rem var(--mono); color: var(--muted); }
+.pick[aria-pressed="true"] { border-color: var(--brass); background: var(--brass-soft); box-shadow: 0 0 0 1px var(--brass) inset; }
+.due .confirm { padding: 10px 16px; justify-self: start; }
+
 .choices { display: grid; gap: 8px; }
 .choice { display: grid; grid-template-columns: 1fr auto; align-items: stretch; border: 1px solid var(--line); border-radius: 8px; background: var(--page); overflow: hidden; }
 .choice > button.go { text-align: left; background: none; border: 0; color: var(--ink); font: 1rem/1.35 var(--prose); padding: 11px 12px; cursor: pointer; min-width: 0; display: grid; gap: 4px; }
@@ -151,6 +159,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 (() => {
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  let picks = {};
   let screen = null, comments = null, sendState = "off", sentAt = null, threadId = null;
   try { threadId = localStorage.getItem("pantheon-thread"); } catch {}
 
@@ -210,20 +219,35 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     ledger.hidden = !(s.ledger || []).length;
 
     const due = $("due"); due.replaceChildren();
-    (s.choices_due || []).forEach((line) => {
-      const [kind, rest] = [line.split(/[ :(]/)[0], line.slice(line.indexOf(":") + 1)];
-      due.append(el("p", null, `Choose your ${kind}:`));
-      const box = el("div", "choices");
-      rest.split(",").map((x) => x.trim()).filter(Boolean).forEach((item) => {
-        const id = item.split(" ")[0];
-        box.append(choiceRow({ label: item, tag: "", odds: "", n: null }, `Pantheon choose: ${kind} ${id}`));
+    const groups = s.choice_groups || [];
+    Object.keys(picks).forEach((k) => { if (!groups.some((g) => g.kind === k)) delete picks[k]; });
+    groups.forEach((g) => {
+      due.append(el("h2", null, g.title));
+      const box = el("div", "picks");
+      g.options.forEach((o) => {
+        const b = el("button", "pick"); b.type = "button";
+        b.setAttribute("aria-pressed", String(picks[g.kind] === o.id));
+        b.append(el("span", "pname", o.name));
+        if (o.detail) b.append(el("span", "pdetail", o.detail));
+        b.addEventListener("click", () => { picks[g.kind] = o.id; render(); });
+        box.append(b);
       });
       due.append(box);
     });
-    due.hidden = !(s.choices_due || []).length;
+    if (groups.length) {
+      const ready = groups.every((g) => picks[g.kind]);
+      const confirm = el("button", "primary confirm", groups.length > 1 ? "Confirm these choices" : "Confirm");
+      confirm.type = "button"; confirm.disabled = !ready;
+      confirm.addEventListener("click", () => {
+        const msg = groups.map((g) => `${g.kind} ${picks[g.kind]}`).join("; ");
+        send("Pantheon choose: " + msg, confirm);
+      });
+      due.append(confirm);
+    }
+    due.hidden = !groups.length;
 
     const choices = $("choices"); choices.replaceChildren();
-    const blocked = (s.choices_due || []).length > 0;
+    const blocked = groups.length > 0;
     if (!blocked) {
       (s.options || []).forEach((o) => choices.append(choiceRow(o, `Pantheon move: ${o.n}. ${o.label}`)));
       (s.offers || []).forEach((o) => choices.append(choiceRow({ ...o, oath: true }, `Pantheon choose: offer ${o.id}`)));
@@ -418,8 +442,9 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     const select = (id, options) => { const sel = el("select"); sel.id = id; options.forEach(([v, t]) => { const o = el("option", null, t); o.value = v; sel.append(o); }); return sel; };
     const name = el("input"); name.id = "c-name"; name.maxLength = 40; name.placeholder = "A name";
     const age = el("input"); age.id = "c-age"; age.type = "number"; age.min = "16"; age.max = "30"; age.value = "22";
-    const people = select("c-people", setup.peoples.map((p) => [p.id, `${p.name} (${p.stat === "any" ? "+3 to any stat" : p.stat})`]));
-    const peopleStat = select("c-pstat", setup.stats.map((x) => [x, x]));
+    const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+    const people = select("c-people", setup.peoples.map((p) => [p.id, `${p.name} (${p.stat === "any" ? "+3 to any stat" : "+3 " + cap(p.stat)})`]));
+    const peopleStat = select("c-pstat", setup.stats.map((x) => [x, cap(x)]));
     const pstatField = field("Your people's +3 goes to", peopleStat);
     const affinity = el("select"); affinity.id = "c-aff";
     const affField = field("Innate affinity", affinity);
@@ -427,7 +452,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     const originText = el("p", "hint");
     const statsBox = el("div", "stats");
     const order = setup.stat_array.map((v, i) => {
-      const sel = select("c-stat" + i, setup.stats.map((x) => [x, x])); sel.value = setup.stats[i];
+      const sel = select("c-stat" + i, setup.stats.map((x) => [x, cap(x)])); sel.value = setup.stats[i];
       statsBox.append(field(`${i === 0 ? "Strongest" : i === setup.stat_array.length - 1 ? "Weakest" : "Next"} (${v})`, sel));
       return sel;
     });
@@ -439,7 +464,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     function sync() {
       const p = setup.peoples.find((x) => x.id === people.value);
       pstatField.hidden = p.stat !== "any";
-      affinity.replaceChildren(...p.affinities.map((a) => { const o = el("option", null, a); o.value = a; return o; }));
+      affinity.replaceChildren(...p.affinities.map((a) => { const o = el("option", null, cap(a)); o.value = a; return o; }));
       affField.hidden = p.affinities.length < 2;
       originText.textContent = setup.origins.find((o) => o.id === origin.value).text;
     }
