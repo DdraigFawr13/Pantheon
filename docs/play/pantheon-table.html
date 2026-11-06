@@ -1,0 +1,294 @@
+<title>Pantheon Table</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column under a sticky status bar; the story first, the Ledger's voice in mono, choices as wide buttons at the thumb. */
+:root {
+  --bg: #e9ecef; --page: #f7f8f9; --ink: #1b2130; --muted: #5b6475; --line: #cfd5de;
+  --brass: #8a6416; --brass-soft: #f1e6cb; --blood: #a3282a; --mana: #2d5d9f; --stam: #3d7a4a;
+  --display: "Alegreya SC", "Palatino Linotype", Georgia, serif;
+  --prose: "Spectral", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f121a; --page: #161a24; --ink: #e3e1da; --muted: #9298a6; --line: #2a3040;
+  --brass: #d4ad5c; --brass-soft: #2a2416; --blood: #e0605d; --mana: #7aa7e6; --stam: #7cc28b; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f121a; --page: #161a24; --ink: #e3e1da; --muted: #9298a6; --line: #2a3040;
+  --brass: #d4ad5c; --brass-soft: #2a2416; --blood: #e0605d; --mana: #7aa7e6; --stam: #7cc28b; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 17px/1.6 var(--prose); margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--page); }
+.wrap { max-width: 680px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--page); border-bottom: 1px solid var(--line); }
+header .wrap { padding-block: 10px; display: grid; gap: 6px; }
+.who { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.who h1 { font: 700 1.25rem/1.1 var(--display); margin: 0; letter-spacing: .02em; }
+.who button { font: 600 .78rem var(--mono); color: var(--brass); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+.meta { font: .78rem/1.3 var(--mono); color: var(--muted); }
+.bars { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+.meter { display: grid; grid-template-columns: 3.2em 1fr auto; gap: 8px; align-items: center; font: .74rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter .track { height: 7px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.meter .fill { height: 100%; border-radius: 4px; background: var(--c, var(--brass)); transition: width .4s ease; }
+main { padding-block: 18px 40px; display: grid; gap: 18px; }
+.empty { color: var(--muted); font-style: italic; }
+.story p { margin: 0 0 .9em; max-width: 65ch; }
+.story p em { color: var(--muted); }
+.notice { font: 600 .82rem/1.45 var(--mono); color: var(--brass); background: var(--brass-soft); border-left: 3px solid var(--brass); padding: 7px 10px; margin: .2em 0 1em; border-radius: 0 4px 4px 0; }
+.ledger { list-style: none; padding: 0; margin: 0; display: grid; gap: 3px; font: .8rem/1.4 var(--mono); color: var(--muted); }
+.ledger li::before { content: "▸ "; color: var(--brass); }
+h2 { font: 700 .95rem var(--display); letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; }
+.due { border: 1px solid var(--brass); border-radius: 6px; padding: 10px 12px; background: var(--brass-soft); }
+.due p { margin: 0 0 6px; font: .85rem var(--mono); }
+.choices { display: grid; gap: 8px; }
+.choice { display: grid; grid-template-columns: 1fr auto; align-items: stretch; border: 1px solid var(--line); border-radius: 8px; background: var(--page); overflow: hidden; }
+.choice > button.go { text-align: left; background: none; border: 0; color: var(--ink); font: 1rem/1.35 var(--prose); padding: 11px 12px; cursor: pointer; min-width: 0; display: grid; gap: 4px; }
+.choice > button.go:hover, .choice > button.go:focus-visible { background: var(--brass-soft); outline: none; }
+.choice > button.info { background: none; border: 0; border-left: 1px solid var(--line); color: var(--muted); font: 600 .8rem var(--mono); padding: 0 14px; cursor: pointer; }
+.choice .num { font: 600 .78rem var(--mono); color: var(--muted); }
+.tag { display: inline-block; font: 600 .72rem var(--mono); letter-spacing: .04em; color: var(--brass); border: 1px solid var(--brass); border-radius: 4px; padding: 0 6px; margin-right: 6px; }
+.choice .terms { font: .78rem/1.4 var(--mono); color: var(--muted); }
+.choice.oath { border-color: var(--brass); }
+.detail { grid-column: 1 / -1; font: .78rem/1.45 var(--mono); color: var(--muted); border-top: 1px dashed var(--line); padding: 8px 12px; white-space: pre-line; }
+form.own { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+form.own input { font: 1rem var(--prose); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--page); color: var(--ink); min-width: 0; }
+form.own button, .primary { font: 700 .95rem var(--display); letter-spacing: .05em; background: var(--brass); color: var(--page); border: 0; border-radius: 8px; padding: 0 16px; cursor: pointer; }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.state { font: .8rem/1.45 var(--mono); color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+.state.busy::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--brass); margin-right: 8px; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .state.busy::before { animation: none; } .meter .fill { transition: none; } }
+dialog { width: min(560px, calc(100% - 24px)); max-height: 85vh; border: 1px solid var(--line); border-radius: 10px; background: var(--page); color: var(--ink); padding: 0; }
+dialog::backdrop { background: rgb(0 0 0 / .45); }
+.sheet { padding: 14px 16px 18px; display: grid; gap: 12px; font: .85rem/1.5 var(--mono); }
+.sheet h3 { font: 700 1.2rem var(--display); margin: 0; }
+.sheet .row { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.sheet dt { color: var(--muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
+.sheet dd { margin: 0 0 6px; }
+.stat { display: grid; grid-template-columns: 6.5em 1fr 2.5em; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
+.stat .track { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.stat .fill { height: 100%; background: var(--brass); }
+.sheet .close { justify-self: end; }
+@media (max-width: 420px) { .bars { grid-template-columns: 1fr; } }
+</style>
+
+<header class="bar"><div class="wrap">
+  <div class="who"><h1 id="name">Pantheon</h1><button id="sheetBtn" type="button" disabled>Sheet</button></div>
+  <div class="meta" id="meta">Waiting for the Ledger…</div>
+  <div class="bars" id="bars"></div>
+</div></header>
+
+<main class="wrap">
+  <section class="story" id="story" aria-live="polite"><p class="empty">The story appears here once the narrator writes the first scene. Open this page beside the Claude Code session that runs the game.</p></section>
+  <ul class="ledger" id="ledger" hidden></ul>
+  <section class="due" id="due" hidden></section>
+  <section id="actions" hidden>
+    <h2>What do you do?</h2>
+    <div class="choices" id="choices"></div>
+  </section>
+  <form class="own" id="own" autocomplete="off">
+    <input id="ownText" maxlength="300" placeholder="Or write your own action" aria-label="Your own action">
+    <button type="submit" id="ownBtn">Do it</button>
+  </form>
+  <p class="state" id="state">Connecting…</p>
+</main>
+
+<dialog id="sheet"><div class="sheet" id="sheetBody"></div></dialog>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  let screen = null, comments = null, sendState = "off", sentAt = null, threadId = null;
+  try { threadId = localStorage.getItem("pantheon-thread"); } catch {}
+
+  function meter(label, value, max, color) {
+    const m = el("div", "meter");
+    m.append(el("span", null, label));
+    const t = el("div", "track"), f = el("div", "fill");
+    f.style.width = max ? Math.max(0, Math.min(100, (100 * value) / max)) + "%" : "0%";
+    if (color) f.style.setProperty("--c", color);
+    t.append(f); m.append(t, el("span", null, `${value}/${max}`));
+    return m;
+  }
+
+  function paragraph(text) {
+    // ***...*** is a Ledger notice the engine placed; *...* is an italic thought. Everything else is plain text.
+    const notice = text.match(/^\*\*\*(.+)\*\*\*$/);
+    if (notice) return el("div", "notice", notice[1]);
+    const p = el("p");
+    text.split(/(\*[^*]+\*)/).forEach((part) => {
+      if (/^\*[^*]+\*$/.test(part)) p.append(el("em", null, part.slice(1, -1)));
+      else if (part) p.append(document.createTextNode(part.replace(/\*\*/g, "")));
+    });
+    return p;
+  }
+
+  function render() {
+    const s = screen;
+    if (!s) return;
+    $("name").textContent = s.name || "Pantheon";
+    const progress = s.level ? `Tier ${s.tier} · Level ${s.level}` : "Unwritten";
+    $("meta").textContent = [s.date, s.class || null, progress, `Turn ${s.turn}`].filter(Boolean).join(" · ");
+    const bars = $("bars"); bars.replaceChildren(
+      meter("HP", s.hp, s.max_hp, "var(--blood)"),
+      ...(s.level ? [meter("XP", s.xp, s.xp_next, "var(--brass)")] : [meter("Mana", s.max_mana, s.max_mana, "var(--mana)")]),
+    );
+    $("sheetBtn").disabled = false;
+
+    const story = $("story"); story.replaceChildren();
+    if (s.downed) story.append(el("div", "notice", "Downed"));
+    (s.prose || []).forEach((line) => story.append(paragraph(line)));
+    if (!(s.prose || []).length) story.append(el("p", "empty", "The opening has not been written yet."));
+
+    const ledger = $("ledger"); ledger.replaceChildren(...(s.ledger || []).map((l) => el("li", null, l)));
+    ledger.hidden = !(s.ledger || []).length;
+
+    const due = $("due"); due.replaceChildren();
+    (s.choices_due || []).forEach((line) => {
+      const [kind, rest] = [line.split(/[ :(]/)[0], line.slice(line.indexOf(":") + 1)];
+      due.append(el("p", null, `Choose your ${kind}:`));
+      const box = el("div", "choices");
+      rest.split(",").map((x) => x.trim()).filter(Boolean).forEach((item) => {
+        const id = item.split(" ")[0];
+        box.append(choiceRow({ label: item, tag: "", odds: "", n: null }, `Pantheon choose: ${kind} ${id}`));
+      });
+      due.append(box);
+    });
+    due.hidden = !(s.choices_due || []).length;
+
+    const choices = $("choices"); choices.replaceChildren();
+    const blocked = (s.choices_due || []).length > 0;
+    if (!blocked) {
+      (s.options || []).forEach((o) => choices.append(choiceRow(o, `Pantheon move: ${o.n}. ${o.label}`)));
+      (s.offers || []).forEach((o) => choices.append(choiceRow({ ...o, oath: true }, `Pantheon choose: offer ${o.id}`)));
+      if (s.trial_ready) choices.append(choiceRow({ label: "Face the Ascension Trial", tag: "TRIAL", odds: "", n: null }, "Pantheon trial"));
+    }
+    $("actions").hidden = blocked || !choices.children.length;
+    $("own").hidden = blocked;
+    if (sentAt !== null && s.version !== sentAt && !s.in_progress) sentAt = null;
+    status();
+  }
+
+  function choiceRow(o, message) {
+    const row = el("div", "choice" + (o.oath ? " oath" : ""));
+    const go = el("button", "go"); go.type = "button";
+    const head = el("span");
+    if (o.n != null) head.append(el("span", "num", o.n + ". "));
+    if (o.tag) head.append(el("span", "tag", o.odds ? `${o.tag} ${o.odds}` : o.tag));
+    head.append(document.createTextNode(o.label));
+    go.append(head);
+    if (o.terms) go.append(el("span", "terms", o.terms));
+    go.addEventListener("click", () => send(message, go));
+    row.append(go);
+    if (o.detail) {
+      const info = el("button", "info", "?"); info.type = "button"; info.setAttribute("aria-label", "Odds and stakes");
+      const detail = el("div", "detail", o.detail); detail.hidden = true;
+      info.addEventListener("click", () => { detail.hidden = !detail.hidden; });
+      row.append(info, detail);
+    } else go.style.gridColumn = "1 / -1";
+    return row;
+  }
+
+  function busy() { return sentAt !== null || (screen && screen.in_progress); }
+
+  function status(note) {
+    const st = $("state");
+    const waiting = busy();
+    document.querySelectorAll("button.go, #ownBtn").forEach((b) => { b.disabled = waiting || sendState !== "available"; });
+    st.classList.toggle("busy", waiting);
+    if (note) { st.textContent = note; return; }
+    if (waiting) st.textContent = "The narrator is writing the next scene. This page updates by itself.";
+    else if (sendState === "available") st.textContent = "Tap a choice, or write your own. It goes to the narrator in your Claude Code session.";
+    else if (sendState === "no_session") st.textContent = "No Claude Code session is watching this page. Start one and say “play”, then reload.";
+    else if (sendState === "writers_only") st.textContent = "Only the page's owner can send moves.";
+    else st.textContent = "Sending from this page is not available here. Type your move in the Claude Code chat instead.";
+  }
+
+  async function send(message, button) {
+    if (!comments || busy()) return;
+    const mine = (sentAt = screen ? screen.version : 0); status("Sending…");
+    setTimeout(() => { if (sentAt === mine) { sentAt = null; status(); } }, 600000); // Never stuck for good.
+    try {
+      let result;
+      if (threadId) {
+        try { result = await comments.sendToClaude({ threadId, text: message }); }
+        catch (e) { if (e && e.code === "not_found") threadId = null; else throw e; }
+      }
+      if (!result) {
+        const anchor = await comments.anchorFor($("actions").hidden ? $("own") : $("actions"));
+        result = await comments.sendToClaude({ anchor, text: message });
+      }
+      threadId = result.threadId;
+      try { localStorage.setItem("pantheon-thread", threadId); } catch {}
+      status();
+    } catch (e) {
+      sentAt = null;
+      const why = { rate_limited: "Too fast; wait a moment and tap again.", claude_unavailable: "No Claude session could take it. Check the session is open, then try again.", consent_required: "Allow comments for this page, then tap again." }[e && e.code];
+      status(why || `Not sent (${(e && e.code) || "error"}). Type the move in the chat instead.`);
+      setTimeout(() => status(), 6000);
+    }
+    if (button) button.blur();
+  }
+
+  $("own").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const text = $("ownText").value.trim();
+    if (!text) return;
+    send(`Pantheon move: ${text}`, null).then(() => { if (sentAt !== null) $("ownText").value = ""; });
+  });
+
+  $("sheetBtn").addEventListener("click", () => {
+    const s = screen; if (!s) return;
+    const body = $("sheetBody"); body.replaceChildren();
+    body.append(el("h3", null, `${s.name}, ${s.age}, ${s.people}`));
+    body.append(el("div", null, `Class: ${s.class || "none"} · Profession: ${s.profession || "none"} · Coin: ${s.coin} silver`));
+    const bars = el("div", "bars");
+    bars.append(meter("HP", s.hp, s.max_hp, "var(--blood)"), meter("Mana", s.max_mana, s.max_mana, "var(--mana)"), meter("Stam", s.max_stamina, s.max_stamina, "var(--stam)"));
+    if (s.level) bars.append(meter("XP", s.xp, s.xp_next, "var(--brass)"));
+    body.append(bars);
+    const top = Math.max(40, ...Object.values(s.stats || {}));
+    const stats = el("div");
+    Object.entries(s.stats || {}).forEach(([k, v]) => {
+      const r = el("div", "stat"); const t = el("div", "track"), f = el("div", "fill");
+      f.style.width = (100 * v) / top + "%"; t.append(f);
+      r.append(el("span", null, k[0].toUpperCase() + k.slice(1)), t, el("span", null, String(v))); stats.append(r);
+    });
+    body.append(stats);
+    const dl = el("dl");
+    const add = (k, v) => { if (v) { dl.append(el("dt", null, k), el("dd", null, v)); } };
+    add("Affinities", Object.entries(s.affinities || {}).map(([a, r]) => `${a} ${r}`).join(", ") || "none");
+    add("Skills", Object.entries(s.skills || {}).map(([a, r]) => `${a} ${r}`).join(", ") || "none");
+    add("Oaths", (s.oaths || []).join(", ") || "none");
+    add("Standing", Object.entries(s.standing || {}).map(([e, v]) => `${e} ${v > 0 ? "+" : ""}${v}`).join(", ") || "none");
+    add("Titles", (s.titles || []).join(", "));
+    add("Injuries", (s.injuries || []).join(", "));
+    add("What may come back", (s.hooks || []).join(" · "));
+    body.append(dl);
+    const close = el("button", "primary close", "Close"); close.type = "button"; close.style.padding = "8px 16px";
+    close.addEventListener("click", () => $("sheet").close());
+    body.append(close);
+    $("sheet").showModal();
+  });
+
+  async function start() {
+    const claude = window.claude;
+    if (!claude || !claude.use) { status("Open this page on claude.ai to play."); return; }
+    const [db, c] = await Promise.all([claude.use("db"), claude.use("comments")]);
+    comments = c;
+    if (comments) {
+      try { sendState = await comments.canSendToClaude(); } catch { sendState = "off"; }
+      setInterval(async () => { if (!busy()) { try { const n = await comments.canSendToClaude(); if (n !== sendState) { sendState = n; status(); } } catch {} } }, 20000);
+    }
+    if (!db) { status("This page cannot read the game here. Sign in on claude.ai and reload."); return; }
+    const timer = setTimeout(() => status("The game has not answered yet. Ask the narrator in chat to refresh the page."), 10000);
+    db.doc("game/screen").onSnapshot((snap) => {
+      clearTimeout(timer);
+      if (snap.exists) { screen = snap.data(); render(); } else status();
+    }, () => { clearTimeout(timer); status("Lost the connection to the game. Reload the page."); });
+    status();
+  }
+  start();
+})();
+</script>

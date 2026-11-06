@@ -21,7 +21,7 @@ M1.7 (D-041), play in Claude Code with the session as narrator, is a draft PR on
 
 - 2026-10-30 M1c: `pantheon fork N` and `play --timeline`, schema 2 with a step-by-step upgrade and a backup, refusal of unreadable saves, calendar and `advance_time`, five clocks with the neglect rule, petitions. Hypothesis checks that replay through a real save equals live state. Tried on a copy of the owner's save: all events and turns kept, original unchanged. Its two old timelines cannot fork before their last recorded dice (D-038).
 
-- 2026-11-06 M1.7 (D-041): `pantheon session` (start, prompt, setup, create, begin, tool, narrate, commit, choose, trial and more), `/play` skill, `play-guard` hook, `scripts/saves.sh` with the `saves` branch. 409 tests pass at 96.79 % coverage. Not yet tried: a push to the `saves` branch from a cloud session.
+- 2026-11-06 M1.7 (D-041): `pantheon session` (start, prompt, setup, create, begin, tool, narrate, commit, choose, trial and more), `/play` skill, `play-guard` hook, `scripts/saves.sh` with the `saves` branch. 409 tests pass at 96.79 % coverage. Then the terminal look in chat and the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b): page access rules checked; a tap reaching the session not yet tried. Not yet tried: a push to the `saves` branch from a cloud session.
 
 - 2026-11-03 Master upgrade to v4.4.0 (D-040): sync run twice, `--check` OK, 397 tests pass at 97.65 % coverage, guard hook asks on `git push --force`. CI now skips draft PRs.
 

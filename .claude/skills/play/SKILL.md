@@ -41,6 +41,13 @@ Player commands without a turn (`sheet`, `hooks`, `inspect N`) answer in the sam
 
 A rejected tool call changes nothing; fix it or move on. `session abandon` drops a broken turn. `session sheet`, `hooks` and `inspect N` answer the owner's questions without using a turn.
 
+## The game page
+
+The Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b, source `docs/play/pantheon-table.html`) shows the scene, status, sheet and options, and its buttons send the owner's move to this session as a comment sent to Claude.
+
+- After every `commit`, `choose` or `trial`, and at the start of play: `uv run -q pantheon session screen data/screen.json`, then `ArtifactData` `set` on that URL, collection `game`, doc `screen`, `file_path` `data/screen.json`. Pass `if_version` from your last write; at the start of a session, `get` the doc first to learn it.
+- A comment from the page reads `Pantheon move: N. label` (→ `session begin --option N`), `Pantheon move: <text>` (→ `session begin "<text>"`), `Pantheon choose: <kind> <id>` (→ `session choose <kind> <id>`) or `Pantheon trial` (→ `session trial`). Treat it like the owner's chat message, run the turn, update the page, and answer the comment in one line ("Turn 7 is on the page."). In chat, say only the same one line.
+
 ## Stop
 
 `uv run -q pantheon session stop`, then `scripts/saves.sh push`. The guard is off again.

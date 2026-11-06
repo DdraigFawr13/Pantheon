@@ -255,3 +255,15 @@ def test_play_guard_keeps_secret_and_sealed_canon_out_NAR_02(tmp_path: Path) -> 
     assert denied("Bash", command="uv run pantheon session status; cat world/secret/a.md")
     assert not denied("Write", file_path=str(tmp_path / "data" / "narration.md"))
     assert denied("Write", file_path=str(tmp_path / "src" / "x.py"))
+
+
+def test_session_screen_is_plain_data_for_the_game_page(game: Game, tmp_path: Path) -> None:
+    game.opening()
+    out = tmp_path / "screen.json"
+    assert game("screen", str(out))[0] == 0
+    screen = json.loads(out.read_text(encoding="utf-8"))
+    assert screen["turn"] == 1 and screen["name"] == "Wren"
+    assert screen["prose"] and not screen["in_progress"]
+    assert [o["n"] for o in screen["options"]] == [1, 2, 3]
+    assert [o["n"] for o in screen["offers"]] == [4, 5, 6]
+    assert all("[" not in line for line in screen["ledger"])  # No terminal markup reaches the page.

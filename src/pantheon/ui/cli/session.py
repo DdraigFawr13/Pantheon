@@ -19,8 +19,10 @@ from typing import Any
 
 from rich.console import Console
 from rich.markup import escape
+from rich.text import Text
 
 from pantheon.config import Config, load_config
+from pantheon.engine.calendar import date_of, format_date
 from pantheon.engine.commands import (
     CharacterChoices,
     allocate_point,
@@ -31,7 +33,7 @@ from pantheon.engine.commands import (
 )
 from pantheon.engine.progression import choose_evolution, evolution_options, pick_skill
 from pantheon.engine.rng import RngStreams
-from pantheon.engine.state import STATS, GameState
+from pantheon.engine.state import STATS, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
 from pantheon.engine.tools import ToolResult, apply_tool, attempt_trial, resolve_offer, tool_definition
 from pantheon.narrator.assemble import _REMINDER, _due_material, assemble, state_view
@@ -428,6 +430,73 @@ class Session:
         )
         self.console.print(f'Next: `session begin "{text}"`')
 
+    def screen(self) -> dict[str, Any]:
+        """Everything the game page shows, as plain data (D-041). The page renders it; it decides nothing."""
+        assert self.world.data is not None
+        tid = self.timeline()
+        state = self.db.load_state(tid)
+        last = self.db.last_turn(tid)
+        recent = self.db.recent_turns(tid, 1)
+        logged = self.db.events(tid)
+        events = [(e["type"], e["payload"]) for e in logged if e["turn"] == last]
+        prose = recent[0][1] if recent else ""
+        plain = [Text.from_markup(line).plain for line in ledger_lines(events)]
+        oaths = {o.id: o.name for o in self.world.data.oaths}
+        current = self.world.data.class_of(state.class_id)
+        terms = offer_terms(state, self.world)
+        options = []
+        for number, action in enumerate(state.suggested, 1):
+            odds = _odds_text(state, self.world, action).strip()
+            options.append(
+                {
+                    "n": number,
+                    "label": action.label,
+                    "tag": action.tag.upper() if action.tag else "",
+                    "odds": odds,
+                    "detail": Text.from_markup(_inspect(state, self.world, str(number))).plain,
+                }
+            )
+        offers = [
+            {"n": n, "id": cid, "label": label, "terms": terms[cid]}
+            for n, (cid, label) in enumerate(offer_choices(state, self.world), len(state.suggested) + 1)
+        ]
+        return {
+            "timeline": tid[:8],
+            "turn": last,
+            "version": len(logged),  # Grows with every saved change, so the page knows its move was taken.
+            "in_progress": self.pending_path.exists(),
+            "date": format_date(date_of(state.day)),
+            "name": state.name,
+            "people": state.people,
+            "age": state.age,
+            "class": current.name if current else "",
+            "profession": state.profession or "",
+            "tier": state.tier,
+            "level": state.level,
+            "xp": state.xp,
+            "xp_next": xp_to_next(state.level) if state.level else 0,
+            "hp": state.hp,
+            "max_hp": state.max_hp,
+            "max_mana": state.max_mana,
+            "max_stamina": state.max_stamina,
+            "downed": state.downed,
+            "coin": state.coin,
+            "stats": {s: state.stats[s] for s in STATS},
+            "affinities": state.affinities,
+            "skills": state.skills,
+            "oaths": [oaths[o] for o in state.oaths],
+            "standing": state.standing,
+            "titles": list(state.titles),
+            "injuries": [f"{i.stat} -{i.amount}" for i in state.injuries],
+            "hooks": [h.description for h in state.hooks if not h.resolved],
+            "prose": [line for line in prose.split("\n") if line.strip()] if prose else [],
+            "ledger": [line for line in plain if line not in prose],
+            "options": options,
+            "offers": offers,
+            "choices_due": self.choices_due(state),
+            "trial_ready": state.trial_ready,
+        }
+
     # A new character.
 
     def setup(self) -> None:
@@ -562,6 +631,8 @@ def add_parser(sub: Any) -> None:
     steps.add_parser("trial", help="face the Ascension Trial")
     steps.add_parser("sheet", help="the character sheet")
     steps.add_parser("hooks", help="consequences that may come back")
+    screen = steps.add_parser("screen", help="write the game page's data as JSON")
+    screen.add_argument("file")
     inspect = steps.add_parser("inspect", help="one option's odds and stakes")
     inspect.add_argument("number")
     export = steps.add_parser("export", help="write the save as text")
@@ -640,5 +711,8 @@ def _dispatch(session: Session, args: argparse.Namespace) -> None:
                 session.console.print(
                     f"  {hook.id}. {escape(hook.description)} (due {escape(hook.due_condition)})"
                 )
+        case "screen":
+            Path(args.file).write_text(json.dumps(session.screen(), indent=1), encoding="utf-8")
+            session.console.print(f"Screen written to {args.file}.")
         case "inspect":
             session.console.print(_inspect(session.state(), session.world, args.number))
