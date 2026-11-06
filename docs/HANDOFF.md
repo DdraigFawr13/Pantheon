@@ -8,14 +8,14 @@ M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are me
 
 PR #20 merged: master v4.11.0 (D-043) and two audits, `docs/audit/2026-11-06-repo.md` (42 findings) and `docs/audit/2026-11-06-tests.md` (28 findings). The owner accepted every recommendation ("Ok do what you recommend for all").
 
-**Now: draft PR #21** (`ccr-2a3ebc70-8wd8jg`) fixes every audit finding and waits for the owner's approval to merge (GIT-07). The play guard denies by default (D-044); 539 tests in 15 s, 98.51 % coverage; mypy strict on all of `src/pantheon`. Each report's Outcome names the fix commits. Open from the audit: canon gaps G-28 to G-32 (the owner answers them); MEM-01 to MEM-04 have no tests because M3 is not built.
+PR #21 merged: every audit finding fixed or recorded (each report's Outcome names the commit). The play guard denies by default (D-044); 539 tests in 15 s, 98.51 % coverage; mypy strict on all of `src/pantheon`. Still open from the audit: canon gaps G-28 to G-32 (the owner answers them); MEM-01 to MEM-04 have no tests until M3.
 
-**After the audit fixes: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main`.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18; D-039 exists only on that branch until it merges.
+**Next: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main`.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18; D-039 exists only on that branch until it merges.
 
 ## Just done
 
 - 2026-11-03 Master upgrade to v4.4.0 (D-040), PR #17 merged.
-- 2026-11-06 Master upgrade to v4.11.0 (D-043) and the repo and tests audits, PR #20 merged.
+- 2026-11-06 Master upgrade to v4.11.0 (D-043) and the repo and tests audits, PR #20 merged; audit fixes, PR #21 merged.
 - 2026-11-06 M1.7 (D-041): `pantheon session` runs each turn step as a command; `/play` skill; `play-guard` hook (Bash only `uv run pantheon session` and `scripts/saves.sh`, public reads only); saves as a text dump on the `saves` branch; the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b) shows story, Character, Journal and Gear tabs from `session screen` JSON and sends taps to the session as comments.
 - 2026-11-06 D-042: 25 base classes with traits and blurbs (`world/data/classes.yaml`, power_tiers.md table, gods' favoured classes); `class-design` skill; roster page https://claude.ai/artifact/96Gk7pos2FRTar4ezcyRfS.
 - 2026-11-06 First session play, five turns: `docs/playtests/2026-11-06-session-play.md`. The owner: "the game works and the fundamentals are fun", the writing needs work and maybe shortening to move quicker ("we can get to that later"). Ddraig Fawr (he/him), Elementalist attuned to Storm, Enchanter, sworn to Ysmere; timeline `ddb27b36` on the `saves` branch.
