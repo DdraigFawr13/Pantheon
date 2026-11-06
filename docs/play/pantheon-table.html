@@ -39,6 +39,8 @@ main { padding-block: 18px 40px; display: grid; gap: 18px; }
 .ledger { list-style: none; padding: 0; margin: 0; display: grid; gap: 3px; font: .8rem/1.4 var(--mono); color: var(--muted); }
 .ledger li::before { content: "▸ "; color: var(--brass); }
 h2 { font: 700 .95rem var(--display); letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; }
+.note { font: .9rem/1.5 var(--prose); border-left: 3px solid var(--mana); background: var(--page); padding: 10px 12px; border-radius: 0 6px 6px 0; }
+.note strong { font: 700 .78rem var(--display); letter-spacing: .06em; color: var(--mana); display: block; }
 .due { border: 1px solid var(--brass); border-radius: 6px; padding: 10px 12px; background: var(--brass-soft); }
 .due p { margin: 0 0 6px; font: .85rem var(--mono); }
 .choices { display: grid; gap: 8px; }
@@ -109,6 +111,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 </div></header>
 
 <main class="wrap">
+  <aside class="note" id="note" hidden></aside>
   <section class="create card" id="create" hidden></section>
   <div id="tab-character" class="panel" hidden></div>
   <div id="tab-journal" class="panel" hidden></div>
@@ -161,6 +164,9 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   function render() {
     const s = screen;
     if (!s) return;
+    const note = $("note"); note.replaceChildren();
+    if (s.note) { note.append(el("strong", null, "From the narrator"), document.createTextNode(s.note)); }
+    note.hidden = !s.note;
     if (!s.created) {
       $("tabs").hidden = true; $("tab-story").style.display = "none"; $("sheetBtn").disabled = true;
       $("meta").textContent = "A new life";
