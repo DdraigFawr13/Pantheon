@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import sqlite3
@@ -37,29 +38,30 @@ from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
 from pantheon.engine.tools import ToolResult, apply_tool, attempt_trial, resolve_offer, tool_definition
-from pantheon.narrator.assemble import _REMINDER, _due_material, assemble, state_view
+from pantheon.narrator.assemble import REMINDER, assemble, due_material, state_view
 from pantheon.narrator.loop import (
-    _NARRATE_OUTCOME,
-    _OUTCOME_MEANINGS,
-    _REFEREE_PROMPT,
-    _SCRIBE_PROMPT,
-    _SCRIBE_TOOLS,
-    _SUGGEST_PROMPT,
-    _numbers_in,
+    NARRATE_OUTCOME,
+    OUTCOME_MEANINGS,
+    REFEREE_PROMPT,
+    SCRIBE_PROMPT,
+    SCRIBE_TOOLS,
+    SUGGEST_PROMPT,
+    numbers_in,
+    turn_tools,
 )
 from pantheon.narrator.notices import CHECK_MARKER, place_notices
 from pantheon.narrator.validators import prose_problems, repeats_earlier_turn, strip_action_list
-from pantheon.storage.db import Database, TurnRecord
+from pantheon.storage.db import Database, SaveError, TurnRecord
 from pantheon.ui.cli.app import (
     OPENING_INPUT,
-    _create_timeline,
-    _inspect,
-    _odds_text,
-    _sheet,
-    _status_line,
+    create_timeline,
+    inspect_option,
     ledger_lines,
+    odds_text,
     offer_choices,
     offer_terms,
+    sheet,
+    status_line,
 )
 from pantheon.world.loader import World, load_world
 
@@ -118,10 +120,19 @@ class Session:
     def load_pending(self) -> Pending | None:
         if not self.pending_path.exists():
             return None
-        return Pending(**json.loads(self.pending_path.read_text(encoding="utf-8")))
+        try:
+            return Pending(**json.loads(self.pending_path.read_text(encoding="utf-8")))
+        except (OSError, ValueError, TypeError) as exc:
+            raise SessionError(
+                f"The turn in progress ({self.pending_path.name}) cannot be read: {exc}. "
+                "Drop it with `uv run pantheon session abandon`."
+            ) from exc
 
     def save_pending(self, pending: Pending) -> None:
-        self.pending_path.write_text(json.dumps(pending.__dict__, indent=1), encoding="utf-8")
+        """Write beside the file and swap it in, so a crash never leaves half a turn (OPS-03)."""
+        temp = self.pending_path.with_name(self.pending_path.name + ".tmp")
+        temp.write_text(json.dumps(pending.__dict__, indent=1), encoding="utf-8")
+        os.replace(temp, self.pending_path)
 
     def need_pending(self) -> Pending:
         pending = self.load_pending()
@@ -140,7 +151,7 @@ class Session:
 
     def command_sim(self) -> Simulation:
         tid = self.timeline()
-        rng = RngStreams.from_state(self.db.rng_state(tid))
+        rng = RngStreams.from_state(self.db.rng_state(tid), self.db.seed(tid))
         return Simulation(self.db.load_state(tid), rng, self.rules, self.db.last_turn(tid) + 1)
 
     def commit_commands(self, sim: Simulation) -> None:
@@ -160,34 +171,35 @@ class Session:
         if tid != self.db.latest_timeline() or pending.turn != self.db.last_turn(tid) + 1:
             raise SessionError("The save moved on since this turn began. Run `session abandon`.")
         state = self.db.load_state(tid)
-        sim = Simulation(state, RngStreams.from_state(self.db.rng_state(tid)), self.rules, pending.turn)
-        allowed = _numbers_in(state_view(state))  # Prose may quote the engine's own sheet (D-033).
+        sim = Simulation(
+            state, RngStreams.from_state(self.db.rng_state(tid), self.db.seed(tid)), self.rules, pending.turn
+        )
+        allowed = numbers_in(state_view(state))  # Prose may quote the engine's own sheet (D-033).
         outcomes: list[str] = []
         if pending.chosen_check is not None:
             chosen = apply_tool(sim, "request_check", pending.chosen_check)
             if chosen.accepted:
-                allowed |= _numbers_in(chosen.data)
+                allowed |= numbers_in(chosen.data)
                 outcomes.append(chosen.data["outcome"])
         results = []
         for call in pending.calls:
             result = apply_tool(sim, call["name"], call["args"])
             results.append(result)
             if result.accepted:
-                allowed |= _numbers_in(result.data)
+                allowed |= numbers_in(result.data)
                 if "outcome" in result.data:
                     outcomes.append(result.data["outcome"])
         return Replay(sim, results, allowed, outcomes)
 
     def offered(self, pending: Pending, run: Replay) -> tuple[str, ...]:
         """The tools this step allows, by the same rules as the API loop (D-031)."""
-        state = run.sim.state
-        if pending.narration is None:
-            rolled = pending.chosen_check is not None
-            return () if rolled or not state.offer_resolved or pending.talk_only else ("request_check",)
-        names = _SCRIBE_TOOLS if state.offer_resolved else ("suggest_actions",)
-        if not run.sim.checks:  # XP rewards a tested deed, so a talking turn cannot farm it.
-            names = tuple(n for n in names if n != "grant_xp")
-        return names
+        return turn_tools(
+            run.sim.state,
+            pending.player_input,
+            rolled=pending.chosen_check is not None,
+            narrated=pending.narration is not None,
+            checked=bool(run.sim.checks),
+        )
 
     def begin(self, player_input: str, option: int | None) -> None:
         self.no_pending()
@@ -228,29 +240,29 @@ class Session:
         for said, narration in recent:
             out(f"\n[dim]Earlier, the player: {escape(said)}[/dim]\n{escape(narration)}")
         out(f"\n[Character sheet: {json.dumps(state_view(state), separators=(',', ':'))}]")
-        out(f"[Due: {escape(_due_material(state, self.world))}]")
-        out(f"\nThe player: {escape(pending.player_input)}\n\n{escape(_REMINDER)}")
+        out(f"[Due: {escape(due_material(state, self.world))}]")
+        out(f"\nThe player: {escape(pending.player_input)}\n\n{escape(REMINDER)}")
         self.next_step(pending, run)
 
     def next_step(self, pending: Pending, run: Replay) -> None:
         out = self.console.print
         if run.outcomes and pending.narration is None:
-            note = ", then ".join(_OUTCOME_MEANINGS[o] for o in run.outcomes)
+            note = ", then ".join(OUTCOME_MEANINGS[o] for o in run.outcomes)
             for type_, payload in run.sim.events:
                 if type_ == "check_resolved":
                     out(f"Engine check: {escape(json.dumps(payload))}")
-            out(escape(_NARRATE_OUTCOME.format(outcomes=note)))
+            out(escape(NARRATE_OUTCOME.format(outcomes=note)))
         names = self.offered(pending, run)
         if pending.narration is None:
             if names and not run.outcomes:
-                out(escape(_REFEREE_PROMPT.replace("reply with the single word NONE", "write the prose")))
+                out(escape(REFEREE_PROMPT.replace("reply with the single word NONE", "write the prose")))
                 out("Step: `session tool request_check '{...}'` if it is a check, else write the prose.")
             out("Step: write the prose to data/narration.md, then `session narrate data/narration.md`.")
             return
         if run.sim.suggested:
             out(f"Options recorded. Other tools now: {', '.join(names)}. Then `session commit`.")
             return
-        out(escape(_SCRIBE_PROMPT if len(names) > 1 else _SUGGEST_PROMPT))
+        out(escape(SCRIBE_PROMPT if len(names) > 1 else SUGGEST_PROMPT))
         out(f"Tools now: {', '.join(names)}. `session tools` shows their fields.")
         out("Step: `session tool <name> '<json>'` for each, then `session commit`.")
 
@@ -311,7 +323,7 @@ class Session:
             if line not in pending.narration:
                 self.console.print(f"  {line}")
         if any(type_ == "level_up" for type_, _ in run.sim.events):
-            self.console.print(_sheet(run.sim.state, self.world))
+            self.console.print(sheet(run.sim.state, self.world))
         self.menu()
 
     def abandon(self) -> None:
@@ -413,11 +425,11 @@ class Session:
             out("[bold]The player must choose first[/bold] (`session choose <kind> <id>`):")
             for line in due:
                 out(f"  {escape(line)}")
-        out(_status_line(state))
+        out(status_line(state))
         if state.trial_ready:
             out("[bold]An Ascension Trial is ready.[/bold] The player may face it (`session trial`).")
         for number, action in enumerate(state.suggested, 1):
-            odds = _odds_text(state, self.world, action)
+            odds = odds_text(state, self.world, action)
             tag = f"[bold]\\[{action.tag.upper()}{odds}][/bold] " if action.tag else ""
             out(f"  {number}. {tag}{escape(action.label)}")
         offers = offer_choices(state, self.world)
@@ -476,7 +488,7 @@ class Session:
         for line in ledger_lines(sim.events):
             self.console.print(f"  {line}")
         if kind == "offer" and sim.state.oaths:
-            self.console.print(_sheet(sim.state, self.world))
+            self.console.print(sheet(sim.state, self.world))
         for line in self.choices_due(sim.state):
             self.console.print(f"Still to choose: {escape(line)}")
         if text:
@@ -493,7 +505,7 @@ class Session:
         for line in ledger_lines(sim.events):
             self.console.print(f"  {line}")
         if result["result"] == "ascend":
-            self.console.print(_sheet(sim.state, self.world))
+            self.console.print(sheet(sim.state, self.world))
         text = (
             f"[I face the Ascension Trial and the result is {result['result']}. Narrate it and what follows.]"
         )
@@ -517,14 +529,14 @@ class Session:
         terms = offer_terms(state, self.world)
         options = []
         for number, action in enumerate(state.suggested, 1):
-            odds = _odds_text(state, self.world, action).strip()
+            odds = odds_text(state, self.world, action).strip()
             options.append(
                 {
                     "n": number,
                     "label": action.label,
                     "tag": action.tag.upper() if action.tag else "",
                     "odds": odds,
-                    "detail": Text.from_markup(_inspect(state, self.world, str(number))).plain,
+                    "detail": Text.from_markup(inspect_option(state, self.world, str(number))).plain,
                 }
             )
         offers = [
@@ -674,19 +686,24 @@ class Session:
         tid = self.db.latest_timeline()
         if tid is not None and self.db.load_state(tid).created and not args.fresh:
             raise SessionError("A character exists. Pass --fresh to start a new timeline beside it.")
-        if tid is None or args.fresh:
-            tid = _create_timeline(self.db, self.world, self.config, args.seed, self.console)
-        rng = RngStreams.from_state(self.db.rng_state(tid))
-        sim = Simulation(self.db.load_state(tid), rng, self.rules, 0)
+        # Check everything that can fail before a timeline is written.
         parts = args.stats.lower().replace(",", " ").split()
         order = [next((s for s in STATS if s.startswith(p)), "") for p in parts]
         if sorted(order) != sorted(STATS):
             raise SessionError(f"--stats must name each of {', '.join(STATS)} once.")
         assert self.world.data is not None
         stats = dict(zip(order, self.world.data.origins.stat_array, strict=True))
-        affinities = innate_affinity_options(sim, args.people)
+        blank = Simulation(GameState(), RngStreams.from_seed(1), self.rules, 0)
+        try:
+            affinities = innate_affinity_options(blank, args.people)
+        except Rejected as exc:
+            raise SessionError(f"Character not created: {exc}") from exc
         if args.affinity is None and len(affinities) > 1:
             raise SessionError(f"Pass --affinity, one of: {', '.join(affinities)}.")
+        if tid is None or args.fresh:
+            tid = create_timeline(self.db, self.world, self.config, args.seed, self.console)
+        rng = RngStreams.from_state(self.db.rng_state(tid), self.db.seed(tid))
+        sim = Simulation(self.db.load_state(tid), rng, self.rules, 0)
         choices = CharacterChoices(
             name=args.name,
             people=args.people,
@@ -703,7 +720,7 @@ class Session:
         except (Rejected, ValueError, KeyError) as exc:
             raise SessionError(f"Character not created: {exc}") from exc
         self.db.commit_events(tid, 0, sim.events, rng.state())
-        self.console.print(_sheet(sim.state, self.world))
+        self.console.print(sheet(sim.state, self.world))
         self.console.print("Next: `session begin` with no text plays the opening.")
 
     # The canon prefix and tool fields, read once per session.
@@ -715,13 +732,15 @@ class Session:
 
     def tools(self) -> None:
         pending = self.load_pending()
-        names = self.offered(pending, self.replay(pending)) if pending else ("request_check", *_SCRIBE_TOOLS)
+        names = self.offered(pending, self.replay(pending)) if pending else ("request_check", *SCRIBE_TOOLS)
         for name in names:
             self.console.print(escape(json.dumps(tool_definition(name))), soft_wrap=True)
 
 
 def export_db(db_path: Path, out: Path) -> None:
     """A text dump of the whole save, so git can store and diff it (D-041)."""
+    if not db_path.exists():
+        raise SessionError(f"There is no save at {db_path}; nothing was written. Check --db.")
     conn = sqlite3.connect(db_path)
     try:
         out.write_text("\n".join(conn.iterdump()) + "\n", encoding="utf-8")
@@ -729,18 +748,51 @@ def export_db(db_path: Path, out: Path) -> None:
         conn.close()
 
 
+def _sidecars(path: Path) -> list[Path]:
+    return [path.with_name(path.name + suffix) for suffix in ("-wal", "-shm")]
+
+
+def _discard(temp: Path) -> None:
+    for path in (temp, *_sidecars(temp)):
+        path.unlink(missing_ok=True)
+
+
 def import_db(dump: Path, db_path: Path) -> Path | None:
-    """Rebuild the save from a dump. An existing save is moved aside first, never overwritten (GAME-05)."""
+    """Rebuild the save from a dump. An existing save is moved aside, never overwritten (GAME-05).
+
+    The dump is built and opened as a temp file first, so a bad dump changes nothing.
+    """
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    temp = db_path.with_name(db_path.name + ".import.tmp")
+    _discard(temp)
+    try:
+        conn = sqlite3.connect(temp)
+        try:
+            conn.executescript(dump.read_text(encoding="utf-8"))
+            built = (
+                not conn.in_transaction and conn.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()[0]
+            )
+        finally:
+            conn.close()
+        if not built:
+            raise SessionError(f"{dump} is empty or cut short, so the save was left alone.")
+        Database.open(temp).close()
+    except (sqlite3.Error, SaveError) as exc:
+        _discard(temp)
+        raise SessionError(f"{dump} cannot be loaded, so the save was left alone: {exc}") from exc
+    except SessionError:
+        _discard(temp)
+        raise
     backup = None
     if db_path.exists():
         backup = db_path.with_name(f"{db_path.name}.{time.strftime('%Y%m%d-%H%M%S')}.bak")
         shutil.move(db_path, backup)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db_path)
-    try:
-        conn.executescript(dump.read_text(encoding="utf-8"))
-    finally:
-        conn.close()
+        for old, moved in zip(_sidecars(db_path), _sidecars(backup), strict=True):
+            if old.exists():
+                shutil.move(old, moved)
+    for stale in _sidecars(db_path):  # Left from a save that had no main file.
+        stale.unlink(missing_ok=True)
+    os.replace(temp, db_path)
     return backup
 
 
@@ -859,7 +911,7 @@ def _dispatch(session: Session, args: argparse.Namespace) -> None:
         case "trial":
             session.trial()
         case "sheet":
-            session.console.print(_sheet(session.state(), session.world))
+            session.console.print(sheet(session.state(), session.world))
         case "hooks":
             for hook in (h for h in session.state().hooks if not h.resolved):
                 session.console.print(
@@ -869,4 +921,4 @@ def _dispatch(session: Session, args: argparse.Namespace) -> None:
             Path(args.file).write_text(json.dumps(session.screen(), indent=1), encoding="utf-8")
             session.console.print(f"Screen written to {args.file}.")
         case "inspect":
-            session.console.print(_inspect(session.state(), session.world, args.number))
+            session.console.print(inspect_option(session.state(), session.world, args.number))

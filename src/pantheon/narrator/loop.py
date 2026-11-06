@@ -23,24 +23,24 @@ from pantheon.narrator.notices import CHECK_MARKER, place_notices
 from pantheon.narrator.validators import prose_problems, repeats_earlier_turn, strip_action_list
 from pantheon.world.loader import World
 
-_REFEREE_PROMPT = (
+REFEREE_PROMPT = (
     "[Referee step, no story yet. If the player is attempting something physical, risky, stealthy, forceful "
     "or deceptive whose result is not certain, call request_check now and choose the stat, difficulty and "
     "challenge_tier. If the action names a stat in brackets, use that stat. Asking a question, talking, "
     "looking around and walking somewhere safe are never checks: for those, reply with the single word NONE.]"
 )
-_NARRATE_OUTCOME = (
+NARRATE_OUTCOME = (
     "[The engine has decided: {outcomes}. Narrate exactly that result, and do not soften it. "
     f"Put {CHECK_MARKER} on its own line at the exact moment the result happens; the game prints the dice "
     "there. Write the prose now.]"
 )
-_OUTCOME_MEANINGS = {
+OUTCOME_MEANINGS = {
     "triumph": "a triumph, better than hoped",
     "success": "a clean success",
     "success_at_cost": "success, but at a real and visible cost",
     "failure": "a failure: the attempt does not work and things get worse",
 }
-_SCRIBE_PROMPT = (
+SCRIBE_PROMPT = (
     "[Scribe step, no more story. Record only what this scene really did; most turns need just one or two "
     "calls. grant_xp if a check was passed or survived, if offered. apply_effect if the player was hurt (use "
     "a check_id or hazard:<name>). adjust_standing only if a named person or god who matters saw a deed. "
@@ -53,7 +53,7 @@ _SCRIBE_PROMPT = (
     "difficulty, challenge_tier, stakes); talking, asking and looking have none. A line only this character "
     "could choose gets a tag naming its Oath, class, profession or people, from the sheet.]"
 )
-_SCRIBE_TOOLS = (
+SCRIBE_TOOLS = (
     "grant_xp",
     "apply_effect",
     "adjust_standing",
@@ -65,7 +65,7 @@ _SCRIBE_TOOLS = (
     "engage_clock",
     "suggest_actions",
 )
-_SUGGEST_PROMPT = (
+SUGGEST_PROMPT = (
     "[Now call suggest_actions with 3 to 4 next actions for the player, each one brief plain line. Include a "
     "non-violent action and one with a visible cost or risk in its cost field. Give an uncertain action a "
     "check (stat, difficulty, challenge_tier, stakes); talking, asking and looking have none. A line only "
@@ -87,13 +87,13 @@ class TurnOutcome:
     log: list[str] = field(default_factory=list)
 
 
-def _numbers_in(value: Any) -> set[int]:
+def numbers_in(value: Any) -> set[int]:
     if isinstance(value, bool):
         return set()
     if isinstance(value, int):
         return {value}
     if isinstance(value, dict):
-        return set().union(*(_numbers_in(v) for v in value.values())) if value else set()
+        return set().union(*(numbers_in(v) for v in value.values())) if value else set()
     return set()
 
 
@@ -143,7 +143,7 @@ class _Turn:
                     result = ToolResult(call.name, False, reason=f"{call.name} is not available right now")
                 payload = result.payload()
                 if result.accepted:
-                    self.allowed |= _numbers_in(result.data)
+                    self.allowed |= numbers_in(result.data)
                     self.log.append(f"ok {call.name}")
                     if "outcome" in result.data:
                         self.outcomes.append(result.data["outcome"])
@@ -159,9 +159,9 @@ class _Turn:
         if not result.accepted:
             self.log.append(f"rejected chosen check: {result.reason}")
             return False
-        self.allowed |= _numbers_in(result.data)
+        self.allowed |= numbers_in(result.data)
         self.outcomes.append(result.data["outcome"])
-        note = _NARRATE_OUTCOME.format(outcomes=_OUTCOME_MEANINGS[result.data["outcome"]])
+        note = NARRATE_OUTCOME.format(outcomes=OUTCOME_MEANINGS[result.data["outcome"]])
         messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{note}"}
         return True
 
@@ -169,7 +169,7 @@ class _Turn:
         """Roll before any prose exists, so the story has to follow the dice (ENG-02, ENG-04)."""
         trial = [
             *messages[:-1],
-            {"role": "user", "content": f"{messages[-1]['content']}\n\n{_REFEREE_PROMPT}"},
+            {"role": "user", "content": f"{messages[-1]['content']}\n\n{REFEREE_PROMPT}"},
         ]
         for _ in range(self.max_retries + 1):
             reply = self.call(trial, self.tools, fast=True)
@@ -178,14 +178,14 @@ class _Turn:
             results = self.run_tools(reply, {"request_check"})
             trial += [{"role": "assistant", "content": reply.blocks()}, {"role": "user", "content": results}]
             if self.outcomes:
-                note = ", then ".join(_OUTCOME_MEANINGS[o] for o in self.outcomes)
+                note = ", then ".join(OUTCOME_MEANINGS[o] for o in self.outcomes)
                 messages += [
                     {"role": "assistant", "content": reply.blocks()},
                     {
                         "role": "user",
                         "content": [
                             *results,
-                            {"type": "text", "text": _NARRATE_OUTCOME.format(outcomes=note)},
+                            {"type": "text", "text": NARRATE_OUTCOME.format(outcomes=note)},
                         ],
                     },
                 ]
@@ -223,7 +223,7 @@ class _Turn:
         """Record consequences after the prose. If this fails, the prose still stands."""
         messages += [
             {"role": "assistant", "content": [{"type": "text", "text": narration}]},
-            {"role": "user", "content": _SCRIBE_PROMPT if len(names) > 1 else _SUGGEST_PROMPT},
+            {"role": "user", "content": SCRIBE_PROMPT if len(names) > 1 else SUGGEST_PROMPT},
         ]
         for _ in range(rounds):
             reply = self.call(messages, self.tools, fast=True)
@@ -236,9 +236,30 @@ class _Turn:
             if self.sim.suggested:
                 return
         if not self.sim.suggested and len(names) > 1:
-            messages.append({"role": "user", "content": _SUGGEST_PROMPT})
+            messages.append({"role": "user", "content": SUGGEST_PROMPT})
             reply = self.call(messages, self.tools, fast=True)
             self.run_tools(reply, {"suggest_actions"})
+
+
+def turn_tools(
+    state: GameState,
+    player_input: str,
+    *,
+    rolled: bool = False,
+    narrated: bool = False,
+    checked: bool = False,
+) -> tuple[str, ...]:
+    """The tools a turn may use now: the one rule behind the API loop and `pantheon session` (D-031).
+
+    Before the prose, only the referee's `request_check`. Until the player answers the Dual Offer the scene
+    is only talk, so there is nothing to roll; bracketed text is the game speaking. After the prose, the
+    scribe's tools. XP rewards a tested deed, so a turn with no check cannot grant it.
+    """
+    if not narrated:
+        talk = player_input.startswith("[")
+        return () if rolled or not state.offer_resolved or talk else ("request_check",)
+    names = SCRIBE_TOOLS if state.offer_resolved else ("suggest_actions",)
+    return names if checked else tuple(n for n in names if n != "grant_xp")
 
 
 def take_turn(
@@ -255,27 +276,24 @@ def take_turn(
     max_retries: int = 2,
     violence: str = "moderate",
     chosen_check: dict[str, Any] | None = None,
+    seed: int | None = None,
 ) -> TurnOutcome:
     """Play one turn without touching storage. The caller commits the outcome atomically (OPS-03)."""
-    rng = RngStreams.from_state(rng_state)
+    rng = RngStreams.from_state(rng_state, seed)
     sim = Simulation(state, rng, rules, turn)
     system, messages = assemble(state, world, recent, player_input, violence)
     run = _Turn(client, sim, max_retries, system)
     run.recent = [narration for _, narration in recent]
-    run.allowed = _numbers_in(state_view(state))  # Prose may quote the engine's own sheet (D-033).
+    run.allowed = numbers_in(state_view(state))  # Prose may quote the engine's own sheet (D-033).
     narration: str | None = None
     try:
-        # Until the player answers the Dual Offer the scene is only talk, so there is nothing to roll.
         rolled = chosen_check is not None and run.roll_chosen(messages, chosen_check)
-        # Bracketed text is the game speaking.
-        if not rolled and state.offer_resolved and not player_input.startswith("["):
+        if turn_tools(state, player_input, rolled=rolled):
             run.referee(messages)
         narration = run.narrate(messages)
         if narration is not None:
             narration = place_notices(narration, sim.events)
-            names = _SCRIBE_TOOLS if state.offer_resolved else ("suggest_actions",)
-            if not sim.checks:  # XP rewards a tested deed, so a talking turn cannot farm it.
-                names = tuple(n for n in names if n != "grant_xp")
+            names = turn_tools(state, player_input, narrated=True, checked=bool(sim.checks))
             run.scribe(messages, narration, names, max_rounds)
     except LLMUnavailable as exc:
         run.log.append(f"model unavailable: {exc}")
@@ -292,3 +310,6 @@ def take_turn(
         tokens_out=run.tokens[2],
         log=run.log,
     )
+
+
+_numbers_in = numbers_in  # The name tests import.

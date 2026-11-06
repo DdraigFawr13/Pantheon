@@ -14,7 +14,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCES = [("plan", "Build plan", ROOT / "docs/BUILD_PLAN.md"), ("roadmap", "Roadmap", ROOT / "docs/roadmap.md")]
+SOURCES = [
+    ("plan", "Build plan", ROOT / "docs/BUILD_PLAN.md"),
+    ("roadmap", "Roadmap", ROOT / "docs/roadmap.md"),
+]
 
 
 def inline(text: str) -> str:
@@ -50,7 +53,7 @@ def render(md: str) -> str:
             while i < len(lines) and not lines[i].startswith("```"):
                 code.append(lines[i])
                 i += 1
-            out.append(f'<pre><code>{html.escape(chr(10).join(code))}</code></pre>')
+            out.append(f"<pre><code>{html.escape(chr(10).join(code))}</code></pre>")
             i += 1
             continue
         m = re.match(r"^(#{1,4}) (.*)$", line)
@@ -69,7 +72,9 @@ def render(md: str) -> str:
             head, body = rows[0], [r for r in rows[1:] if not all(re.fullmatch(r":?-+:?", c) for c in r)]
             th = "".join(f"<th>{inline(c)}</th>" for c in head)
             trs = "".join("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in r) + "</tr>" for r in body)
-            out.append(f'<div class="table"><table><thead><tr>{th}</tr></thead><tbody>{trs}</tbody></table></div>')
+            out.append(
+                f'<div class="table"><table><thead><tr>{th}</tr></thead><tbody>{trs}</tbody></table></div>'
+            )
             continue
         m = re.match(r"^(\s*)(- |\d+\. )(.*)$", line)
         if m:
@@ -121,26 +126,33 @@ pre { background:var(--code); border-radius:6px; padding:12px; overflow-x:auto; 
 .table { overflow-x:auto; } table { border-collapse:collapse; font-size:.9rem; width:100%; }
 th, td { text-align:left; vertical-align:top; padding:6px 8px; border-bottom:1px solid var(--line); } th { color:var(--muted); font-weight:600; }
 strong { font-weight:700; }
-"""
+"""  # noqa: E501 (CSS)
 
 
 def main() -> None:
     out_path = Path(sys.argv[1])
-    commit = subprocess.run(["git", "-C", str(ROOT), "log", "-1", "--format=%h %cs"], capture_output=True, text=True).stdout.strip()
+    commit = subprocess.run(
+        ["git", "-C", str(ROOT), "log", "-1", "--format=%h %cs"], capture_output=True, text=True
+    ).stdout.strip()
     paths = [str(path) for _, _, path in SOURCES]
-    dirty = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--", *paths], capture_output=True, text=True).stdout.strip()
+    dirty = subprocess.run(
+        ["git", "-C", str(ROOT), "status", "--porcelain", "--", *paths], capture_output=True, text=True
+    ).stdout.strip()
     if dirty:
         commit += " plus uncommitted changes"
     nav = "".join(f'<a href="#{slug}">{title}</a>' for slug, title, _ in SOURCES)
-    body = "".join(f'<section id="{slug}">{render(path.read_text())}</section>' for slug, _, path in SOURCES)
+    body = "".join(
+        f'<section id="{slug}">{render(path.read_text(encoding="utf-8"))}</section>'
+        for slug, _, path in SOURCES
+    )
     page = f"""<title>Pantheon Build Plan</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Source+Sans+3:wght@400;600;700&display=swap">
 <style>{STYLE}</style>
 <header><h1>Pantheon build plan</h1><p>Rendered from <code>docs/BUILD_PLAN.md</code> and <code>docs/roadmap.md</code> at {html.escape(commit)}.</p><nav>{nav}</nav></header>
 <main>{body}</main>
-"""
-    out_path.write_text(page)
+"""  # noqa: E501 (HTML)
+    out_path.write_text(page, encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -75,18 +75,19 @@ def _new(args: argparse.Namespace, console: Console) -> int:
         console.print("[red]world/data/ is missing; cannot draw the opening gods.[/red]")
         return 1
     with Database.open(Path(args.db) if args.db else config.db_path) as db:
-        _create_timeline(db, world, config, args.seed, console)
+        create_timeline(db, world, config, args.seed, console)
     return 0
 
 
-def _create_timeline(db: Database, world: World, config: Config, seed_arg: int, console: Console) -> str:
+def create_timeline(db: Database, world: World, config: Config, seed_arg: int, console: Console) -> str:
     assert world.data is not None
     seed = seed_arg or config.seed or secrets.randbelow(2**62) + 1
     rng = RngStreams.from_seed(seed)
     fixed = config.opening_gods
     gods = draw_opening_gods(rng, world.data.god_ids(), fixed=(fixed[0], fixed[1]) if fixed else None)
-    tid = db.create_timeline(seed=seed, rng_state=rng.state())
-    db.append_event(tid, turn=0, type_="opening_gods_drawn", payload={"gods": list(gods)})
+    tid = db.create_timeline(
+        seed=seed, rng_state=rng.state(), events=[("opening_gods_drawn", {"gods": list(gods)})]
+    )
     console.print(f"New timeline [bold]{tid[:8]}[/bold] · seed {seed}")
     return tid
 
@@ -99,7 +100,7 @@ def _pick(ask: Ask, console: Console, title: str, options: list[tuple[str, str]]
     ids = {option_id for option_id, _ in options}
     while True:
         answer = ask("> ").strip()
-        if answer.isdigit() and 1 <= int(answer) <= len(options):
+        if answer.isdecimal() and 1 <= int(answer) <= len(options):
             return options[int(answer) - 1][0]
         if answer in ids:
             return answer
@@ -125,7 +126,7 @@ def _create_character(sim: Simulation, ask: Ask, console: Console) -> None:
     while not name:
         name = ask("Name: ").strip()
     age_text = ask("Age, 16 to 30 [22]: ").strip()
-    age = int(age_text) if age_text.isdigit() and 16 <= int(age_text) <= 30 else 22
+    age = int(age_text) if age_text.isdecimal() and 16 <= int(age_text) <= 30 else 22
     people = _pick(ask, console, "Your people", [(p.id, p.name) for p in data.peoples])
     people_stat = None
     if next(p for p in data.peoples if p.id == people).stat == "any":
@@ -160,7 +161,7 @@ def _create_character(sim: Simulation, ask: Ask, console: Console) -> None:
     )
 
 
-def _status_line(state: GameState) -> str:
+def status_line(state: GameState) -> str:
     progress = "Unwritten"
     if state.level:
         progress = f"Tier {state.tier} · Level {state.level} · XP {state.xp}/{xp_to_next(state.level)}"
@@ -173,7 +174,7 @@ def _bar(label: str, value: int, maximum: int) -> str:
     return f"{label:<8}{'█' * filled}{'░' * (_BAR_WIDTH - filled)} {value}/{maximum}"
 
 
-def _sheet(state: GameState, world: World) -> Panel:
+def sheet(state: GameState, world: World) -> Panel:
     assert world.data is not None
     current = world.data.class_of(state.class_id)
     oaths = {o.id: o.name for o in world.data.oaths}
@@ -290,7 +291,7 @@ def _show(outcome: TurnOutcome, console: Console) -> None:
             console.print(f"  {line}")
 
 
-def _odds_text(state: GameState, world: World, action: Action) -> str:
+def odds_text(state: GameState, world: World, action: Action) -> str:
     """The odds on a suggested action, from the same calculation as the roll (D-036)."""
     assert world.data is not None
     if action.check is None:
@@ -302,22 +303,22 @@ def _odds_text(state: GameState, world: World, action: Action) -> str:
 
 
 def _show_actions(state: GameState, world: World, console: Console) -> None:
-    console.print(_status_line(state))
+    console.print(status_line(state))
     if state.trial_ready:
         console.print(
             "[bold]An Ascension Trial is ready.[/bold] Type [bold]trial[/bold] when you choose to face it."
         )
     for number, action in enumerate(state.suggested, 1):
-        odds = _odds_text(state, world, action)
+        odds = odds_text(state, world, action)
         tag = f"[bold]\\[{action.tag.upper()}{odds}][/bold] " if action.tag else ""
         console.print(f"  {number}. {tag}{action.label}")
 
 
-def _inspect(state: GameState, world: World, rest: str) -> str:
+def inspect_option(state: GameState, world: World, rest: str) -> str:
     """Everything known about one option, without using game time."""
     if not rest.strip():
         return "Name an option, such as inspect 2."
-    number = int(rest) if rest.isdigit() else 0
+    number = int(rest) if rest.isdecimal() else 0
     if not 1 <= number <= len(state.suggested):
         return f"There is no option {rest}."
     action = state.suggested[number - 1]
@@ -328,7 +329,7 @@ def _inspect(state: GameState, world: World, rest: str) -> str:
         check = action.check
         stat = str(check["stat"])
         skill = f" + {check['skill']}" if check.get("skill") else ""
-        odds = _odds_text(state, world, action).strip()
+        odds = odds_text(state, world, action).strip()
         lines.append(
             f"{stat.capitalize()} {state.stats[stat]}{skill} · {check['difficulty']} · "
             f"challenge Tier {check['challenge_tier']} · {odds}"
@@ -409,7 +410,7 @@ class Game:
         self.state = db.load_state(tid)
 
     def _command_sim(self) -> Simulation:
-        rng = RngStreams.from_state(self.db.rng_state(self.tid))
+        rng = RngStreams.from_state(self.db.rng_state(self.tid), self.db.seed(self.tid))
         return Simulation(self.state, rng, self.rules, self.db.last_turn(self.tid) + 1)
 
     def _commit_commands(self, sim: Simulation) -> None:
@@ -438,6 +439,7 @@ class Game:
                 max_retries=self.config.max_tool_retries,
                 violence=self.config.violence,
                 chosen_check=chosen_check,
+                seed=self.db.seed(self.tid),
             )
         record = TurnRecord(
             turn,
@@ -453,7 +455,7 @@ class Game:
         _show(outcome, self.console)
         self.player_choices()
         if any(type_ == "level_up" for type_, _ in outcome.events):
-            self.console.print(_sheet(self.state, self.world))
+            self.console.print(sheet(self.state, self.world))
 
     def _settle_offer(self, choice: str) -> str | None:
         sim = self._command_sim()
@@ -467,7 +469,7 @@ class Game:
             self.console.print(f"  {line}")
         self.player_choices()
         if result["sworn"]:
-            self.console.print(_sheet(self.state, self.world))
+            self.console.print(sheet(self.state, self.world))
             return (
                 f"[I swear the {result['sworn']} Oath to {choice}. The Ledger opens. Narrate the aftermath.]"
             )
@@ -485,7 +487,7 @@ class Game:
             self.console.print(f"  {line}")
         self.player_choices()
         if result["result"] == "ascend":
-            self.console.print(_sheet(self.state, self.world))
+            self.console.print(sheet(self.state, self.world))
         return (
             f"[I face the Ascension Trial and the result is {result['result']}. Narrate it and what follows.]"
         )
@@ -495,9 +497,9 @@ class Game:
         command, _, rest = line.partition(" ")
         match command.lower():
             case "/sheet":
-                self.console.print(_sheet(self.state, self.world))
+                self.console.print(sheet(self.state, self.world))
             case "/inspect":
-                self.console.print(_inspect(self.state, self.world, rest))
+                self.console.print(inspect_option(self.state, self.world, rest))
             case "/trial":
                 return self._attempt_trial()
             case "/hooks":
@@ -540,9 +542,9 @@ class Game:
             if _BARE_INSPECT.fullmatch(line):
                 line = f"/{line}"
             choice = None
-            if line.isdigit() and first <= int(line) < first + len(offers):
+            if line.isdecimal() and first <= int(line) < first + len(offers):
                 choice = offers[int(line) - first][0]
-            elif not line.startswith("/") and not line.isdigit():
+            elif not line.startswith("/") and not line.isdecimal():
                 spoken = spoken_choice(line, self.state, self.world)
                 labels = dict(offers)
                 if (
@@ -559,7 +561,7 @@ class Game:
                 self.console.print(_SAVED)
                 return
             chosen_check = None
-            if line.isdigit() and 1 <= int(line) <= len(self.state.suggested):
+            if line.isdecimal() and 1 <= int(line) <= len(self.state.suggested):
                 action = self.state.suggested[int(line) - 1]
                 chosen_check = action.check
                 line = f"{action.label} ({action.tag})" if action.tag and not action.check else action.label
@@ -591,11 +593,11 @@ def _play(args: argparse.Namespace, console: Console, ask: Ask, client: LLMClien
     with Database.open(Path(args.db) if args.db else config.db_path) as db:
         tid = db.find_timeline(args.timeline) if args.timeline else db.latest_timeline()
         if tid is None or args.fresh:
-            tid = _create_timeline(db, world, config, args.seed, console)
+            tid = create_timeline(db, world, config, args.seed, console)
         try:
             state = db.load_state(tid)
             if not state.created:
-                rng = RngStreams.from_state(db.rng_state(tid))
+                rng = RngStreams.from_state(db.rng_state(tid), db.seed(tid))
                 sim = Simulation(state, rng, rules, 0)
                 _create_character(sim, ask, console)
                 db.commit_events(tid, 0, sim.events, rng.state())
@@ -656,3 +658,5 @@ def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClien
 
 if __name__ == "__main__":
     sys.exit(main())
+
+_sheet = sheet  # The name tests import.

@@ -7,22 +7,32 @@ cd "$(dirname "$0")/.."
 DUMP=data/pantheon.sql
 mkdir -p data
 
+# Returns 0 when fetched, 1 when the remote has no saves branch, 3 when the remote could not be reached.
 fetch() {
+  local code
   for wait in 2 4 8 16; do
     git fetch -q origin saves 2>/dev/null && return 0
-    git ls-remote --exit-code --heads origin saves >/dev/null 2>&1 || return 1  # No saves branch yet.
+    code=0
+    git ls-remote --exit-code --heads origin saves >/dev/null 2>&1 || code=$?
+    [ "$code" = 2 ] && return 1  # ls-remote exits 2 only when the branch is missing.
     sleep "$wait"
   done
-  return 1
+  return 3
 }
 
 case "${1:-}" in
   pull)
-    if ! fetch; then
+    status=0
+    fetch || status=$?
+    if [ "$status" = 1 ]; then
       echo "No saves branch yet: a new game starts here."
       exit 0
+    elif [ "$status" != 0 ]; then
+      echo "Could not reach the saves branch (network or login). Not starting a new game; try again." >&2
+      exit 1
     fi
-    git show origin/saves:pantheon.sql > "$DUMP"
+    git show origin/saves:pantheon.sql > "$DUMP.new"
+    mv "$DUMP.new" "$DUMP"
     uv run -q pantheon session import "$DUMP"
     ;;
   push)
