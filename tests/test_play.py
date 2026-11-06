@@ -90,7 +90,7 @@ def test_swearing_from_the_menu_then_choosing_class_and_profession(tmp_path: Pat
     lines = [*NEW_GAME, "4", "1", "1", "/sheet", "/hooks", "/help", "/quit"]
     _code, state, _ = play(tmp_path, lines, [*talk(), *narration()])
     assert state.level == 1 and len(state.oaths) == 1
-    assert state.class_id == "blade_sworn"
+    assert state.class_id == "sellsword"
     assert state.profession == "herbalist"
     out = capsys.readouterr().out
     assert "The Ledger" in out

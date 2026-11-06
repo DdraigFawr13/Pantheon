@@ -103,6 +103,12 @@ Built right after M1a, before the rest of M1, so the plan's top risks are tested
 
 **You test:** play the opening and a few scenes with `start.bat`, and say whether it reads right and is fun.
 
+## M1.7: Play in Claude Code (D-041)
+
+`pantheon session` runs each step of a turn as its own command, so this Claude Code session is the narrator and play costs nothing beyond the subscription. The `/play` skill holds the steps; the play guard keeps secret and sealed canon out of the narrator's context; `scripts/saves.sh` keeps the save on the `saves` branch. `pantheon play` with Haiku stays.
+
+**You test:** say "play" in a Claude Code session on this repo, create a character, and play the opening and a few scenes.
+
 ## M1: Engine core (4 to 6 sessions)
 
 M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is testable alone.

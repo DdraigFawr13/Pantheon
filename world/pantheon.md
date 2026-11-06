@@ -31,7 +31,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** two-pan scales. **Cult:** the Assize.
 - **Temperament:** exacting, fair, unforgiving of breach.
 - **Wants:** the Pact restored and re-sworn. Order that binds even gods.
-- **Oath:** Open Hand. **Favoured affinities:** Binding, Mind. **Favoured classes:** Cantor, Warden.
+- **Oath:** Open Hand. **Favoured affinities:** Binding, Mind. **Favoured classes:** Oathknight, Cantor, Fistsworn, Inquisitor.
 
 ### Kaul, the Iron Father
 
@@ -39,7 +39,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** hammer on anvil. **Cult:** the Ironwrit.
 - **Temperament:** blunt, honorable by his own code, contemptuous of waste.
 - **Wants:** strength tested and a world that does not rot from ease. Leans toward Veshra's order.
-- **Oath:** Held Line. **Favoured affinities:** Iron, Flame. **Favoured classes:** Blade-sworn, Warden.
+- **Oath:** Held Line. **Favoured affinities:** Iron, Flame. **Favoured classes:** Sellsword, Warden, Runesmith, Marshal.
 
 ### Ysmere, the Tidemother
 
@@ -47,7 +47,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** spiral shell. **Cult:** the Turning.
 - **Temperament:** vast, warm, indifferent to individuals.
 - **Wants:** motion and renewal. Distrusts anything that cannot change.
-- **Oath:** Turning Tide. **Favoured affinities:** Tide, Life. **Favoured classes:** Wayfinder, Hearthwright.
+- **Oath:** Turning Tide. **Favoured affinities:** Tide, Life. **Favoured classes:** Wayfinder, Hearthwright, Wildblood, Elementalist.
 
 ### Maru-Ghen, the Quiet Harvest
 
@@ -55,7 +55,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** sickle and seed. **Cult:** the Ashen Convent.
 - **Temperament:** patient, gentle, immovable.
 - **Wants:** orderly endings. Opposes undeath absolutely. Sides with Veshra on restoring the Pact.
-- **Oath:** Last Rest. **Favoured affinities:** Death, Stone. **Favoured classes:** Gravewalker, Hearthwright.
+- **Oath:** Last Rest. **Favoured affinities:** Death, Stone. **Favoured classes:** Gravewalker, Votary, Greenwarden.
 
 ### Ilvane, the Lantern
 
@@ -63,7 +63,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** shuttered lantern. **Cult:** the Lantern Orders.
 - **Temperament:** cryptic. Every prophecy has a price. Rarely states a position.
 - **Wants:** publicly, nothing.
-- **Oath:** Kept Light. **Favoured affinities:** Light, Space. **Favoured classes:** Cantor, Wayfinder.
+- **Oath:** Kept Light. **Favoured affinities:** Light, Space. **Favoured classes:** Arcanist, Spellblade, Riftwalker, Seer.
 
 ### Drovash, the Laughing Thief
 
@@ -71,7 +71,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** coin with a hole. **Cult:** the Underlanes, informally.
 - **Temperament:** charming, ruthless about contracts he writes himself.
 - **Wants:** the Hands unbound. Believes the Pact was a cage. The public villain of the Severance story.
-- **Oath:** Fair Wager. **Favoured affinities:** Shadow, Wind. **Favoured classes:** Wager-bound, Wayfinder.
+- **Oath:** Fair Wager. **Favoured affinities:** Shadow, Wind. **Favoured classes:** Cutpurse, Hexer, Gearwright.
 
 ### Hurrow, the Antlered
 
@@ -79,7 +79,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** antlers. **Cult:** clan hunt-moots.
 - **Temperament:** remote, patient, predatory.
 - **Wants:** walls torn down; balance of hunter and hunted. Opposes the Pact as human enclosure of the wild.
-- **Oath:** Long Hunt. **Favoured affinities:** Beast, Growth. **Favoured classes:** Wildkin, Wayfinder.
+- **Oath:** Long Hunt. **Favoured affinities:** Beast, Growth. **Favoured classes:** Wildkin, Reaver, Skinchanger.
 
 ## Rivalries
 

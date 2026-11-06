@@ -1,0 +1,539 @@
+<title>Pantheon Table</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column under a sticky status bar; the story first, the Ledger's voice in mono, choices as wide buttons at the thumb. */
+:root {
+  --bg: #e8e4ec; --page: #f8f6fa; --ink: #211b27; --muted: #6a6072; --line: #d6cfdc;
+  --brass: #8a5a12; --brass-soft: #f3e7d2; --blood: #b0302c; --mana: #3559a6; --stam: #2f7a4a;
+  --glow: rgb(214 160 70 / .22); --ember: #b0302c;
+  --display: "Alegreya SC", "Palatino Linotype", Georgia, serif;
+  --prose: "Spectral", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #16111a; --page: #211a26; --ink: #efe6dc; --muted: #ab9db0; --line: #3b2f42;
+  --brass: #e3b562; --brass-soft: #34281b; --blood: #ea6a5f; --mana: #93b2f2; --stam: #8bcf9e;
+  --glow: rgb(227 181 98 / .13); --ember: #ea6a5f; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #16111a; --page: #211a26; --ink: #efe6dc; --muted: #ab9db0; --line: #3b2f42;
+  --brass: #e3b562; --brass-soft: #34281b; --blood: #ea6a5f; --mana: #93b2f2; --stam: #8bcf9e;
+  --glow: rgb(227 181 98 / .13); --ember: #ea6a5f; color-scheme: dark }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: radial-gradient(120% 60% at 50% 0%, var(--glow), transparent 70%) fixed, var(--bg); color: var(--ink); font: 17px/1.6 var(--prose); margin: 0; min-height: 100%; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--page); }
+.wrap { max-width: 680px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--page); border-bottom: 1px solid var(--line); }
+header .wrap { padding-block: 12px 0; display: grid; gap: 10px; }
+.who { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.who h1 { font: 700 1.25rem/1.1 var(--display); margin: 0; letter-spacing: .02em; }
+.who button { font: 600 .78rem var(--mono); color: var(--brass); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font: .74rem/1.2 var(--mono); color: var(--muted); }
+.meta span { white-space: nowrap; }
+.meta .chip { font: 700 .74rem var(--display); letter-spacing: .06em; color: var(--brass); border: 1px solid color-mix(in srgb, var(--brass) 45%, transparent); background: var(--brass-soft); border-radius: 999px; padding: 2px 10px; }
+.meta .sep { opacity: .5; }
+.bars { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+.meter { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "label value" "track track"; gap: 3px 8px; font: .7rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter > span:first-child { grid-area: label; font: 700 .72rem var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.meter > span:last-child { grid-area: value; color: var(--ink); }
+.meter .track { grid-area: track; }
+.meter .track { height: 8px; background: color-mix(in srgb, var(--line) 80%, transparent); border-radius: 999px; overflow: hidden; box-shadow: inset 0 1px 2px rgb(0 0 0 / .25); }
+.meter .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, color-mix(in srgb, var(--c, var(--brass)) 70%, black), var(--c, var(--brass))); box-shadow: 0 0 8px color-mix(in srgb, var(--c, var(--brass)) 45%, transparent); transition: width .4s ease; }
+main { padding-block: 18px 40px; display: grid; gap: 18px; }
+.empty { color: var(--muted); font-style: italic; }
+.story p { margin: 0 0 .9em; max-width: 65ch; }
+.story p em { color: var(--muted); }
+.notice { font: 600 .82rem/1.45 var(--mono); color: var(--brass); background: var(--brass-soft); border-left: 3px solid var(--brass); padding: 7px 10px; margin: .2em 0 1em; border-radius: 0 4px 4px 0; }
+.ledger { list-style: none; padding: 0; margin: 0; display: grid; gap: 3px; font: .8rem/1.4 var(--mono); color: var(--muted); }
+.ledger li::before { content: "▸ "; color: var(--brass); }
+h2 { font: 700 .95rem var(--display); letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; }
+.note { font: .9rem/1.5 var(--prose); border-left: 3px solid var(--mana); background: var(--page); padding: 10px 12px; border-radius: 0 6px 6px 0; }
+.note strong { font: 700 .78rem var(--display); letter-spacing: .06em; color: var(--mana); display: block; }
+.due { border: 1px solid var(--brass); border-radius: 6px; padding: 10px 12px; background: var(--brass-soft); }
+.due p { margin: 0 0 6px; font: .85rem var(--mono); }
+.due { display: grid; gap: 8px; }
+.due h2 { margin: 6px 0 0; }
+.picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.pick { display: grid; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); color: var(--ink); cursor: pointer; font: 1rem/1.25 var(--prose); }
+.pick .pdetail { font: .72rem var(--mono); color: var(--muted); }
+.picks.wide { grid-template-columns: 1fr; }
+.pblurb, .pick .pblurb { font: .95rem/1.4 var(--prose); margin-top: 2px; }
+.ptrait, .pick .ptrait { font: .74rem/1.4 var(--mono); color: var(--brass); }
+.classlist { display: grid; gap: 10px; }
+.classlist .cls { border-top: 1px dashed var(--line); padding-top: 8px; display: grid; gap: 2px; }
+.classlist .cls:first-child { border-top: 0; padding-top: 0; }
+.classlist .cls.current { border: 1px solid var(--brass); border-radius: 8px; padding: 8px 10px; background: var(--brass-soft); }
+.classlist .cname { font: 700 1rem var(--display); letter-spacing: .03em; }
+.pick[aria-pressed="true"] { border-color: var(--brass); background: var(--brass-soft); box-shadow: 0 0 0 1px var(--brass) inset; }
+.due .confirm { padding: 10px 16px; justify-self: start; }
+
+.choices { display: grid; gap: 8px; }
+.choice { display: grid; grid-template-columns: 1fr auto; align-items: stretch; border: 1px solid var(--line); border-radius: 8px; background: var(--page); overflow: hidden; }
+.choice > button.go { text-align: left; background: none; border: 0; color: var(--ink); font: 1rem/1.35 var(--prose); padding: 11px 12px; cursor: pointer; min-width: 0; display: grid; gap: 4px; }
+.choice > button.go:hover, .choice > button.go:focus-visible { background: var(--brass-soft); outline: none; }
+.choice > button.info { background: none; border: 0; border-left: 1px solid var(--line); color: var(--muted); font: 600 .8rem var(--mono); padding: 0 14px; cursor: pointer; }
+.choice .num { font: 600 .78rem var(--mono); color: var(--muted); }
+.tag { display: inline-block; font: 600 .72rem var(--mono); letter-spacing: .04em; color: var(--brass); border: 1px solid var(--brass); border-radius: 4px; padding: 0 6px; margin-right: 6px; }
+.choice .terms { font: .78rem/1.4 var(--mono); color: var(--muted); }
+.choice.oath { border-color: var(--brass); }
+.detail { grid-column: 1 / -1; font: .78rem/1.45 var(--mono); color: var(--muted); border-top: 1px dashed var(--line); padding: 8px 12px; white-space: pre-line; }
+form.own { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+form.own input { font: 1rem var(--prose); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--page); color: var(--ink); min-width: 0; }
+form.own button, .primary { font: 700 .95rem var(--display); letter-spacing: .05em; background: var(--brass); color: var(--page); border: 0; border-radius: 8px; padding: 0 16px; cursor: pointer; }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.state { font: .8rem/1.45 var(--mono); color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+.state.busy::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--brass); margin-right: 8px; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .state.busy::before { animation: none; } .meter .fill { transition: none; } }
+dialog { width: min(560px, calc(100% - 24px)); max-height: 85vh; border: 1px solid var(--line); border-radius: 10px; background: var(--page); color: var(--ink); padding: 0; }
+dialog::backdrop { background: rgb(0 0 0 / .45); }
+.sheet { padding: 14px 16px 18px; display: grid; gap: 12px; font: .85rem/1.5 var(--mono); }
+.sheet h3 { font: 700 1.2rem var(--display); margin: 0; }
+.sheet .row { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.sheet dt { color: var(--muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
+.sheet dd { margin: 0 0 6px; }
+.stat { display: grid; grid-template-columns: 6.5em 1fr 2.5em; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
+.stat .track { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.stat .fill { height: 100%; background: var(--brass); }
+.sheet .close { justify-self: end; }
+.panel { display: grid; gap: 14px; }
+.tabs { margin-top: 2px; display: flex; gap: 4px; overflow-x: auto; }
+.tabs button { font: 700 .82rem var(--display); letter-spacing: .06em; color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px 5px; cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--brass); }
+.card { border: 1px solid var(--line); border-radius: 8px; background: var(--page); padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.card h3 { font: 700 1.05rem var(--display); margin: 0; letter-spacing: .03em; }
+.card .sub { font: .78rem/1.45 var(--mono); color: var(--muted); }
+.kv { display: grid; grid-template-columns: 7.5em 1fr; gap: 4px 10px; font: .84rem/1.45 var(--mono); }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; min-width: 0; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font: .86rem/1.45 var(--mono); }
+.list li { border-top: 1px dashed var(--line); padding-top: 6px; } .list li:first-child { border-top: 0; padding-top: 0; }
+.pill { display: inline-block; font: 600 .7rem var(--mono); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; color: var(--muted); margin-left: 4px; }
+.clock { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font: .84rem var(--mono); }
+.clock .pips { grid-column: 1 / -1; display: flex; gap: 3px; flex-wrap: wrap; }
+.clock .pip { width: 12px; height: 12px; border: 1px solid var(--brass); border-radius: 2px; }
+.clock .pip.on { background: var(--brass); }
+.create { display: grid; gap: 12px; }
+.create label { display: grid; gap: 4px; font: .8rem var(--mono); color: var(--muted); }
+.create input, .create select { font: 1rem var(--prose); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--page); color: var(--ink); min-width: 0; width: 100%; }
+.create .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.create .hint { font: .78rem/1.45 var(--mono); color: var(--muted); margin: 0; }
+.create .err { color: var(--blood); font: .82rem var(--mono); margin: 0; }
+.who h1::before { content: "◆"; color: var(--brass); font-size: .7em; margin-right: 8px; vertical-align: .15em; }
+.story { position: relative; }
+.story > p:first-of-type::first-letter { font: 700 3.1em/.8 var(--display); color: var(--brass); float: left; margin: .08em .1em 0 0; }
+.story::after { content: "✦ ✦ ✦"; display: block; text-align: center; color: var(--brass); letter-spacing: .6em; font-size: .7rem; opacity: .7; margin-top: 6px; }
+.notice { position: relative; padding-top: 20px !important; box-shadow: 0 0 18px var(--glow); }
+.notice::before { content: "The Ledger"; position: absolute; top: 4px; left: 10px; font: 700 .62rem var(--display); letter-spacing: .14em; text-transform: uppercase; opacity: .75; }
+.choice { transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.choice:hover { transform: translateY(-1px); border-color: var(--brass); box-shadow: 0 4px 14px var(--glow); }
+.choice.oath { background: linear-gradient(90deg, var(--brass-soft), var(--page) 60%); }
+.card { box-shadow: 0 1px 0 var(--line); }
+.card h3::after { content: ""; display: block; height: 1px; margin-top: 6px; background: linear-gradient(90deg, var(--brass), transparent); opacity: .6; }
+@media (prefers-reduced-motion: reduce) { .choice { transition: none; } .choice:hover { transform: none; } }
+
+</style>
+
+<header class="bar"><div class="wrap">
+  <div class="who"><h1 id="name">Pantheon</h1><button id="sheetBtn" type="button" disabled>Sheet</button></div>
+  <div class="meta" id="meta">Waiting for the Ledger…</div>
+  <div class="bars" id="bars"></div>
+  <nav class="tabs" role="tablist" id="tabs" hidden>
+    <button role="tab" data-tab="story" aria-selected="true">Story</button>
+    <button role="tab" data-tab="character" aria-selected="false">Character</button>
+    <button role="tab" data-tab="journal" aria-selected="false">Journal</button>
+    <button role="tab" data-tab="gear" aria-selected="false">Gear</button>
+  </nav>
+</div></header>
+
+<main class="wrap">
+  <aside class="note" id="note" hidden></aside>
+  <section class="create card" id="create" hidden></section>
+  <div id="tab-character" class="panel" hidden></div>
+  <div id="tab-journal" class="panel" hidden></div>
+  <div id="tab-gear" class="panel" hidden></div>
+  <div id="tab-story" class="panel" style="display:grid;gap:18px">
+  <section class="story" id="story" aria-live="polite"><p class="empty">The story appears here once the narrator writes the first scene. Open this page beside the Claude Code session that runs the game.</p></section>
+  <ul class="ledger" id="ledger" hidden></ul>
+  <section class="due" id="due" hidden></section>
+  <section id="actions" hidden>
+    <h2>What do you do?</h2>
+    <div class="choices" id="choices"></div>
+  </section>
+  <form class="own" id="own" autocomplete="off">
+    <input id="ownText" maxlength="300" placeholder="Or write your own action" aria-label="Your own action">
+    <button type="submit" id="ownBtn">Do it</button>
+  </form>
+  </div>
+  <p class="state" id="state">Connecting…</p>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  let picks = {};
+  let screen = null, comments = null, sendState = "off", sentAt = null, threadId = null;
+  try { threadId = localStorage.getItem("pantheon-thread"); } catch {}
+
+  function meter(label, value, max, color) {
+    const m = el("div", "meter");
+    m.append(el("span", null, label));
+    const t = el("div", "track"), f = el("div", "fill");
+    f.style.width = max ? Math.max(0, Math.min(100, (100 * value) / max)) + "%" : "0%";
+    if (color) f.style.setProperty("--c", color);
+    t.append(f); m.append(t, el("span", null, `${value}/${max}`));
+    return m;
+  }
+
+  function paragraph(text) {
+    // ***...*** is a Ledger notice the engine placed; *...* is an italic thought. Everything else is plain text.
+    const notice = text.match(/^\*\*\*(.+)\*\*\*$/);
+    if (notice) return el("div", "notice", notice[1]);
+    const p = el("p");
+    text.split(/(\*[^*]+\*)/).forEach((part) => {
+      if (/^\*[^*]+\*$/.test(part)) p.append(el("em", null, part.slice(1, -1)));
+      else if (part) p.append(document.createTextNode(part.replace(/\*\*/g, "")));
+    });
+    return p;
+  }
+
+  function render() {
+    const s = screen;
+    if (!s) return;
+    const note = $("note"); note.replaceChildren();
+    if (s.note) { note.append(el("strong", null, "From the narrator"), document.createTextNode(s.note)); }
+    note.hidden = !s.note;
+    if (!s.created) {
+      $("tabs").hidden = true; $("tab-story").style.display = "none"; $("sheetBtn").disabled = true;
+      $("meta").textContent = "A new life";
+      renderCreate(s.setup || { peoples: [], origins: [], stats: [], stat_array: [], flaws: [] });
+      if (sentAt !== null && s.version !== sentAt) sentAt = null;
+      status();
+      return;
+    }
+    $("create").hidden = true; $("tabs").hidden = false;
+    renderCharacter(s); renderJournal(s); renderGear(s); showTab(tab);
+    $("name").textContent = s.name || "Pantheon";
+    const meta = $("meta"); meta.replaceChildren();
+    if (s.class) meta.append(el("span", "chip", s.class));
+    meta.append(el("span", "chip", s.level ? `Tier ${s.tier} · Level ${s.level}` : "Unwritten"));
+    meta.append(el("span", null, `${s.date} · Turn ${s.turn}`));
+    const bars = $("bars"); bars.replaceChildren(
+      meter("HP", s.hp, s.max_hp, "var(--blood)"),
+      ...(s.level ? [meter("XP", s.xp, s.xp_next, "var(--brass)")] : [meter("Mana", s.max_mana, s.max_mana, "var(--mana)")]),
+    );
+    $("sheetBtn").disabled = false;
+
+    const story = $("story"); story.replaceChildren();
+    if (s.downed) story.append(el("div", "notice", "Downed"));
+    (s.prose || []).forEach((line) => story.append(paragraph(line)));
+    if (!(s.prose || []).length) story.append(el("p", "empty", "The opening has not been written yet."));
+
+    const ledger = $("ledger"); ledger.replaceChildren(...(s.ledger || []).map((l) => el("li", null, l)));
+    ledger.hidden = !(s.ledger || []).length;
+
+    const due = $("due"); due.replaceChildren();
+    const groups = s.choice_groups || [];
+    Object.keys(picks).forEach((k) => { if (!groups.some((g) => g.kind === k)) delete picks[k]; });
+    groups.forEach((g) => {
+      due.append(el("h2", null, g.title));
+      const box = el("div", "picks" + (g.options.some((o) => o.blurb) ? " wide" : ""));
+      g.options.forEach((o) => {
+        const b = el("button", "pick"); b.type = "button";
+        b.setAttribute("aria-pressed", String(picks[g.kind] === o.id));
+        b.append(el("span", "pname", o.name));
+        if (o.detail) b.append(el("span", "pdetail", o.detail));
+        if (o.blurb) b.append(el("span", "pblurb", o.blurb));
+        if (o.trait) b.append(el("span", "ptrait", o.trait));
+        b.addEventListener("click", () => { picks[g.kind] = o.id; render(); });
+        box.append(b);
+      });
+      due.append(box);
+    });
+    if (groups.length) {
+      const ready = groups.every((g) => picks[g.kind]);
+      const confirm = el("button", "primary confirm", groups.length > 1 ? "Confirm these choices" : "Confirm");
+      confirm.type = "button"; confirm.disabled = !ready;
+      confirm.addEventListener("click", () => {
+        const msg = groups.map((g) => `${g.kind} ${picks[g.kind]}`).join("; ");
+        send("Pantheon choose: " + msg, confirm);
+      });
+      due.append(confirm);
+    }
+    due.hidden = !groups.length;
+
+    const choices = $("choices"); choices.replaceChildren();
+    const blocked = groups.length > 0;
+    if (!blocked) {
+      (s.options || []).forEach((o) => choices.append(choiceRow(o, `Pantheon move: ${o.n}. ${o.label}`)));
+      (s.offers || []).forEach((o) => choices.append(choiceRow({ ...o, oath: true }, `Pantheon choose: offer ${o.id}`)));
+      if (s.trial_ready) choices.append(choiceRow({ label: "Face the Ascension Trial", tag: "TRIAL", odds: "", n: null }, "Pantheon trial"));
+    }
+    $("actions").hidden = blocked || !choices.children.length;
+    $("own").hidden = blocked;
+    if (sentAt !== null && s.version !== sentAt && !s.in_progress) sentAt = null;
+    status();
+  }
+
+  function choiceRow(o, message) {
+    const row = el("div", "choice" + (o.oath ? " oath" : ""));
+    const go = el("button", "go"); go.type = "button";
+    const head = el("span");
+    if (o.n != null) head.append(el("span", "num", o.n + ". "));
+    if (o.tag) head.append(el("span", "tag", o.odds ? `${o.tag} ${o.odds}` : o.tag));
+    head.append(document.createTextNode(o.label));
+    go.append(head);
+    if (o.terms) go.append(el("span", "terms", o.terms));
+    go.addEventListener("click", () => send(message, go));
+    row.append(go);
+    if (o.detail) {
+      const info = el("button", "info", "?"); info.type = "button"; info.setAttribute("aria-label", "Odds and stakes");
+      const detail = el("div", "detail", o.detail); detail.hidden = true;
+      info.addEventListener("click", () => { detail.hidden = !detail.hidden; });
+      row.append(info, detail);
+    } else go.style.gridColumn = "1 / -1";
+    return row;
+  }
+
+  function busy() { return sentAt !== null || (screen && screen.in_progress); }
+
+  function status(note) {
+    const st = $("state");
+    const waiting = busy();
+    document.querySelectorAll("button.go, #ownBtn").forEach((b) => { b.disabled = waiting || sendState !== "available"; });
+    st.classList.toggle("busy", waiting);
+    if (note) { st.textContent = note; return; }
+    if (waiting) st.textContent = "The narrator is writing the next scene. This page updates by itself.";
+    else if (sendState === "available") st.textContent = "Tap a choice, or write your own. It goes to the narrator in your Claude Code session.";
+    else if (sendState === "no_session") st.textContent = "No Claude Code session is watching this page. Start one and say “play”, then reload.";
+    else if (sendState === "writers_only") st.textContent = "Only the page's owner can send moves.";
+    else st.textContent = "Sending from this page is not available here. Type your move in the Claude Code chat instead.";
+  }
+
+  async function send(message, button) {
+    if (!comments || busy()) return;
+    const mine = (sentAt = screen ? screen.version : 0); status("Sending…");
+    setTimeout(() => { if (sentAt === mine) { sentAt = null; status(); } }, 600000); // Never stuck for good.
+    try {
+      let result;
+      if (threadId) {
+        try { result = await comments.sendToClaude({ threadId, text: message }); }
+        catch (e) { if (e && e.code === "not_found") threadId = null; else throw e; }
+      }
+      if (!result) {
+        const target = [$("create"), $("actions"), $("own")].find((n) => n.offsetParent !== null) || $("name");
+        const anchor = await comments.anchorFor(target);
+        result = await comments.sendToClaude({ anchor, text: message });
+      }
+      threadId = result.threadId;
+      try { localStorage.setItem("pantheon-thread", threadId); } catch {}
+      status();
+    } catch (e) {
+      sentAt = null;
+      const why = { rate_limited: "Too fast; wait a moment and tap again.", claude_unavailable: "No Claude session could take it. Check the session is open, then try again.", consent_required: "Allow comments for this page, then tap again." }[e && e.code];
+      status(why || `Not sent (${(e && e.code) || "error"}). Type the move in the chat instead.`);
+      setTimeout(() => status(), 6000);
+    }
+    if (button) button.blur();
+  }
+
+  $("own").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const text = $("ownText").value.trim();
+    if (!text) return;
+    send(`Pantheon move: ${text}`, null).then(() => { if (sentAt !== null) $("ownText").value = ""; });
+  });
+
+  let tab = "story";
+  try { tab = localStorage.getItem("pantheon-tab") || "story"; } catch {}
+  function showTab(name) {
+    tab = name;
+    try { localStorage.setItem("pantheon-tab", name); } catch {}
+    document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+    ["story", "character", "journal", "gear"].forEach((t) => {
+      const panel = $("tab-" + t);
+      if (t === "story") panel.style.display = name === "story" ? "grid" : "none";
+      else panel.hidden = name !== t;
+    });
+  }
+  document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  $("sheetBtn").addEventListener("click", () => showTab(tab === "character" ? "story" : "character"));
+
+  function card(title, sub) {
+    const c = el("section", "card");
+    c.append(el("h3", null, title));
+    if (sub) c.append(el("div", "sub", sub));
+    return c;
+  }
+  function kv(pairs) {
+    const dl = el("dl", "kv");
+    pairs.filter(([, v]) => v !== "" && v != null).forEach(([k, v]) => dl.append(el("dt", null, k), el("dd", null, String(v))));
+    return dl;
+  }
+  function list(items, empty) {
+    const ul = el("ul", "list");
+    if (!items.length) ul.append(el("li", "empty", empty));
+    items.forEach((it) => ul.append(typeof it === "string" ? el("li", null, it) : it));
+    return ul;
+  }
+  const words = (o) => Object.entries(o || {});
+
+  function renderCharacter(s) {
+    const box = $("tab-character"); box.replaceChildren();
+    const who = card(`${s.name}, ${s.age}`, `${s.people_name} · ${s.origin_name}`);
+    who.append(kv([["Class", s.class ? `${s.class} (${s.class_stats})` : "none yet"], ["Profession", s.profession || "none yet"],
+      ["Tier", s.tier], ["Level", s.level || "Unwritten"], ["Flaw", s.flaw], ["Debt", s.debt]]));
+    const pools = el("div", "bars");
+    pools.append(meter("HP", s.hp, s.max_hp, "var(--blood)"), meter("Mana", s.max_mana, s.max_mana, "var(--mana)"), meter("Stam", s.max_stamina, s.max_stamina, "var(--stam)"));
+    if (s.level) pools.append(meter("XP", s.xp, s.xp_next, "var(--brass)"));
+    who.append(pools);
+    const stats = card("Stats");
+    const top = Math.max(40, ...Object.values(s.stats || {}));
+    words(s.stats).forEach(([k, v]) => {
+      const r = el("div", "stat"); const t = el("div", "track"), f = el("div", "fill");
+      f.style.width = (100 * v) / top + "%"; t.append(f);
+      r.append(el("span", null, k[0].toUpperCase() + k.slice(1)), t, el("span", null, String(v))); stats.append(r);
+    });
+    if ((s.injuries || []).length) stats.append(el("div", "sub", "Injuries: " + s.injuries.join(", ")));
+    const skills = card("Skills and spells", "Ranks from the Ledger. Spells are skills tied to an affinity.");
+    skills.append(list((s.skill_list || []).map((k) => {
+      const li = el("li", null, `${k.name} · rank ${k.rank}`);
+      if (k.rarity) li.append(el("span", "pill", k.rarity));
+      if (k.affinity) li.append(el("span", "pill", k.affinity));
+      return li;
+    }), "No skills yet."));
+    const aff = card("Affinities");
+    aff.append(list(words(s.affinities).map(([a, r]) => `${a[0].toUpperCase() + a.slice(1)} · rank ${r}`), "None yet."));
+    const classes = card("Classes", "How each base class plays. Yours is marked.");
+    const cl = el("div", "classlist");
+    (s.class_catalogue || []).forEach((c) => {
+      const row = el("div", "cls" + (c.current ? " current" : ""));
+      const head = el("div"); head.append(el("span", "cname", c.name), el("span", "pill", c.stats));
+      if (c.current) head.append(el("span", "pill", "Yours"));
+      row.append(head, el("span", "pblurb", c.blurb), el("span", "ptrait", c.trait));
+      cl.append(row);
+    });
+    classes.append(cl);
+    const titles = card("Titles");
+    titles.append(list(s.titles || [], "No titles yet."));
+    box.append(who, stats, skills, aff, titles, classes);
+  }
+
+  function renderJournal(s) {
+    const box = $("tab-journal"); box.replaceChildren();
+    const oaths = card("Oaths", "What you swore, and what it costs you.");
+    oaths.append(list((s.oath_list || []).map((o) => {
+      const li = el("li");
+      li.append(el("strong", null, `${o.name} · ${o.god}`), el("div", null, `Gift: ${o.gift}`), el("div", null, `Burden: ${o.burden}`));
+      return li;
+    }), "No Oath sworn."));
+    const hooks = card("Threads", "Debts, promises and people who may come back.");
+    hooks.append(list(s.hooks || [], "Nothing owed yet."));
+    const standing = card("Standing");
+    standing.append(list(words(s.standing).map(([e, v]) => `${e[0].toUpperCase() + e.slice(1)} ${v > 0 ? "+" : ""}${v}`), "No one knows your name yet."));
+    const rumours = card("Rumours");
+    rumours.append(list(s.rumours || [], "No rumours heard."));
+    box.append(oaths, hooks, standing, rumours);
+    if ((s.clocks || []).length) {
+      const clocks = card("What is moving in the world");
+      (s.clocks || []).forEach((c) => {
+        const row = el("div", "clock");
+        row.append(el("span", null, c.name), el("span", "sub", `${c.value} of ${c.segments}`));
+        const pips = el("div", "pips");
+        for (let i = 0; i < c.segments; i++) pips.append(el("span", "pip" + (i < c.value ? " on" : "")));
+        row.append(pips);
+        if (c.filled) row.append(el("div", "sub", c.filled));
+        clocks.append(row);
+      });
+      box.append(clocks);
+    }
+  }
+
+  function renderGear(s) {
+    const box = $("tab-gear"); box.replaceChildren();
+    const purse = card("Purse");
+    purse.append(kv([["Coin", `${s.coin} silver`]]));
+    const shards = card("Shards", "Absorb a shard to grow a skill or affinity.");
+    shards.append(list(s.shards || [], "No shards yet."));
+    const items = card("Items", "The engine does not track items yet. Gear and loot arrive with milestone M1e; until then, belongings live in the story.");
+    box.append(purse, shards, items);
+  }
+
+  function renderCreate(setup) {
+    const box = $("create"); box.hidden = false;
+    if (box.dataset.ready) return;
+    box.dataset.ready = "1";
+    box.append(el("h3", null, "Who were you, before the fall?"), el("p", "hint", "Your choices go to the narrator, who creates the character and plays the opening."));
+    const field = (label, input) => { const l = el("label", null, label); l.append(input); return l; };
+    const select = (id, options) => { const sel = el("select"); sel.id = id; options.forEach(([v, t]) => { const o = el("option", null, t); o.value = v; sel.append(o); }); return sel; };
+    const name = el("input"); name.id = "c-name"; name.maxLength = 40; name.placeholder = "A name";
+    const age = el("input"); age.id = "c-age"; age.type = "number"; age.min = "16"; age.max = "30"; age.value = "22";
+    const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+    const people = select("c-people", setup.peoples.map((p) => [p.id, `${p.name} (${p.stat === "any" ? "+3 to any stat" : "+3 " + cap(p.stat)})`]));
+    const peopleStat = select("c-pstat", setup.stats.map((x) => [x, cap(x)]));
+    const pstatField = field("Your people's +3 goes to", peopleStat);
+    const affinity = el("select"); affinity.id = "c-aff";
+    const affField = field("Innate affinity", affinity);
+    const origin = select("c-origin", setup.origins.map((o) => [o.id, o.name]));
+    const originText = el("p", "hint");
+    const statsBox = el("div", "stats");
+    const order = setup.stat_array.map((v, i) => {
+      const sel = select("c-stat" + i, setup.stats.map((x) => [x, cap(x)])); sel.value = setup.stats[i];
+      statsBox.append(field(`${i === 0 ? "Strongest" : i === setup.stat_array.length - 1 ? "Weakest" : "Next"} (${v})`, sel));
+      return sel;
+    });
+    const flaw = select("c-flaw", [...setup.flaws.map((f) => [f, f]), ["", "My own…"]]);
+    const ownFlaw = el("input"); ownFlaw.id = "c-ownflaw"; ownFlaw.placeholder = "Your own flaw"; ownFlaw.hidden = true;
+    const debt = el("input"); debt.id = "c-debt"; debt.placeholder = "A sum, a favour or a name owed, and to whom";
+    const err = el("p", "err");
+    const go = el("button", "primary go", "Begin"); go.type = "button"; go.style.padding = "10px 16px";
+    function sync() {
+      const p = setup.peoples.find((x) => x.id === people.value);
+      pstatField.hidden = p.stat !== "any";
+      affinity.replaceChildren(...p.affinities.map((a) => { const o = el("option", null, cap(a)); o.value = a; return o; }));
+      affField.hidden = p.affinities.length < 2;
+      originText.textContent = setup.origins.find((o) => o.id === origin.value).text;
+    }
+    people.addEventListener("change", sync); origin.addEventListener("change", sync);
+    flaw.addEventListener("change", () => { ownFlaw.hidden = flaw.value !== ""; });
+    sync();
+    go.addEventListener("click", () => {
+      const picked = order.map((o) => o.value);
+      if (!name.value.trim()) { err.textContent = "Give your character a name."; return; }
+      if (new Set(picked).size !== picked.length) { err.textContent = "Use each stat once."; return; }
+      err.textContent = "";
+      const p = setup.peoples.find((x) => x.id === people.value);
+      const parts = [`name=${name.value.trim()}`, `age=${age.value}`, `people=${people.value}`,
+        ...(p.stat === "any" ? [`people_stat=${peopleStat.value}`] : []),
+        ...(p.affinities.length > 1 ? [`affinity=${affinity.value}`] : []),
+        `origin=${origin.value}`, `stats=${picked.join(" ")}`,
+        `flaw=${(flaw.value || ownFlaw.value).trim()}`, `debt=${debt.value.trim()}`];
+      send("Pantheon create: " + parts.join(" | "), go);
+    });
+    box.append(field("Name", name), field("Age, 16 to 30", age), field("People", people), pstatField, affField,
+      field("Origin", origin), originText, el("p", "hint", "Stats, strongest first:"), statsBox,
+      field("Flaw", flaw), ownFlaw, field("Debt", debt), err, go);
+  }
+
+  async function start() {
+    const claude = window.claude;
+    if (!claude || !claude.use) { status("Open this page on claude.ai to play."); return; }
+    const [db, c] = await Promise.all([claude.use("db"), claude.use("comments")]);
+    comments = c;
+    if (comments) {
+      try { sendState = await comments.canSendToClaude(); } catch { sendState = "off"; }
+      setInterval(async () => { if (!busy()) { try { const n = await comments.canSendToClaude(); if (n !== sendState) { sendState = n; status(); } } catch {} } }, 20000);
+    }
+    if (!db) { status("This page cannot read the game here. Sign in on claude.ai and reload."); return; }
+    const timer = setTimeout(() => status("The game has not answered yet. Ask the narrator in chat to refresh the page."), 10000);
+    db.doc("game/screen").onSnapshot((snap) => {
+      clearTimeout(timer);
+      if (snap.exists) { screen = snap.data(); render(); } else status();
+    }, () => { clearTimeout(timer); status("Lost the connection to the game. Reload the page."); });
+    status();
+  }
+  start();
+})();
+</script>

@@ -47,6 +47,8 @@ class BaseClass(_Strict):
     primary: Stat
     secondary: Stat
     fragments_to_fuse: int = Field(default=3, ge=1)
+    trait: str = ""  # The signature trait, as worded in world/power_tiers.md.
+    blurb: str = ""  # One line on how the class feels to play, for the character page.
 
 
 class Skill(_Strict):
@@ -74,6 +76,8 @@ class Evolution(_Strict):
     primary: Stat
     secondary: Stat
     fragments_to_fuse: int = Field(default=3, ge=1)
+    trait: str = ""  # The signature trait, as worded in world/power_tiers.md.
+    blurb: str = ""  # One line on how the class feels to play, for the character page.
     needs_affinity: dict[str, int] = Field(default_factory=dict)
     needs_stat: dict[str, int] = Field(default_factory=dict)
     needs_oath: str | None = None

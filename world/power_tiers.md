@@ -78,18 +78,35 @@ At awakening (the first Oath, which sets Level 1) the character takes a **base c
 
 | Base class | Primary / secondary | Signature trait |
 |---|---|---|
-| Blade-sworn | Vigor / Agility | **Momentum:** each successful exchange in a fight adds +5 to the next attack, up to +15 |
+| Sellsword | Vigor / Agility | **Momentum:** each successful exchange in a fight adds +5 to the next attack, up to +15 |
+| Reaver | Vigor / Resolve | **Blood Up:** below half HP, +10 on attacks and -10 on defence until the fight ends |
 | Warden | Resolve / Vigor | **Bulwark:** may take a blow aimed at an ally within reach |
+| Oathknight | Vigor / Presence | **Sworn Edge:** +10 on checks that honour an Oath's Burden; may spend mana to heal an ally by touch |
+| Marshal | Presence / Vigor | **Rally:** allies who can hear get +5 on checks; once per fight, one ally acts again |
+| Fistsworn | Agility / Resolve | **Still Centre:** unarmoured, defends with Agility and Resolve; stamina skills cost 20 % less |
+| Spellblade | Vigor / Intellect | **Edgecasting:** casts a spell through a weapon strike in the same exchange |
+| Cutpurse | Agility / Intellect | **Opening:** +10 and double damage on the first strike against an unaware foe |
+| Wayfinder | Agility / Vigor | **Pathsense:** never lost; acts before enemy intents resolve in the first exchange |
+| Inquisitor | Intellect / Presence | **Studied Mark:** after one exchange or scene observing a target, +10 on all checks against it |
+| Riftwalker | Agility / Presence | **Fold Step:** once per fight, step through space to any point in sight; senses a rift's core within a floor |
+| Arcanist | Intellect / Resolve | **Spellbook:** one extra skill offered at each skill pick |
+| Elementalist | Intellect / Vigor | **Attuned:** choose Flame, Frost, Storm, Stone, Wind or Tide at awakening; spells of that element cost 20 % less mana and get +5 |
+| Wildblood | Presence / Vigor | **Surge:** may spend HP instead of mana to cast |
 | Cantor | Presence / Intellect | **Carrying Voice:** Song skills cost 20 % less mana and reach everyone who can hear |
-| Wayfinder | Agility / Intellect | **Pathsense:** never lost; acts before enemy intents resolve in the first exchange |
+| Seer | Presence / Intellect | **Glimpse:** once per scene, before a check is rolled, learn whether it would succeed and choose whether to go on |
+| Votary | Resolve / Presence | **Channel:** healing and warding skills cost 20 % less; Divine Favor opens at Standing 50, not 60 |
+| Hexer | Presence / Resolve | **Malediction:** once per fight, curse one foe: -10 on all its checks |
+| Gravewalker | Resolve / Intellect | **Ancestral Voice:** may question the spirits of the dead; Death and Spirit skills cost 20 % less |
+| Wildkin | Presence / Agility | **Bonded Beast:** a beast companion that levels with the character |
+| Greenwarden | Resolve / Agility | **Old Growth:** +10 on checks in the wild; Growth and Life skills cost 20 % less |
+| Skinchanger | Vigor / Agility | **Beast Form:** once per fight, take a beast shape: +10 on physical checks, no spells or speech until it ends |
 | Hearthwright | Intellect / Resolve | **Kitcraft:** +10 on crafting checks; fuses shards from 2 fragments instead of 3 |
-| Wager-bound | Agility / Presence | **Double or Nothing:** before a check, may stake it: success upgrades one step, failure downgrades one step |
-| Gravewalker | Resolve / Presence | **Ancestral Voice:** may question the spirits of the dead; Death and Spirit skills cost 20 % less |
-| Wildkin | Vigor / Agility | **Bonded Beast:** a beast companion that levels with the character |
+| Runesmith | Vigor / Intellect | **Rune-Etch:** once a day, inscribe a rune on an item: +5 on checks that use it until the next rest |
+| Gearwright | Intellect / Agility | **Contraption:** prepare one device per rest (trap, flare, lockbreaker, grapple); a placed device counts as a Terrain Overcome Condition |
 
 **Skill picks:** at levels 1, 3, 5, 7 and 9 of each tier the class offers 3 skills and the player picks 1.
 
-**Evolution:** at level 10, 20, 30 and so on the character passes an Ascension Trial and chooses an evolved class from 2 to 4 options. Options unlock from affinities, skills, titles, Oaths and deeds (for example, Blade-sworn at 10: Emberblade needs Flame 2; Shieldwarden needs the Held Line Oath; Duelist needs Agility 50). Two affinities can unlock a hybrid class. The evolution tree is data.
+**Evolution:** at level 10, 20, 30 and so on the character passes an Ascension Trial and chooses an evolved class from 2 to 4 options. Options unlock from affinities, skills, titles, Oaths and deeds (for example, Sellsword at 10: Emberblade needs Flame 2; Shieldwarden needs the Held Line Oath; Duelist needs Agility 50). Two affinities can unlock a hybrid class. The evolution tree is data.
 
 **Ascension Trial:** a challenge set at the next tier, tied to the character's class, Oaths or history, with a **Witness** (a god, a Sovereign, or the rift itself). Outcomes: **Ascend** (evolve), **Setback** (lose the current level's XP; retry after recovery), **Breaking** (an Injury; retry after recovery).
 
