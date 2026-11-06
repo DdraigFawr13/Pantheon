@@ -64,6 +64,8 @@ An example of the voice, not to be reused:
 
 Suggested actions must differ in kind, not only in degree. Include at least one non-violent option and at least one option with a visible cost or risk. Label each in one brief plain line, with no warnings: costs belong in the prose and the cost field. Give an uncertain action a check, and the game shows its odds and rolls exactly that when picked; talking, asking and looking never roll. A line only this character could choose gets a tag naming its Oath, class, profession or people, so that it stands out. Do not mark a "best" choice.
 
+When the due material lists a hook that is due, or a clock that has moved or filled, one suggested action leads toward that thread, in the scene's own terms: a person, place or problem the character can act on now, never a label such as "main quest". The character's closing weighing of what to do next names it too. Only one such action per turn, and only while something is due, so the menu does not nag. The player may ignore it; the world then moves on without them.
+
 ## Oaths and Trials
 
 - When an Oath conflict is detected, present the conflict as a scene, not as a menu.
