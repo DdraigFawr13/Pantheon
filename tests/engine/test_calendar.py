@@ -18,11 +18,11 @@ from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import GameState, replay
 from pantheon.engine.timeline import Rules, Simulation
 from pantheon.engine.tools import apply_tool, resolve_offer
-from pantheon.world.loader import load_world
 from pantheon.world.schemas import Clock
+from tests.conftest import WORLD as SHARED_WORLD
 
 WORLD_DIR = Path(__file__).resolve().parents[2] / "world"
-WORLD = load_world(WORLD_DIR)
+WORLD = SHARED_WORLD
 assert WORLD.data is not None
 DATA = WORLD.data
 RULES = Rules(DATA, {k: f.set_by for k, f in WORLD.flags.items()})
@@ -95,7 +95,7 @@ def test_eng11_blank_days_are_not_counted() -> None:
     assert counted_days(306) == 301
 
 
-def test_calendar_constants_agree_with_canon() -> None:
+def test_eng11_calendar_constants_agree_with_canon() -> None:
     overview = (WORLD_DIR / "00_overview.md").read_text(encoding="utf-8")
     assert all(month in overview for month in MONTHS)
     assert len(MONTHS) == 12
@@ -103,7 +103,7 @@ def test_calendar_constants_agree_with_canon() -> None:
     assert "1 Seedtide 1,140 AS" in overview
 
 
-def test_clock_table_agrees_with_canon() -> None:
+def test_eng11_clock_table_agrees_with_canon() -> None:
     text = (WORLD_DIR / "factions.md").read_text(encoding="utf-8")
     rows = dict(re.findall(r"^\| \*\*(.+?)\*\* \| (\d+) \|", text, re.M))
     assert {c.name: str(c.segments) for c in DATA.clocks} == rows
@@ -137,7 +137,7 @@ def test_eng02_a_turn_limits_time_calls() -> None:
     assert not apply_tool(sim, "advance_time", {"span": "hours", "reason": "again"}).accepted
 
 
-def test_rest_takes_time_and_heals() -> None:
+def test_eng11_rest_takes_time_and_heals() -> None:
     sim = sworn()
     assert apply_tool(
         sim, "apply_effect", {"kind": "damage", "source": "hazard:fall", "reason": "x"}
@@ -148,23 +148,24 @@ def test_rest_takes_time_and_heals() -> None:
     assert sim.state.minutes == 8 * 60
 
 
-def test_healing_by_rest_takes_the_same_time_and_cannot_repeat() -> None:
+def test_eng11_healing_by_rest_takes_the_same_time_and_cannot_repeat() -> None:
     sim = sworn()
-    apply_tool(sim, "apply_effect", {"kind": "damage", "source": "hazard:fall", "reason": "x"})
+    hurt = apply_tool(sim, "apply_effect", {"kind": "damage", "source": "hazard:fall", "reason": "x"})
+    assert hurt.accepted
     assert apply_tool(sim, "apply_effect", {"kind": "heal", "source": "rest", "reason": "slept"}).accepted
     assert sim.state.minutes == 8 * 60
     assert not apply_tool(sim, "advance_time", {"span": "rest", "reason": "again"}).accepted
     assert sim.state.minutes == 8 * 60
 
 
-def test_rest_without_wounds_only_passes_time() -> None:
+def test_eng11_rest_without_wounds_only_passes_time() -> None:
     sim = sworn()
     advance(sim, "rest")
     assert sim.state.minutes == 8 * 60
     assert not any(type_ == "effect_applied" for type_, _ in sim.events)
 
 
-def test_clocks_start_from_canon_without_any_event() -> None:
+def test_eng11_clocks_start_from_canon_without_any_event() -> None:
     state = GameState()
     assert {c.id: clock_value(state, DATA, c.id) for c in DATA.clocks} == {
         "seat_vote": 1,
@@ -175,7 +176,7 @@ def test_clocks_start_from_canon_without_any_event() -> None:
     }
 
 
-def test_neglected_clock_gains_one_extra_segment_each_season() -> None:
+def test_eng11_neglected_clock_gains_one_extra_segment_each_season() -> None:
     sim = sworn()
     pass_days(sim, 89)
     assert clock_value(sim.state, DATA, "rift_tide") == 2
@@ -191,7 +192,7 @@ def engage(sim: Simulation, clock: str = "rift_tide") -> None:
     assert result.accepted, result.reason
 
 
-def test_engaged_clock_gains_only_the_seasonal_segment() -> None:
+def test_eng11_engaged_clock_gains_only_the_seasonal_segment() -> None:
     sim = sworn()
     sim = pass_days(sim, 45)
     engage(sim)
@@ -200,7 +201,7 @@ def test_engaged_clock_gains_only_the_seasonal_segment() -> None:
     assert clock_value(sim.state, DATA, "grain_war") == 2 + 2
 
 
-def test_engaging_needs_a_tested_deed_and_counts_once_a_day() -> None:
+def test_eng11_engaging_needs_a_tested_deed_and_counts_once_a_day() -> None:
     sim = sworn()
     assert not apply_tool(sim, "engage_clock", {"clock_id": "rift_tide", "reason": "talked"}).accepted
     engage(sim)
@@ -208,7 +209,7 @@ def test_engaging_needs_a_tested_deed_and_counts_once_a_day() -> None:
     assert not apply_tool(sim, "engage_clock", {"clock_id": "nonsense", "reason": "x"}).accepted
 
 
-def test_blank_days_do_not_bring_a_season_closer() -> None:
+def test_eng11_blank_days_do_not_bring_a_season_closer() -> None:
     """The fourth season ends after 360 counted days: day 365 of play, not day 360."""
     long_clock = Clock(id="long", name="Long", segments=99, start=0, filled="x")
     rules = Rules(DATA.model_copy(update={"clocks": (long_clock,)}), RULES.flag_setters)
@@ -225,7 +226,7 @@ def test_blank_days_do_not_bring_a_season_closer() -> None:
     assert sim.state.clocks["long"] == 1
 
 
-def test_a_filled_clock_stops_and_says_so() -> None:
+def test_eng11_a_filled_clock_stops_and_says_so() -> None:
     sim = pass_days(sworn(), 90)  # Lantern's Price: 4 segments, 2 a season while neglected.
     advance(sim, "days", 90)
     assert clock_value(sim.state, DATA, "lanterns_price") == 4
@@ -249,7 +250,7 @@ def send(sim: Simulation, god: str = "drovash") -> dict[str, object]:
     return result.data
 
 
-def test_petition_registers_as_a_hook_for_a_sworn_god_only() -> None:
+def test_eng11_petition_registers_as_a_hook_for_a_sworn_god_only() -> None:
     sim = sworn()
     data = send(sim)
     hook = sim.state.hooks[-1]
@@ -260,7 +261,7 @@ def test_petition_registers_as_a_hook_for_a_sworn_god_only() -> None:
     assert not apply_tool(sim, "send_petition", args).accepted
 
 
-def test_one_open_petition_per_god() -> None:
+def test_eng11_one_open_petition_per_god() -> None:
     sim = sworn()
     send(sim)
     sim = next_turn(sim)
@@ -268,7 +269,7 @@ def test_one_open_petition_per_god() -> None:
     assert not apply_tool(sim, "send_petition", args).accepted
 
 
-def test_granting_a_petition_raises_standing_once_and_not_in_the_turn_it_came() -> None:
+def test_eng11_granting_a_petition_raises_standing_once_and_not_in_the_turn_it_came() -> None:
     sim = sworn()
     hook_id = send(sim)["hook_id"]
     args = {"hook_id": hook_id, "granted": True, "reason": "left the offering"}
@@ -282,7 +283,7 @@ def test_granting_a_petition_raises_standing_once_and_not_in_the_turn_it_came() 
     assert not apply_tool(sim, "resolve_petition", args).accepted
 
 
-def test_resolving_only_applies_to_an_open_petition() -> None:
+def test_eng11_resolving_only_applies_to_an_open_petition() -> None:
     sim = sworn()
     plain = sim.state.hooks[0].id
     args = {"hook_id": plain, "granted": True, "reason": "x"}
@@ -291,7 +292,7 @@ def test_resolving_only_applies_to_an_open_petition() -> None:
     assert not apply_tool(next_turn(sim), "resolve_petition", args).accepted
 
 
-def test_an_ignored_petition_lapses_with_time_and_lowers_standing() -> None:
+def test_eng11_an_ignored_petition_lapses_with_time_and_lowers_standing() -> None:
     sim = sworn()
     send(sim)
     before = sim.state.standing.get("drovash", 0)

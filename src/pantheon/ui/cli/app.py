@@ -658,5 +658,3 @@ def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClien
 
 if __name__ == "__main__":
     sys.exit(main())
-
-_sheet = sheet  # The name tests import.

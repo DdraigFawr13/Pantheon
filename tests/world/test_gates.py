@@ -27,6 +27,11 @@ STATE = {
         ("tier == 3", True),
         ("tier != 3", False),
         ('location.region == "ford_reaches"', False),
+        ("flags.met == true", True),
+        ("flags.unwritten_path == false", True),
+        ("flags.met == false", False),
+        ('tier >= "x"', False),
+        ('"x" < tier', False),
     ],
 )
 def test_gate_evaluation(expr: str, expected: bool) -> None:
@@ -35,11 +40,16 @@ def test_gate_evaluation(expr: str, expected: bool) -> None:
 
 @pytest.mark.parametrize(
     "expr",
-    ["__import__('os')", "tier >=", "tier >= 3 and", "(tier >= 3", "tier >= 3)", "tier; drop", "a.b()", ""],
+    ["__import__('os')", "tier >=", "tier >= 3 and", "(tier >= 3", "(tier >= 3 and flags.met", "tier >= 3)", "tier; drop", "a.b()", ""],
 )
 def test_gate_rejects_bad_input(expr: str) -> None:
     with pytest.raises(GateError):
         parse(expr)
+
+
+def test_gate_missing_close_paren_is_named() -> None:
+    with pytest.raises(GateError, match="missing closing parenthesis"):
+        parse("flags.met and (tier >= 2 flags.met")
 
 
 def test_gate_paths_lists_every_path() -> None:

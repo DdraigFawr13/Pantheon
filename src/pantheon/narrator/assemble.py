@@ -134,6 +134,3 @@ def assemble(
     latest = f"[Character sheet: {sheet}]\n[Due: {due}]\n\nThe player: {player_input}\n\n{REMINDER}"
     messages.append({"role": "user", "content": latest})
     return system, messages
-
-
-_due_material = due_material  # The name tests import.

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pantheon.world.loader import CanonError, load_data, load_world
+from pantheon.world.loader import CanonError, World, load_data
 
 ROOT = Path(__file__).resolve().parents[2]
 WORLD = ROOT / "world"
@@ -14,8 +14,8 @@ def _text(name: str) -> str:
     return (WORLD / name).read_text(encoding="utf-8")
 
 
-def test_data_tables_load() -> None:
-    data = load_world(WORLD).data
+def test_data_tables_load(world: World) -> None:
+    data = world.data
     assert data is not None
     assert len(data.gods) == 7
     assert len(data.affinities.basic) == 15
@@ -44,5 +44,5 @@ def test_broken_reference_fails(tmp_path: Path) -> None:
     oaths.write_text(
         oaths.read_text(encoding="utf-8").replace("affinity: mind", "affinity: fate"), encoding="utf-8"
     )
-    with pytest.raises(CanonError):
+    with pytest.raises(CanonError, match="unknown affinity fate"):
         load_data(tmp_path)

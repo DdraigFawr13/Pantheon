@@ -6,7 +6,7 @@ from typing import Any
 import anthropic
 import pytest
 
-from pantheon.llm.anthropic_adapter import AnthropicClient
+from pantheon.llm.anthropic_adapter import SDK_RETRIES, TIMEOUT_SECONDS, AnthropicClient
 from pantheon.llm.client import LLMReply, LLMUnavailable, ToolCall
 from pantheon.llm.mock import MockClient
 
@@ -84,6 +84,13 @@ def test_nar07_api_errors_become_llm_unavailable() -> None:
 
 def test_real_sdk_client_builds_for_a_local_server() -> None:
     assert AnthropicClient("a-model", "http://127.0.0.1:1").local is True
+
+
+def test_ops03_the_built_sdk_client_carries_the_timeout_and_retries() -> None:
+    sdk = AnthropicClient("a-model", "http://127.0.0.1:1").client  # Built, never called: no network.
+    assert sdk.timeout == TIMEOUT_SECONDS
+    assert sdk.max_retries == SDK_RETRIES
+    assert SDK_RETRIES >= 1 and TIMEOUT_SECONDS > 0
 
 
 def test_mock_records_calls_and_ends_with_an_outage() -> None:

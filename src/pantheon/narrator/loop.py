@@ -310,6 +310,3 @@ def take_turn(
         tokens_out=run.tokens[2],
         log=run.log,
     )
-
-
-_numbers_in = numbers_in  # The name tests import.
