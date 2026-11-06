@@ -9,14 +9,15 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from pantheon.engine.combat import downed_exchange
+from pantheon.engine.preview import ODDS_MARKER, lock, needs_preview, stamp_odds
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import EventRecord, GameState
-from pantheon.engine.timeline import Rules, Simulation
-from pantheon.engine.tools import ToolResult, apply_tool, tool_definitions
+from pantheon.engine.timeline import Rejected, Rules, Simulation
+from pantheon.engine.tools import ToolResult, apply_tool, check_preview, tool_definitions
 from pantheon.llm.client import LLMClient, LLMReply, LLMUnavailable
 from pantheon.narrator import fallback
 from pantheon.narrator.assemble import assemble, state_view
@@ -107,6 +108,7 @@ class TurnOutcome:
     tokens_cached: int = 0
     tokens_out: int = 0
     log: list[str] = field(default_factory=list)
+    preview: dict[str, Any] | None = None  # A Hard check waiting for the player; nothing ran (NAR-08).
 
 
 def numbers_in(value: Any) -> set[int]:
@@ -134,6 +136,8 @@ class _Turn:
         self.outcomes: list[str] = []
         self.details: list[str] = []  # What each exchange did, from the engine (D-039).
         self.recent: list[str] = []
+        self.locks: dict[str, dict[str, Any]] | None = None  # The turn's stat locks, when previews apply.
+        self.preview: dict[str, Any] | None = None
         # The template renders tools before the history, so a changing list empties the model's cache (D-031).
         self.tools = tool_definitions()
 
@@ -149,12 +153,10 @@ class _Turn:
         return reply
 
     def run_tools(self, reply: LLMReply, offered: set[str]) -> list[dict[str, Any]]:
-        """Apply each call and build its result. A call rejected too often is dropped and logged (NAR-06)."""
+        """Apply each call and build its result. A tool refused on every try is dropped (NAR-06)."""
         results = []
         for call in reply.tool_calls:
-            if self.rejections[call.name] >= self.max_retries:
-                self.sim.emit("tool_call_dropped", {"tool": call.name, "args": call.args})
-                self.log.append(f"dropped {call.name}")
+            if self.rejections[call.name] > self.max_retries:  # Dropped on an earlier call this turn.
                 payload: dict[str, Any] = {
                     "status": "dropped",
                     "reason": "too many rejections; carry on without it",
@@ -171,9 +173,15 @@ class _Turn:
                     if "outcome" in result.data:
                         self.outcomes.append(result.data["outcome"])
                         self.details += [result.data["summary"]] if "summary" in result.data else []
+                elif call.name not in offered:  # Not this step's tool: refused, not counted (D-053).
+                    self.log.append(f"rejected {call.name}: {result.reason}")
                 else:
                     self.rejections[call.name] += 1
                     self.log.append(f"rejected {call.name}: {result.reason}")
+                    if self.rejections[call.name] > self.max_retries:  # First try and every retry failed.
+                        self.sim.emit("tool_call_dropped", {"tool": call.name, "args": call.args})
+                        self.log.append(f"dropped {call.name}")
+                        payload["status"] = "dropped"
             results.append({"type": "tool_result", "tool_use_id": call.id, "content": json.dumps(payload)})
         return results
 
@@ -209,6 +217,11 @@ class _Turn:
             reply = self.call(trial, self.tools, fast=True)
             if not reply.tool_calls:
                 return
+            if self.locks is not None and not in_fight:
+                gated = self.gate(reply)
+                if gated is None:
+                    return  # A Hard check waits for the player before anything rolls (NAR-08).
+                reply = gated
             results = self.run_tools(reply, {"fight_move" if in_fight else "request_check"})
             trial += [{"role": "assistant", "content": reply.blocks()}, {"role": "user", "content": results}]
             if self.outcomes:
@@ -226,15 +239,37 @@ class _Turn:
                 ]
                 return
 
+    def gate(self, reply: LLMReply) -> LLMReply | None:
+        """Lock each proposed check to its stat's first terms; stop at one that needs a preview (D-050)."""
+        assert self.locks is not None
+        trial = dict(self.locks)  # Kept only if nothing stops, so an unrolled check fixes no stat.
+        calls = []
+        for call in reply.tool_calls:
+            if call.name == "request_check":
+                try:  # A refused check fixes nothing; `run_tools` rejects and counts it.
+                    check_preview(self.sim.state, self.sim.rules.data, call.args)
+                except (Rejected, ValueError, KeyError, TypeError):
+                    calls.append(call)
+                    continue
+                locked = lock(trial, call.args)
+                if needs_preview(locked):
+                    self.preview = lock(self.locks, call.args)  # Only the previewed stat is fixed.
+                    return None
+                call = replace(call, args=locked)
+            calls.append(call)
+        self.locks.update(trial)
+        return replace(reply, tool_calls=tuple(calls))
+
     def narrate(self, messages: list[dict[str, Any]]) -> str | None:
         """Prose with no tools, checked before anyone sees it. None means use the fallback text (NAR-07)."""
         for _ in range(self.max_retries + 1):
             reply = self.call(messages, self.tools)
             text = strip_action_list(reply.text).strip()
-            problems = ["the reply is empty"] if not text else prose_problems(text, self.allowed)
+            bare = ODDS_MARKER.sub("", text)  # The engine fills the markers in; they are not its numbers.
+            problems = ["the reply is empty"] if not text else prose_problems(bare, self.allowed)
             if reply.tool_calls:
                 problems.append("this step is prose only, with no tool calls")
-            if repeats_earlier_turn(text, self.recent):
+            if repeats_earlier_turn(bare, self.recent):
                 problems.append(
                     "it repeats earlier narration; answer what the player just did with new events"
                 )
@@ -315,13 +350,21 @@ def take_turn(
     violence: str = "moderate",
     chosen_check: dict[str, Any] | None = None,
     seed: int | None = None,
+    locks: dict[str, dict[str, Any]] | None = None,
+    previewed: bool = False,
 ) -> TurnOutcome:
-    """Play one turn without touching storage. The caller commits the outcome atomically (OPS-03)."""
+    """Play one turn without touching storage. The caller commits the outcome atomically (OPS-03).
+
+    With `locks` (the turn's stat locks, owned by the caller), a Hard or harder check the referee asks for
+    stops the turn before it rolls and comes back as `preview` (D-050, D-051). The caller shows it and, on
+    the player's yes, plays the turn again with it as `chosen_check` and `previewed`, so no referee runs.
+    """
     rng = RngStreams.from_state(rng_state, seed)
     sim = Simulation(state, rng, rules, turn)
     system, messages = assemble(state, world, recent, player_input, violence)
     run = _Turn(client, sim, max_retries, system)
     run.recent = [narration for _, narration in recent]
+    run.locks = locks
     run.allowed = numbers_in(state_view(state))  # Prose may quote the engine's own sheet (D-033).
     narration: str | None = None
     try:
@@ -330,9 +373,14 @@ def take_turn(
             run.downed(messages)
             rolled = True
         elif chosen_check is not None:
-            rolled = run.roll_chosen(messages, chosen_check)
+            rolled = run.roll_chosen(messages, chosen_check) or previewed  # Nothing unseen rolls (NAR-08).
         if turn_tools(state, player_input, rolled=rolled):
             run.referee(messages)
+        if run.preview is not None:
+            tokens_in, tokens_cached, tokens_out = run.tokens
+            return TurnOutcome(
+                "", False, [], rng_state, state, tokens_in, tokens_cached, tokens_out, run.log, run.preview
+            )
         narration = run.narrate(messages)
         if narration is not None:
             narration = place_notices(narration, sim.events)
@@ -345,6 +393,10 @@ def take_turn(
         run.log.append(f"model unavailable: {exc}")
     if narration is not None and not sim.suggested:
         sim.emit("actions_suggested", {"actions": []})  # Old actions would no longer fit this scene.
+    if narration is not None:
+        assert world.data is not None
+        narration, _, missing = stamp_odds(narration, sim.state, world.data)  # D-050: odds in the prose.
+        run.log += [f"removed <<ODDS {n}>>: no such suggested action" for n in missing]
     return TurnOutcome(
         narration=narration if narration is not None else fallback.render(sim),
         is_fallback=narration is None,

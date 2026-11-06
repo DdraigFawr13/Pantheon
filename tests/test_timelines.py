@@ -67,7 +67,7 @@ def test_game05_a_bad_save_gives_a_message_and_stays_untouched(tmp_path: Path, c
 
 
 def test_resuming_asks_a_choice_left_open_when_the_game_closed(tmp_path: Path) -> None:
-    play(tmp_path, [*NEW_GAME, "4"], [*talk()])  # Input ends at the class prompt, right after swearing.
+    play(tmp_path, [*NEW_GAME, "1"], [*talk()])  # Input ends at the class prompt, right after swearing.
     _, state, _ = play(tmp_path, ["1", "1", "/quit"], [])
     assert state.class_id is not None
     assert state.profession is not None
@@ -76,7 +76,7 @@ def test_resuming_asks_a_choice_left_open_when_the_game_closed(tmp_path: Path) -
 def test_eng11_narrator_moves_the_calendar_and_the_player_sees_it(tmp_path: Path, capsys: Any) -> None:
     walk = ToolCall("t", "advance_time", {"span": "days", "count": 3, "reason": "the road north"})
     script = [*talk(), *narration()[1:], *narration(walk)]
-    _, state, _ = play(tmp_path, [*NEW_GAME, "4", "1", "1", "I walk north", "/quit"], script)
+    _, state, _ = play(tmp_path, [*NEW_GAME, "1", "1", "1", "I walk north", "/quit"], script)
     assert state.day == 3
     out = capsys.readouterr().out
     assert "Time passes (the road north)." in out

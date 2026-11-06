@@ -216,6 +216,14 @@ def test_nar06_rejections_retry_at_most_twice_then_drop_and_log() -> None:
     assert "rejected" in contents[0] and "rejected" in contents[1]
 
 
+def test_nar06_the_second_retry_is_tried_and_kept_when_valid() -> None:
+    bad = tools(call("grant_xp", kind="enormous", reason="x"))
+    good = tools(call("grant_xp", kind="minor", reason="x"))
+    outcome, _ = run([CHECK, LLMReply(text=PROSE), bad, bad, good, SUGGEST], max_rounds=4)
+    assert outcome.state.xp > 0
+    assert not [t for t, _ in outcome.events if t == "tool_call_dropped"]
+
+
 def test_nar06_a_rejected_check_can_be_retried() -> None:
     bad = tools(call("request_check", stat="luck", difficulty="hard", challenge_tier=1))
     outcome, _ = run([bad, CHECK, LLMReply(text=PROSE), SUGGEST])
@@ -491,3 +499,64 @@ def test_nar_ten_turn_scripted_playtest_commits_and_replays(tmp_path: Path) -> N
         xp -= xp_to_next(level)
         level += 1
     assert (final.level, final.xp) == (level, xp)
+
+
+HARD_CLIMB = {"stat": "agility", "difficulty": "hard", "challenge_tier": 1, "stakes": "the climb"}
+
+
+def test_nar08_loop_stops_at_the_preview_before_any_roll() -> None:
+    locks: dict[str, dict[str, Any]] = {}
+    outcome, client = run([tools(call("request_check", **HARD_CLIMB))], locks=locks)
+    assert outcome.preview == HARD_CLIMB and outcome.events == [] and outcome.narration == ""
+    assert outcome.state.checks_made == 0 and len(client.calls) == 1 and "agility" in locks
+
+
+def test_nar08_loop_rolls_the_previewed_check_without_a_new_referee() -> None:
+    outcome, client = run([LLMReply(text=PROSE), SUGGEST], locks={}, chosen_check=HARD_CLIMB, previewed=True)
+    checks = [p for t, p in outcome.events if t == "check_resolved"]
+    assert len(checks) == 1 and checks[0]["difficulty"] == "hard" and len(client.calls) == 2
+
+
+def test_nar08_loop_rolls_a_routine_check_at_once_but_under_the_stats_lock() -> None:
+    outcome, _ = run([CHECK, LLMReply(text=PROSE), SUGGEST], locks={})
+    assert outcome.preview is None and outcome.state.checks_made == 1
+    outcome, _ = run([CHECK], locks={"agility": HARD_CLIMB})  # A reworded Hard climb is still Hard.
+    assert outcome.preview is not None and outcome.preview["difficulty"] == "hard"
+
+
+def test_d050_loop_stamps_the_closing_thought_odds() -> None:
+    actions = [*ACTIONS[:2], {"label": "Climb on", "cost": "a fall", "check": HARD_CLIMB}]
+    prose = f"{PROSE} He could climb on <<ODDS 3>>, ask <<ODDS 1>>, or fly <<ODDS 7>>."
+    outcome, _ = run([NONE, LLMReply(text=prose), tools(call("suggest_actions", actions=actions))])
+    assert "(no roll)" in outcome.narration and "(Agility " in outcome.narration
+    assert "<<ODDS" not in outcome.narration and "or fly." in outcome.narration
+    assert any("ODDS 7" in line for line in outcome.log)
+
+
+def test_nar06_a_tool_not_offered_is_refused_without_counting() -> None:
+    early = tools(call("suggest_actions", actions=ACTIONS))  # Not offered in the referee step.
+    outcome, _ = run([early, early, early, LLMReply(text=PROSE), SUGGEST])
+    assert not [t for t, _ in outcome.events if t == "tool_call_dropped"]
+    assert len(outcome.state.suggested) == len(ACTIONS)
+
+
+def test_nar06_the_third_rejection_answers_dropped_and_later_calls_are_not_applied() -> None:
+    bad = tools(call("grant_xp", kind="enormous", reason="x"))
+    good = tools(call("grant_xp", kind="minor", reason="x"))
+    outcome, client = run([CHECK, LLMReply(text=PROSE), bad, bad, bad, good, SUGGEST], max_rounds=5)
+    assert '"status": "dropped"' in str(client.calls[5]["messages"][-1]["content"])
+    assert outcome.state.xp == 0
+
+
+def test_nar08_a_routine_check_beside_a_previewed_one_fixes_nothing() -> None:
+    locks: dict[str, dict[str, Any]] = {}
+    routine = {**HARD_CLIMB, "stat": "presence", "difficulty": "routine"}
+    both = LLMReply(tool_calls=(call("request_check", 1, **routine), call("request_check", 2, **HARD_CLIMB)))
+    outcome, _ = run([both], locks=locks)
+    assert outcome.preview is not None and set(locks) == {"agility"}
+
+
+def test_nar08_a_previewed_check_refused_at_the_roll_rolls_nothing_else() -> None:
+    gone = {**HARD_CLIMB, "challenge_tier": 99}
+    outcome, client = run([LLMReply(text=PROSE), SUGGEST], locks={}, chosen_check=gone, previewed=True)
+    assert outcome.state.checks_made == 0 and len(client.calls) == 2  # No referee ran.

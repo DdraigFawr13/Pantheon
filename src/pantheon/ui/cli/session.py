@@ -25,7 +25,6 @@ from rich.text import Text
 
 from pantheon.config import Config, load_config
 from pantheon.engine.calendar import clock_value, date_of, format_date
-from pantheon.engine.checks import Outcome
 from pantheon.engine.combat import downed_exchange, intent_label
 from pantheon.engine.commands import (
     CharacterChoices,
@@ -37,6 +36,15 @@ from pantheon.engine.commands import (
     innate_affinity_options,
 )
 from pantheon.engine.loot import format_cp
+from pantheon.engine.preview import (
+    ODDS_MARKER,
+    chance,
+    lock,
+    needs_preview,
+    preview_text,
+    stamp_odds,
+    strip_markers,
+)
 from pantheon.engine.progression import choose_evolution, evolution_options, pick_skill
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, GameState, xp_to_next
@@ -54,6 +62,7 @@ from pantheon.engine.tools import (
 )
 from pantheon.engine.traits import needs_attunement, trait_of
 from pantheon.narrator.assemble import REMINDER, assemble, due_material, state_view
+from pantheon.narrator.fallback import render as render_fallback
 from pantheon.narrator.loop import (
     DOWNED_NOTE,
     FIGHT_REFEREE_PROMPT,
@@ -76,6 +85,7 @@ from pantheon.ui.cli.app import (
     ledger_lines,
     odds_text,
     offer_choices,
+    offer_start,
     offer_terms,
     sheet,
     show_fight,
@@ -85,7 +95,6 @@ from pantheon.world.loader import World, load_world
 from pantheon.world.schemas import Item
 
 PLAYING = ".playing"
-ODDS_MARKER = re.compile(r"<<ODDS (\d+)>>")  # Where the engine prints an approach's odds (D-050).
 _RECENT_SHOWN = 2
 
 
@@ -104,6 +113,11 @@ class Pending:
     calls: list[dict[str, Any]] = field(default_factory=list)
     narration: str | None = None
     preview: dict[str, Any] | None = None  # A typed action's check, shown but not rolled (D-050).
+    rejections: dict[str, int] = field(default_factory=dict)  # Per tool, and "prose" (NAR-06).
+    dropped: list[dict[str, Any]] = field(default_factory=list)  # Calls given up on, recorded at commit.
+
+    def dropped_names(self) -> set[str]:
+        return {str(call["name"]) for call in self.dropped}
 
     @property
     def talk_only(self) -> bool:
@@ -250,13 +264,42 @@ class Session:
         """The tools this step allows, by the same rules as the API loop (D-031)."""
         if pending.narration is None and run.downed:
             return ()  # The foes' exchange ran by itself (D-039).
-        return turn_tools(
+        names = turn_tools(
             run.sim.state,
             pending.player_input,
             rolled=pending.chosen_check is not None or bool(run.outcomes),
             narrated=pending.narration is not None,
             checked=bool(run.sim.checks),
         )
+        return tuple(n for n in names if n not in pending.dropped_names())
+
+    @property
+    def retries(self) -> int:
+        return self.config.max_tool_retries
+
+    def reject(self, pending: Pending, key: str, reason: str, args: Any = None) -> str:
+        """Count one rejection in the turn in progress; `abandon` clears the count (NAR-06).
+
+        A call gets its first try and `retries` more. The rejection after the last retry drops the tool
+        for the turn, and commit records it. Returns the message for the narrator.
+        """
+        count = pending.rejections[key] = pending.rejections.get(key, 0) + 1
+        left = self.retries + 1 - count
+        if key != "prose" and left <= 0 and key not in pending.dropped_names():
+            pending.dropped.append({"name": key, "args": args})
+        self.save_pending(pending)
+        if key in pending.dropped_names():
+            return f"Rejected: {reason}. {self.dropped_note(key)}"
+        if left <= 0:
+            return f"Not accepted: {reason}."
+        return f"Rejected ({left} {'retry' if left == 1 else 'retries'} left): {reason}."
+
+    def dropped_note(self, name: str) -> str:
+        return f"{name} is dropped for this turn (NAR-06); carry on without it."
+
+    def fallback_due(self, pending: Pending) -> bool:
+        """The prose was refused on its first try and every retry, so the engine writes the turn (NAR-07)."""
+        return pending.narration is None and pending.rejections.get("prose", 0) > self.retries
 
     def begin(self, player_input: str, option: int | None) -> None:
         self.no_pending()
@@ -340,8 +383,8 @@ class Session:
                 out(f"Step: `session tool {names[0]} --file data/tool.json` if it rolls, else the prose.")
             out("Step: write the prose to data/narration.md, then `session narrate data/narration.md`.")
             return
-        if run.sim.suggested:
-            out(f"Options recorded. Other tools now: {', '.join(names)}. Then `session commit`.")
+        if run.sim.suggested or "suggest_actions" in pending.dropped_names():
+            out(f"Options recorded. Other tools now: {', '.join(names) or 'none'}. Then `session commit`.")
             return
         out(escape(SCRIBE_PROMPT if len(names) > 1 else SUGGEST_PROMPT))
         out(f"Tools now: {', '.join(names)}. `session tools` shows their fields.")
@@ -353,10 +396,17 @@ class Session:
         pending = self.need_pending()
         run = self.replay(pending)
         names = self.offered(pending, run)
+        if name in pending.dropped_names():
+            self.console.print(f"[yellow]{escape(self.dropped_note(name))}[/yellow]")
+            self.next_step(pending, run)
+            return
         try:
             args = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise SessionError(f"The arguments are not JSON: {exc}") from exc
+            if name not in names:
+                raise SessionError(f"The arguments are not JSON: {exc}") from exc
+            note = self.reject(pending, name, f"the arguments are not JSON: {exc}", {"raw": raw})
+            raise SessionError(note) from exc
         if name not in names:
             raise SessionError(f"{name} is not available now. Tools now: {', '.join(names) or 'none'}.")
         if (
@@ -366,11 +416,12 @@ class Session:
             and not pending.calls
         ):
             assert self.world.data is not None
-            locked = self._locked(pending, args)
-            try:
+            try:  # Validate before locking, so a refused check fixes nothing.
+                check_preview(run.sim.state, self.world.data, args)
+                locked = self._locked(pending, args)
                 check_preview(run.sim.state, self.world.data, locked)
             except (Rejected, ValueError, KeyError, TypeError) as exc:
-                self.console.print(f"[yellow]Rejected: {escape(str(exc))}[/yellow]")
+                self.console.print(f"[yellow]{escape(self.reject(pending, name, str(exc), args))}[/yellow]")
                 return
             if self.needs_preview(locked):
                 pending.preview = locked
@@ -383,7 +434,10 @@ class Session:
         before = len(run.sim.events)
         result = apply_tool(run.sim, name, args)
         if not result.accepted:
-            self.console.print(f"[yellow]Rejected: {escape(result.reason)}[/yellow]")  # NAR-06: nothing kept.
+            note = self.reject(pending, name, result.reason, args)  # NAR-06: nothing kept, retries counted.
+            self.console.print(f"[yellow]{escape(note)}[/yellow]")
+            if name in pending.dropped_names():
+                self.next_step(pending, run)
             return
         pending.calls.append({"name": name, "args": args})
         self.save_pending(pending)
@@ -409,7 +463,13 @@ class Session:
         if run.outcomes and CHECK_MARKER not in text:
             problems.append(f"put {CHECK_MARKER} on its own line where the check's result lands")
         if problems:
+            self.reject(pending, "prose", "")
             self.console.print("[yellow]Not accepted: " + escape("; ".join(problems)) + ".[/yellow]")
+            if self.fallback_due(pending):
+                self.console.print(
+                    f"The prose was refused {self.retries + 1} times (NAR-07). `session commit` now saves "
+                    "a fallback turn in the engine's words, or `narrate` once more."
+                )
             return
         replacing = pending.narration is not None
         pending.narration = place_notices(text, run.sim.events)
@@ -420,12 +480,27 @@ class Session:
     def commit(self) -> None:
         pending = self.need_pending()
         run = self.replay(pending)
-        if pending.narration is None:
+        if pending.preview is not None:
+            raise SessionError(
+                "A preview is waiting for the player: `session go` or `session abandon` first."
+            )
+        fallback = self.fallback_due(pending)
+        if pending.narration is None and not fallback:
             raise SessionError("Write and `narrate` the prose before committing.")
-        if not run.sim.suggested:
+        no_options = "suggest_actions" in pending.dropped_names()
+        if not fallback and not run.sim.suggested and not no_options:
             raise SessionError("Call suggest_actions before committing: the player needs options.")
-        narration, shown = self.stamp_odds(pending.narration, run.sim.state)
-        record = TurnRecord(pending.turn, pending.player_input, narration, False, 0, 0, 0)
+        for call in pending.dropped:  # NAR-06: the failure is logged with the turn.
+            run.sim.emit("tool_call_dropped", {"tool": call["name"], "args": call["args"]})
+        shown: list[int] = []
+        if pending.narration is None:
+            narration = render_fallback(run.sim)  # The previous suggestions stay (NAR-07).
+        elif not run.sim.suggested:
+            run.sim.emit("actions_suggested", {"actions": []})  # Old actions would no longer fit.
+            narration = strip_markers(pending.narration)
+        else:
+            narration, shown = self.stamp_odds(pending.narration, run.sim.state)
+        record = TurnRecord(pending.turn, pending.player_input, narration, fallback, 0, 0, 0)
         self.db.commit_turn(pending.timeline, record, run.sim.events, run.sim.rng.state(), run.sim.state)
         self.pending_path.unlink()
         self._write_side(self.shown_path, pending.timeline, pending.turn, {"shown": shown})
@@ -444,32 +519,23 @@ class Session:
     # Odds without an option menu (D-050).
 
     def _locked(self, pending: Pending, check: dict[str, Any]) -> dict[str, Any]:
-        """A stat's first preview this turn fixes its difficulty and tier, so rewording cannot reshop them."""
+        """A stat's first preview this turn fixes its terms, kept beside the save across `abandon`."""
         seen = self._side(self.previews_path, pending.timeline, pending.turn)
-        stat = str(check.get("stat", ""))
-        if stat in seen:
-            return {
-                **check,
-                **{k: seen[stat][k] for k in ("difficulty", "challenge_tier") if k in seen[stat]},
-            }
-        self._write_side(self.previews_path, pending.timeline, pending.turn, {**seen, stat: check})
-        return check
+        locked = lock(seen, check)
+        self._write_side(self.previews_path, pending.timeline, pending.turn, seen)
+        return locked
 
     @staticmethod
     def needs_preview(check: dict[str, Any]) -> bool:
-        """Only Hard checks or harder wait for the player to go ahead; Routine ones roll at once (D-051)."""
-        return check.get("difficulty") != "routine"
+        return needs_preview(check)
 
     def chance(self, state: GameState, check: dict[str, Any]) -> str:
-        """The odds as the player sees them, from the same calculation as the roll (D-036)."""
         assert self.world.data is not None
-        odds = check_preview(state, self.world.data, check)
-        if odds.shown is not None:
-            return f"{odds.shown}%"
-        return "sure" if odds.outcome is Outcome.SUCCESS else "no chance"
+        return chance(state, self.world.data, check)
 
     def preview_text(self, state: GameState, check: dict[str, Any]) -> str:
-        return f"{str(check['stat']).capitalize()} check, {check['difficulty']}: {self.chance(state, check)}"
+        assert self.world.data is not None
+        return preview_text(state, self.world.data, check)
 
     def show_preview(self, pending: Pending) -> None:
         assert pending.preview is not None
@@ -501,26 +567,14 @@ class Session:
 
     def stamp_odds(self, narration: str, state: GameState) -> tuple[str, list[int]]:
         """Print each marked approach's odds where the narrator put it, by the same sum as the roll."""
-        suggested = state.suggested
-        shown: list[int] = []
-
-        def odds(match: re.Match[str]) -> str:
-            number = int(match.group(1))
-            if not 1 <= number <= len(suggested):
-                raise SessionError(
-                    f"The prose names {match.group(0)}, but suggest_actions has {len(suggested)} actions. "
-                    "Fix the marker and `narrate` again."
-                )
-            shown.append(number)
-            check = suggested[number - 1].check
-            if check is None:
-                return "(no roll)"
-            name, chance = self.preview_text(state, check).split(" check, ")[0], self.chance(state, check)
-            return f"({name} {chance})"
-
-        return ODDS_MARKER.sub(odds, narration), sorted(set(shown))
-
-    # What the player sees between turns.
+        assert self.world.data is not None
+        text, shown, missing = stamp_odds(narration, state, self.world.data)
+        if missing:
+            raise SessionError(
+                f"The prose names <<ODDS {missing[0]}>>, but suggest_actions has {len(state.suggested)} "
+                "actions. Fix the marker and `narrate` again."
+            )
+        return text, shown
 
     def choices_due(self, state: GameState) -> list[str]:
         assert self.world.data is not None
@@ -636,7 +690,7 @@ class Session:
                 out(f"  {number}. {tag}{escape(action.label)}")
         offers = offer_choices(state, self.world)
         terms = offer_terms(state, self.world)
-        for number, (choice_id, label) in enumerate(offers, len(state.suggested) + 1):
+        for number, (choice_id, label) in enumerate(offers, offer_start(state)):
             out(f"  {number}. [bold]{label}[/bold] (`session choose offer {choice_id}`)")
             out(f"     [dim]{escape(terms[choice_id])}[/dim]")
         out("  [dim]Type what you do.[/dim]" if state.fight is None else "  [dim]Or type your own.[/dim]")
@@ -757,7 +811,7 @@ class Session:
             )
         offers = [
             {"n": n, "id": cid, "label": label, "terms": terms[cid]}
-            for n, (cid, label) in enumerate(offer_choices(state, self.world), len(state.suggested) + 1)
+            for n, (cid, label) in enumerate(offer_choices(state, self.world), offer_start(state))
         ]
         data = self.world.data
         trait = trait_of(state, data)
