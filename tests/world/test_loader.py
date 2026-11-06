@@ -47,3 +47,32 @@ def test_wld01_malformed_files_fail(name: str, tmp_path: Path) -> None:
     (tmp_path / name).write_text((BAD / name).read_text(encoding="utf-8"), encoding="utf-8")
     with pytest.raises(CanonError, match=EXPECTED[name]):
         load_world(tmp_path)
+
+
+def _names(cell: str) -> str:
+    return cell.replace("**", "").strip().removeprefix("The ").lower()
+
+
+def test_regions_match_geography(world: World) -> None:
+    import re
+
+    assert world.data is not None
+    text = (WORLD / "geography.md").read_text(encoding="utf-8")
+
+    def rows(heading: str) -> list[list[str]]:
+        body = text.split(f"## {heading}", 1)[1].split("\n## ", 1)[0]
+        cells = [[c.strip() for c in line.strip("|").split("|")] for line in body.splitlines() if "|" in line]
+        return [r for r in cells[2:] if not re.fullmatch(r"-+", r[0])]  # Past the header and the rule.
+
+    regions = {_names(r.name): r for r in world.data.regions.regions}
+    assert {_names(r[0]) for r in rows("Regions")} == set(regions)
+    assert regions["ford reaches"].tier_cap == 3
+    places = {_names(p.name): p for p in world.data.regions.places}
+    table = rows("Key locations")
+    assert {_names(r[0]) for r in table} == set(places)
+    for name, region, _note in table:
+        if name == "The Long Wall":  # Its region is "Hale-Ironmarch border": not a region (G-40).
+            continue
+        listed = world.data.regions.region_of(places[_names(name)].region)
+        assert listed is not None and _names(listed.name) == _names(region)
+    assert [(n.name, n.tier) for n in world.data.regions.notables] == [("Hale Dunmore", 3)]

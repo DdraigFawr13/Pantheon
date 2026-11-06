@@ -353,3 +353,10 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Accepted (2026-11-06; owner approved PR #29: "Approved"; built in an owner-invited free session, "build anything useful or joyful")
 - **Decision:** `pantheon chronicle [--timeline] [--format md|html] [--out]` (`ui/chronicle.py`, `Database.turns`) writes a timeline's committed turns in order (player words, accepted prose, the turn's Ledger lines through the same `ledger_lines` the game shows), then the open and settled threads and the sheet. Markdown matches the `docs/playtests/` "Turns" shape; HTML is a phone page in the Pantheon Table's tokens with no script. The `/chronicle` skill publishes it as an artifact and keeps one URL in HANDOFF. It reads the save and changes nothing.
 - **Why:** The owner reads on a phone and the saga so far lived only in chat scrollback and hand-copied playtest files; a page from the save is the one source (SRC-01) and costs no API call. Reporting only (GAME-03) keeps it outside the engine's rules.
+
+## D-055 M2c story tools: the spec's assumptions
+
+- **Status:** Assumed (2026-11-06; M2c is approved scope, D-052 (3); the spec `docs/specs/m2c-story-tools.md` awaits the owner's approval and its three Open questions)
+- **Decision:** The spec's assumptions A1 to A11, in short: the only region tier cap is the Ford Reaches' 3, applied to every `introduce_npc` call until the character's region is state (G-40); clock causes are data the owner's canon round sets; a Breach's atonement petition lasts 90 days and an unanswered later Oath offer 30; Oath slots by tier live in `rewards.yaml` from `world/power_tiers.md`; a god offers only at Standing 0 or more; `Hook.atones` names the Oath a petition restores; a later Oath adds 1 rank with no cap; duplicate names match when every word of the shorter is in the longer, articles dropped. S1 (people and places) is built on PR #31 from these.
+- **Why:** each is a number or rule canon leaves open; the spec records the alternatives and the owner's round can change any of them before S2.
+

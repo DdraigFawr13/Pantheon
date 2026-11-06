@@ -30,6 +30,28 @@ class Hook(BaseModel):
     resolved: bool = False
 
 
+class Npc(BaseModel):
+    """A person the narrator introduced. The `npc_introduced` payload is exactly these fields."""
+
+    id: str
+    name: str
+    role: str
+    tier: int
+    disposition: str
+    turn: int
+
+
+class Location(BaseModel):
+    """A place the narrator introduced. `region_name` rides along so the Ledger needs no World."""
+
+    id: str
+    name: str
+    region: str
+    region_name: str
+    description: str
+    turn: int
+
+
 class Action(BaseModel):
     label: str
     violent: bool = False
@@ -124,6 +146,8 @@ class GameState(BaseModel):
     reckonings: int = 0
     dead: bool = False
     attunement: str | None = None
+    npcs: list[Npc] = Field(default_factory=list)
+    locations: list[Location] = Field(default_factory=list)
 
     @property
     def purse_cp(self) -> int:
@@ -341,6 +365,10 @@ def apply_event(state: GameState, type_: str, payload: dict[str, Any]) -> None:
             state.clocks[payload["clock"]] = payload["value"]
         case "clock_engaged":
             state.clocks_engaged[payload["clock"]] = payload["counted_day"]
+        case "npc_introduced":
+            state.npcs.append(Npc(**payload))
+        case "location_introduced":
+            state.locations.append(Location(**payload))
         case "actions_suggested":
             state.suggested = [Action(**a) for a in payload["actions"]]
         case "tool_call_dropped":

@@ -767,3 +767,35 @@ def test_nar06_session_a_json_error_drop_keeps_the_raw_arguments(game: Game) -> 
     game("tool", "suggest_actions", SUGGEST)
     assert game("commit")[0] == 0
     assert [p["args"] for p in _events(game, "tool_call_dropped")] == [{"raw": "{not json"}]
+
+
+def test_session_screen_cast_and_places(game: Game, tmp_path: Path) -> None:
+    game.aftermath()
+    page = tmp_path / "screen.json"
+    assert game("screen", str(page))[0] == 0
+    empty = json.loads(page.read_text(encoding="utf-8"))
+    assert empty["cast"] == [] and empty["places"] == []
+    game("begin", "I go down to the water")
+    assert game.narrate("A rifter waved from the cellar door, and the stair gave onto the water.")[0] == 0
+    npc = '{"name": "Tam", "role": "rifter", "tier": 1, "disposition": "wary"}'
+    place = '{"name": "The Drowned Cellar", "region": "ford_reaches", "description": "A flooded cellar."}'
+    code, out = game("tool", "introduce_npc", npc)
+    assert code == 0, out
+    assert game("tool", "introduce_location", place)[0] == 0
+    assert game("tool", "suggest_actions", SUGGEST)[0] == 0
+    assert game("commit")[0] == 0
+    assert game("screen", str(page))[0] == 0
+    screen = json.loads(page.read_text(encoding="utf-8"))
+    turn = screen["turn"]
+    assert screen["cast"] == [
+        {"name": "Tam", "role": "rifter", "tier": 1, "disposition": "wary", "turn": turn}
+    ]
+    assert screen["places"] == [
+        {
+            "name": "The Drowned Cellar",
+            "region": "The Ford Reaches",
+            "description": "A flooded cellar.",
+            "turn": turn,
+        }
+    ]
+    assert any(line.startswith("Met: Tam") for line in screen["ledger"])

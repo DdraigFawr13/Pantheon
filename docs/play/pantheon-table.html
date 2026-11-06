@@ -482,6 +482,18 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     }), "No Oath sworn."));
     const hooks = card("Threads", "Debts, promises and people who may come back.");
     hooks.append(list(s.hooks || [], "Nothing owed yet."));
+    const people = card("People", "Everyone the story has introduced.");
+    people.append(list((s.cast || []).map((n) => {
+      const li = el("li");
+      li.append(el("strong", null, n.name), el("div", "sub", `${n.role} · Tier ${n.tier} · ${n.disposition} · turn ${n.turn}`));
+      return li;
+    }), "No one met yet."));
+    const places = card("Places", "Places the story has named.");
+    places.append(list((s.places || []).map((p) => {
+      const li = el("li");
+      li.append(el("strong", null, `${p.name} · ${p.region}`), el("div", "sub", p.description));
+      return li;
+    }), "No new places yet."));
     const standing = card("Standing");
     standing.append(list(words(s.standing).map(([e, v]) => `${e[0].toUpperCase() + e.slice(1)} ${v > 0 ? "+" : ""}${v}`), "No one knows your name yet."));
     const rumours = card("Rumours");
@@ -490,7 +502,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     const link = el("a", null, "Read the story so far");
     link.href = "https://claude.ai/artifact/38YWQkoJp5EMmx7UDXVU2W"; link.target = "_blank"; link.rel = "noopener";
     chronicle.append(link);
-    box.append(oaths, hooks, standing, rumours, chronicle);
+    box.append(oaths, hooks, people, places, standing, rumours, chronicle);
     if ((s.clocks || []).length) {
       const clocks = card("What is moving in the world");
       (s.clocks || []).forEach((c) => {

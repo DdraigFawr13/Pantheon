@@ -9,9 +9,9 @@ import math
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 
 from pantheon.engine.calendar import (
     MINUTES_PER_DAY,
@@ -44,6 +44,9 @@ MAX_REJECTION_DETAIL = 3
 MAX_STANDING_PER_TURN = 2
 MAX_HOOKS_PER_TURN = 2
 MAX_TIME_CALLS_PER_TURN = 2
+MAX_NPCS_PER_TURN = 2
+MAX_LOCATIONS_PER_TURN = 1
+HOME_REGION = "ford_reaches"  # Until the character's region is state (G-40), its Tier cap binds every call.
 _SPANS = {  # Minutes in one, and the most one call may ask for.
     "minutes": (1, 240),
     "hours": (60, 24),
@@ -124,6 +127,31 @@ class SetFlag(_Args):
     key: str
     value: bool
     reason: str = ""
+
+
+Short = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=40)]
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=60)]
+Describing = Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=300)]
+
+
+class IntroduceNpc(_Args):
+    """Register a person the story invented, the first time they matter. Reuse a known person instead."""
+
+    name: Short
+    role: Short = Field(description="What they do, such as rifter; vessel:<god id> for a god's Vessel.")
+    tier: int = Field(ge=0, le=8, description="Their Tier, 0 to 8; nobody above 3 can be met yet.")
+    disposition: Literal["friendly", "neutral", "wary", "hostile"]
+
+
+class IntroduceLocation(_Args):
+    """Register a place the story invented, the first time it matters. Reuse a known place instead."""
+
+    name: Name
+    region: str = Field(
+        description="A region id: hale_plains, ironmarch_hills, southern_coast, antler_wilds, barrow_lands, "
+        "candle_peaks or ford_reaches."
+    )
+    description: Describing
 
 
 class RegisterHook(_Args):
@@ -527,7 +555,92 @@ def _engage_clock(sim: Simulation, args: EngageClock) -> dict[str, Any]:
     return {"clock": clock.id}
 
 
+_ARTICLES = {"the", "a", "an"}
+
+
+def _words(name: str) -> list[str]:
+    """A name as lower-case words without punctuation or the articles the, a and an (A10)."""
+    return [w for w in re.sub(r"[^\w\s]", "", name.lower()).split() if w not in _ARTICLES]
+
+
+def _same_name(a: list[str], b: list[str]) -> bool:
+    """The same name when equal, or when every word of the shorter is a word of the longer."""
+    short, long = sorted((a, b), key=len)
+    return short == long or set(short) <= set(long)
+
+
+def _introduce_npc(sim: Simulation, args: IntroduceNpc) -> dict[str, Any]:
+    state, data = sim.state, sim.rules.data
+    words = _words(args.name)
+    if not words:
+        raise Rejected("a name needs letters")
+    if args.role.startswith("vessel:") and args.role[7:] not in data.god_ids():
+        raise Rejected(f"{args.role} names no god")
+    for npc in state.npcs:
+        if _same_name(words, _words(npc.name)):
+            raise Rejected(f"{npc.name} is already known")
+    for notable in data.regions.notables:
+        if _same_name(words, _words(notable.name)):
+            raise Rejected(f"{notable.name} is already known (regions.yaml notables)")
+    home = data.regions.region_of(HOME_REGION)
+    cap = home.tier_cap if home else None
+    if cap is not None and args.tier > cap:
+        raise Rejected(f"nobody above Tier {cap} can be met yet (regions.yaml, home region cap)")
+    _count(sim, "introduce_npc", MAX_NPCS_PER_TURN, "at most 2 people a turn")
+    payload = {
+        "id": "_".join(words),
+        "name": args.name,
+        "role": args.role,
+        "tier": args.tier,
+        "disposition": args.disposition,
+        "turn": sim.turn,
+    }
+    sim.emit("npc_introduced", payload)
+    return payload
+
+
+def _introduce_location(sim: Simulation, args: IntroduceLocation) -> dict[str, Any]:
+    state, data = sim.state, sim.rules.data
+    region = data.regions.region_of(args.region)
+    if region is None:
+        raise Rejected(f"there is no region {args.region}")
+    words = _words(args.name)
+    if not words:
+        raise Rejected("a name needs letters")
+    for place in state.locations:
+        if _same_name(words, _words(place.name)):
+            raise Rejected(f"{place.name} is already on the map")
+    for canon in data.regions.places:
+        if _same_name(words, _words(canon.name)):
+            raise Rejected(f"{canon.name} is already on the map (regions.yaml)")
+    _count(sim, "introduce_location", MAX_LOCATIONS_PER_TURN, "at most 1 place a turn")
+    payload = {
+        "id": "_".join(words),
+        "name": args.name,
+        "region": region.id,
+        "region_name": region.name,
+        "description": args.description,
+        "turn": sim.turn,
+    }
+    sim.emit("location_introduced", payload)
+    return payload
+
+
+def _count(sim: Simulation, name: str, limit: int, reason: str) -> None:
+    """The count runs last, so a rejected call spends none of it."""
+    try:
+        sim.count_call(name, limit)
+    except Rejected:
+        raise Rejected(reason) from None
+
+
 def _set_flag(sim: Simulation, args: SetFlag) -> dict[str, Any]:
+    role = sim.rules.flag_roles.get(args.key)
+    if role is not None:
+        if not any(n.role.lower() == role.lower() for n in sim.state.npcs):
+            raise Rejected(f"needs a known person with role {role}")
+        sim.emit("flag_set", {"key": args.key, "value": args.value, "reason": args.reason})
+        return {"key": args.key, "value": args.value}
     if args.key in sim.rules.flag_setters:
         raise Rejected(f"{args.key} cannot be set by the narrator in this build")
     if not _FLAG_KEY.match(args.key):
@@ -936,6 +1049,8 @@ _TOOLS: dict[str, tuple[type[_Args], Callable[[Simulation, Any], dict[str, Any]]
     "adjust_standing": (AdjustStanding, _adjust_standing),
     "set_flag": (SetFlag, _set_flag),
     "register_hook": (RegisterHook, _register_hook),
+    "introduce_npc": (IntroduceNpc, _introduce_npc),
+    "introduce_location": (IntroduceLocation, _introduce_location),
     "advance_time": (AdvanceTime, _advance_time),
     "send_petition": (SendPetition, _send_petition),
     "resolve_petition": (ResolvePetition, _resolve_petition),
