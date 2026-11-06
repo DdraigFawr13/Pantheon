@@ -7,7 +7,7 @@ import pytest
 
 from pantheon.engine.commands import CharacterChoices, choose_class, choose_profession, create_character
 from pantheon.engine.rng import RngStreams
-from pantheon.engine.state import GameState
+from pantheon.engine.state import GameState, xp_to_next
 from pantheon.engine.timeline import Rules, Simulation
 from pantheon.engine.tools import resolve_offer
 from pantheon.llm.client import LLMReply, ToolCall
@@ -22,6 +22,7 @@ from tests.conftest import WORLD as SHARED_WORLD
 WORLD = SHARED_WORLD
 assert WORLD.data is not None
 RULES = Rules(WORLD.data, {k: f.set_by for k, f in WORLD.flags.items()})
+MINOR_XP = WORLD.data.rewards.xp["minor"]
 PROSE = "You haul yourself up the broken steps, and the dark gives way to grey light."
 ACTIONS = [
     {"label": "Ask who else survived"},
@@ -165,7 +166,7 @@ def test_d031_the_scribe_records_consequences_with_the_turns_check() -> None:
         call("register_hook", description="The stones remember", due_condition="later"),
     )
     outcome, _ = run([CHECK, LLMReply(text=PROSE), effects, SUGGEST])
-    assert outcome.state.wounds > 0 and outcome.state.xp == 25 and outcome.state.suggested
+    assert outcome.state.wounds > 0 and outcome.state.xp == MINOR_XP and outcome.state.suggested
     assert outcome.state.hooks[-1].description == "The stones remember"
 
 
@@ -271,7 +272,7 @@ def test_d031_xp_counts_only_after_a_check() -> None:
     talking, _ = run([NONE, LLMReply(text=PROSE), tools(grant, *SUGGEST.tool_calls)])
     assert talking.state.xp == 0
     tested, _ = run([CHECK, LLMReply(text=PROSE), tools(grant, *SUGGEST.tool_calls)])
-    assert tested.state.xp == 25
+    assert tested.state.xp == MINOR_XP
 
 
 def test_d031_history_grows_then_resets() -> None:
@@ -477,4 +478,8 @@ def test_nar_ten_turn_scripted_playtest_commits_and_replays(tmp_path: Path) -> N
         assert db.load_state(tid) == final  # From the whole log (ENG-06).
         assert db.last_turn(tid) == 10
         assert len(final.hooks) >= 9
-    assert (final.level, final.xp) == (2, 125)
+    level, xp = 1, 9 * MINOR_XP  # Nine narrated turns grant minor XP; turn 7 is the fallback.
+    while xp >= xp_to_next(level):
+        xp -= xp_to_next(level)
+        level += 1
+    assert (final.level, final.xp) == (level, xp)

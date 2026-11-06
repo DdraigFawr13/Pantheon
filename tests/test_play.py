@@ -353,7 +353,7 @@ def test_typed_oath_asks_first_and_a_no_keeps_the_turn(tmp_path: Path) -> None:
 def test_d033_swearing_and_levelling_show_the_full_sheet_and_prompt_for_the_free_point(
     tmp_path: Path, capsys: Any
 ) -> None:
-    grant = ToolCall("g", "grant_xp", {"kind": "milestone", "reason": "a great deed"})
+    grant = ToolCall("g", "grant_xp", {"kind": "major", "reason": "a great deed"})  # One level (D-047).
     lines = [*NEW_GAME, "4", "1", "1", "Do the deed", "2", "/quit"]
     check = ToolCall("c", "request_check", {"stat": "agility", "difficulty": "routine", "challenge_tier": 0})
     _code, state, _ = play(tmp_path, lines, [*talk(), *narration(), *narration(grant, check=check)])

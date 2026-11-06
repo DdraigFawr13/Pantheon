@@ -5,7 +5,7 @@ Each command validates first, then emits events. A refusal changes nothing and u
 
 from __future__ import annotations
 
-from pantheon.engine.state import GameState
+from pantheon.engine.state import GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Simulation
 from pantheon.world.schemas import Evolution, GameData, Skill
 
@@ -154,3 +154,33 @@ def choose_evolution(sim: Simulation, evolution_id: str) -> None:
     if not sim.state.needs_evolution or chosen is None:
         raise Rejected(f"{evolution_id} is not an option right now")
     sim.emit("class_evolved", {"class_id": chosen.id, "stat": chosen.primary, "bonus": _EVOLUTION_BONUS})
+
+
+def gain_xp(sim: Simulation, amount: int, kind: str, reason: str) -> bool:
+    """Add XP and take every level it pays for, stopping at a tier's gate (D-037). True if a level came."""
+    state = sim.state
+    sim.emit("xp_gained", {"amount": amount, "kind": kind, "reason": reason})
+    leveled = False
+    while state.level % 10 != 0 and state.xp >= xp_to_next(state.level):
+        level_up(sim)
+        leveled = True
+    return leveled
+
+
+def level_up(sim: Simulation) -> None:
+    state = sim.state
+    table = sim.rules.data.rewards
+    cls = sim.rules.data.class_of(state.class_id)
+    gains = (
+        {cls.primary: table.level_gains.primary, cls.secondary: table.level_gains.secondary} if cls else {}
+    )
+    sim.emit(
+        "level_up",
+        {
+            "level": state.level + 1,
+            "xp_spent": xp_to_next(state.level),
+            "gains": gains,
+            "free_points": table.level_gains.free_points,
+        },
+    )
+    offer_skills(sim)

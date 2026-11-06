@@ -30,6 +30,7 @@ from tests.conftest import WORLD as SHARED_WORLD
 WORLD = SHARED_WORLD
 assert WORLD.data is not None
 RULES = Rules(WORLD.data, {k: f.set_by for k, f in WORLD.flags.items()})
+DATA = WORLD.data
 STATS = {"vigor": 30, "agility": 27, "intellect": 24, "resolve": 20, "presence": 18}
 CHOICES = CharacterChoices(
     name="Wren",
@@ -234,14 +235,20 @@ def test_eng09_hazards_down_the_character_and_healing_gets_them_up() -> None:
 def test_eng07_xp_levels_up_with_class_gains_and_a_free_point() -> None:
     sim = sworn()
     before = dict(sim.state.stats)
+    milestone = DATA.rewards.xp["milestone"]
+    assert milestone >= xp_to_next(1)  # The table pays a level for a milestone at Level 1.
     assert apply_tool(sim, "grant_xp", {"kind": "milestone", "reason": "deed"}).data["leveled_up"] is True
-    assert apply_tool(sim, "grant_xp", {"kind": "minor", "reason": "deed"}).data["leveled_up"] is False
-    assert sim.state.level == 2
-    assert sim.state.xp == 175 - xp_to_next(1)
-    assert sim.state.stats["agility"] == before["agility"] + 2
-    assert sim.state.stats["intellect"] == before["intellect"] + 1  # Cutpurse: Agility / Intellect.
-    allocate_point(sim, "resolve")
-    assert sim.state.stats["resolve"] == before["resolve"] + 1
+    level, xp = 1, milestone
+    while xp >= xp_to_next(level):
+        xp -= xp_to_next(level)
+        level += 1
+    assert (sim.state.level, sim.state.xp) == (level, xp)
+    gained = level - 1
+    assert sim.state.stats["agility"] == before["agility"] + 2 * gained
+    assert sim.state.stats["intellect"] == before["intellect"] + gained  # Cutpurse: Agility / Intellect.
+    for _ in range(gained):
+        allocate_point(sim, "resolve")
+    assert sim.state.stats["resolve"] == before["resolve"] + gained
     with pytest.raises(Rejected):
         allocate_point(sim, "resolve")
 

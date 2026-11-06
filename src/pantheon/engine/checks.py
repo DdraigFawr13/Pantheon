@@ -78,6 +78,7 @@ class CheckRequest:
     challenge_tier: int
     approach: Approach
     overcome: OvercomeClaim | None = None
+    bonus: int = 0  # Class traits and the like, added after the formula (D-045).
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,6 +163,7 @@ def check_odds(request: CheckRequest) -> CheckOdds:
         overcome_applied = True
 
     chance = base_chance(request.difficulty, request.stat, request.skill_rank, request.actor_tier, tier_gap)
+    chance += request.bonus
     return CheckOdds(None, tier_gap, overcome_applied, chance)
 
 

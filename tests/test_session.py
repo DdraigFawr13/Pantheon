@@ -292,6 +292,148 @@ def test_session_screen_uses_names_a_player_reads(game: Game, tmp_path: Path) ->
     assert any("Oath sworn" in line for line in screen["ledger"])
 
 
+FIGHT_SUGGEST = json.dumps(
+    {
+        "actions": [
+            {"label": "Drive the hound back", "fight": {"move": "attack", "stat": "vigor", "target": "f1"}},
+            {
+                "label": "Brace behind the rail",
+                "cost": "it may circle",
+                "fight": {"move": "guard", "stat": "resolve"},
+            },
+            {"label": "Shout for the ferryman"},
+        ]
+    }
+)
+
+
+def _start_a_fight(game: Game, tmp_path: Path) -> None:
+    game.aftermath()
+    assert game("begin", "I step out to meet whatever is growling")[0] == 0
+    assert game.narrate("An ash hound came up the bank, low and quiet.")[0] == 0
+    foes = tmp_path / "tool.json"
+    foes.write_text(
+        json.dumps({"foes": [{"name": "Ash Hound", "tier": 0, "threat": "standard"}], "reason": "it lunges"}),
+        encoding="utf-8",
+    )
+    code, out = game("tool", "start_fight", "--file", str(foes))
+    assert code == 0 and "Rejected" not in out, out
+    code, out = game("tool", "suggest_actions", FIGHT_SUGGEST)
+    assert code == 0 and "Rejected" not in out, out
+    code, out = game("commit")
+    assert code == 0 and "Exchange 1" in out and "Ash Hound" in out, out
+
+
+def test_session_fight_option_rolls_the_exchange_before_prose_D_039(game: Game, tmp_path: Path) -> None:
+    _start_a_fight(game, tmp_path)
+    code, out = game("begin", "--option", "1")
+    assert code == 0, out
+    assert "Engine check:" in out and "Engine fight:" in out
+    replayed = game("status")[1]
+    assert out.split("Engine fight:")[1].split("\n")[0] in replayed  # The same dice on every step.
+    assert "request_check" not in game("tools")[1]
+    assert game.narrate("Wren swung.\n<<CHECK>>\nThe hound reeled.")[0] == 0
+    state, _ = game.state()
+    over = "The fight is over." in replayed  # The pending turn's exchange, as the engine summed it up.
+    code, out = game("tool", "suggest_actions", SUGGEST if over else FIGHT_SUGGEST)
+    assert code == 0 and "Rejected" not in out, out
+    assert game("commit")[0] == 0
+    state, _ = game.state()
+    assert state.checks_made >= 1 and (state.fight is None) == over
+
+
+def test_session_in_a_fight_the_referee_offers_fight_move_not_request_check(
+    game: Game, tmp_path: Path
+) -> None:
+    _start_a_fight(game, tmp_path)
+    code, out = game("begin", "I kick sand in its eyes")
+    assert code == 0 and "fight_move" in out, out
+    code, out = game("tool", "request_check", CLIMB)
+    assert code == 1 and "not available" in out
+    move = tmp_path / "move.json"
+    move.write_text(json.dumps({"move": "guard", "stat": "agility"}), encoding="utf-8")
+    code, out = game("tool", "fight_move", "--file", str(move))
+    assert code == 0 and "summary" in out, out
+
+
+def test_session_downed_turn_runs_the_foes_exchange_on_its_own_D_039(game: Game, tmp_path: Path) -> None:
+    _start_a_fight(game, tmp_path)
+    with Database.open(game.db) as db:
+        tid = db.latest_timeline()
+        assert tid is not None
+        state = db.load_state(tid)
+        db.commit_events(
+            tid,
+            db.last_turn(tid) + 1,
+            [
+                (
+                    "effect_applied",
+                    {"kind": "damage", "amount": state.hp, "source": "exchange", "reason": "x"},
+                ),
+                ("downed", {"reason": "x"}),
+            ],
+            db.rng_state(tid),
+        )
+    code, out = game("begin", "I try to crawl away")
+    assert code == 0, out
+    assert "Last Breath 1" in out and "Downed" in out
+    assert "fight_move" not in out.split("Step:")[1]
+
+
+def test_session_screen_shows_the_fight_and_its_intents(game: Game, tmp_path: Path) -> None:
+    _start_a_fight(game, tmp_path)
+    page = tmp_path / "screen.json"
+    assert game("screen", str(page))[0] == 0
+    data = json.loads(page.read_text(encoding="utf-8"))
+    assert data["fight"]["exchange"] == 1
+    assert data["fight"]["foes"][0]["name"] == "Ash Hound" and data["fight"]["foes"][0]["intent"]
+    assert {"mana", "stamina", "trait", "attunement"} <= set(data)
+
+
+def test_session_gear_commands_and_the_gear_on_screen_D_045(game: Game, tmp_path: Path) -> None:
+    game.aftermath()
+    with Database.open(game.db) as db:
+        tid = db.latest_timeline()
+        assert tid is not None
+        db.commit_events(
+            tid,
+            db.last_turn(tid) + 1,
+            [("item_changed", {"item": "dagger", "quantity": 1, "reason": "found"})],
+            db.rng_state(tid),
+        )
+    code, out = game("equip", "dagger")
+    assert code == 0 and "Equipped: dagger" in out, out
+    code, out = game("use", "dagger")
+    assert code == 1 and "not something to use up" in out
+    page = tmp_path / "screen.json"
+    assert game("screen", str(page))[0] == 0
+    gear = json.loads(page.read_text(encoding="utf-8"))["gear"]
+    assert gear == [
+        {
+            "id": "dagger",
+            "name": "Dagger",
+            "kind": "weapon",
+            "count": 1,
+            "in_use": True,
+            "detail": "+5 on attacks, worth 3 sp",
+        }
+    ]
+    assert "Dagger (in use)" in game("sheet")[1]
+    assert game("unequip", "weapon")[0] == 0
+
+
+def test_session_screen_codex_lists_knowledge_and_foes_met(game: Game, tmp_path: Path) -> None:
+    _start_a_fight(game, tmp_path)
+    page = tmp_path / "screen.json"
+    assert game("screen", str(page))[0] == 0
+    codex = json.loads(page.read_text(encoding="utf-8"))["codex"]
+    assert len(codex["classes"]) == 25 and sum(c["current"] for c in codex["classes"]) == 1
+    assert {p["name"] for p in codex["peoples"]} >= {"Humans", "Saltborn"}
+    assert len(codex["gods"]) == 7 and sum(g["sworn"] for g in codex["gods"]) == 1
+    assert all(g["oaths"] for g in codex["gods"])
+    assert codex["bestiary"] == [{"name": "Ash Hound", "tier": 0, "threat": "standard", "met": 1, "down": 0}]
+
+
 TRIAL_SEED = 1  # A seed whose Trial roll ascends, so the free-point path runs.
 
 

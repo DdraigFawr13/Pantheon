@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import secrets
@@ -13,25 +14,30 @@ from typing import Any
 
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.markup import escape
 from rich.panel import Panel
 
 from pantheon.config import Config, load_config
 from pantheon.engine.calendar import date_of, format_date
-from pantheon.engine.checks import Outcome
+from pantheon.engine.checks import Approach, CheckRequest, Difficulty, Outcome, check_odds, resolve_check
+from pantheon.engine.combat import intent_label
 from pantheon.engine.commands import (
     CharacterChoices,
     allocate_point,
+    choose_attunement,
     choose_class,
     choose_profession,
     create_character,
     innate_affinity_options,
 )
+from pantheon.engine.loot import format_cp
 from pantheon.engine.opening import draw_opening_gods
 from pantheon.engine.progression import choose_evolution, evolution_options, pick_skill
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, Action, EventRecord, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
 from pantheon.engine.tools import attempt_trial, check_preview, resolve_offer
+from pantheon.engine.traits import needs_attunement, trait_of
 from pantheon.llm.anthropic_adapter import AnthropicClient
 from pantheon.llm.client import LLMClient
 from pantheon.narrator.assemble import history_window
@@ -66,6 +72,17 @@ _HELP = (
     "help (this) · quit (saves first). The Oath choices are numbers on the list."
 )
 _SAVED = "Saved. `pantheon play` resumes here."
+_FIGHT_ENDS = {
+    "victory": "no foe is left standing",
+    "fled": "you got away",
+    "story": "it broke off",
+    "reckoning": "you died",
+    "death": "you died",
+}
+_DEAD = (
+    "[bold]This character is dead.[/bold] `pantheon fork N` branches from an earlier turn; "
+    "`pantheon play --fresh` starts a new game."
+)
 
 
 def _new(args: argparse.Namespace, console: Console) -> int:
@@ -170,7 +187,7 @@ def status_line(state: GameState) -> str:
 
 
 def _bar(label: str, value: int, maximum: int) -> str:
-    filled = round(_BAR_WIDTH * value / maximum) if maximum else 0
+    filled = max(0, round(_BAR_WIDTH * value / maximum)) if maximum else 0
     return f"{label:<8}{'█' * filled}{'░' * (_BAR_WIDTH - filled)} {value}/{maximum}"
 
 
@@ -183,20 +200,36 @@ def sheet(state: GameState, world: World) -> Panel:
         f"Class: {current.name if current else 'none'} · Profession: {state.profession or 'none'}",
         f"Tier {state.tier} · Level {state.level} · {format_date(date_of(state.day))}",
         _bar("HP", state.hp, state.max_hp),
-        _bar("Mana", state.max_mana, state.max_mana),
-        _bar("Stamina", state.max_stamina, state.max_stamina),
+        _bar("Mana", state.mana, state.max_mana),
+        _bar("Stamina", state.stamina, state.max_stamina),
         *([_bar("XP", state.xp, xp_to_next(state.level))] if state.level else []),
-        f"Coin: {state.coin} silver",
+        f"Purse: {format_cp(state.purse_cp)}",
         " · ".join(f"{s.capitalize()} {state.stats[s]}" for s in STATS),
         "Affinities: " + (", ".join(f"{a} {r}" for a, r in state.affinities.items()) or "none"),
         "Skills: " + (", ".join(f"{s} {r}" for s, r in state.skills.items()) or "none"),
         "Oaths: " + (", ".join(oaths[o] for o in state.oaths) or "none"),
         "Standing: " + (", ".join(f"{e} {v:+d}" for e, v in state.standing.items()) or "none"),
     ]
+    trait = trait_of(state, world.data) if world.data else None
+    if trait is not None:
+        attuned = f" ({state.attunement.capitalize()})" if state.attunement else ""
+        lines.insert(2, f"Trait: {trait.name}{attuned}")
+    if state.reckonings:
+        lines.append(f"Reckonings: {state.reckonings}")
     if state.titles:
         lines.append("Titles: " + ", ".join(state.titles))
     if state.injuries:
         lines.append("Injuries: " + ", ".join(f"{i.stat} -{i.amount}" for i in state.injuries))
+    if state.inventory:
+        names = {i.id: i.name for i in world.data.items}
+        worn = set(state.equipped.values())
+        lines.append(
+            "Gear: "
+            + ", ".join(
+                f"{names.get(k, k)}{' x' + str(n) if n > 1 else ''}{' (in use)' if k in worn else ''}"
+                for k, n in state.inventory.items()
+            )
+        )
     if state.shards:
         lines.append(
             "Shards: " + ", ".join(f"{s.target} {'fragment' if s.fragment else s.kind}" for s in state.shards)
@@ -256,6 +289,41 @@ def ledger_lines(events: list[EventRecord]) -> list[str]:
                 lines.append(f"{p['name']} {state}: {p['value']} of {p['segments']}")
             case "petition_resolved":
                 lines.append(f"Petition {'granted' if p['granted'] else 'not granted'} ({p['reason']})")
+            case "fight_started":
+                lines.append(f"[bold]A fight begins:[/bold] {', '.join(f['name'] for f in p['foes'])}")
+            case "loot_granted":
+                lines.append(f"[bold]Loot[/bold] from {p['source']}:")
+            case "currency_changed":
+                sign = "+" if p["delta_cp"] > 0 else "-"
+                lines.append(f"{sign}{format_cp(abs(p['delta_cp']))} ({p['reason']})")
+            case "item_changed":
+                sign = "+" if p["quantity"] > 0 else ""
+                lines.append(f"{sign}{p['quantity']} {p['item'].replace('_', ' ')} ({p['reason']})")
+            case "item_equipped":
+                lines.append(f"Equipped: {p['item'].replace('_', ' ')} ({p['slot']})")
+            case "item_unequipped":
+                lines.append(f"Took off the {p['slot']}")
+            case "attuned":
+                lines.append(f"[bold]Attuned:[/bold] {p['element'].capitalize()}")
+            case "trait_used":
+                target = f" on {p['foe']}" if p.get("foe") else ""
+                lines.append(f"[bold]{p['trait']}[/bold]{target}: once this fight")
+            case "skill_spent" if p["cost"]:
+                lines.append(f"{p['skill']}: -{p['cost']} {p['pool']}")
+            case "foe_hit":
+                lines.append(f"{p['name']} takes {p['hits']} hit{'s' if p['hits'] > 1 else ''}")
+            case "overspend_rolled":
+                lines.append(f"Overspent {p['skill']}: {p['chance']}% Injury risk, rolled {p['roll']}")
+            case "fight_ended":
+                lines.append(f"[bold]The fight ends:[/bold] {_FIGHT_ENDS[p['result']]}")
+            case "last_breath":
+                lines.append(f"[red bold]Last Breath {p['marks']}[/red bold]")
+            case "level_lost":
+                lines.append(f"[red]Level lost: now Level {p['level']}[/red]")
+            case "reckoning":
+                lines.append(f"[red bold]Reckoning {p['count']}.[/red bold] You wake at the last shrine.")
+            case "died":
+                lines.append("[red bold]The Ledger closes. This death is final.[/red bold]")
             case _:
                 pass
     return lines
@@ -270,6 +338,10 @@ def _player_choices(sim: Simulation, ask: Ask, console: Console) -> None:
         )
         classes = [(c.id, f"{c.name}: {c.primary} / {c.secondary}") for c in data.classes]
         choose_class(sim, _pick(ask, console, "Choose your class", classes))
+    trait = trait_of(sim.state, data)
+    if trait is not None and needs_attunement(sim.state, data):
+        elements = [(e, e.capitalize()) for e in trait.attunements]
+        choose_attunement(sim, _pick(ask, console, f"{trait.name}: choose your element", elements))
     if sim.state.needs_profession:
         professions = [(p, p) for p in data.professions.all()]
         choose_profession(sim, _pick(ask, console, "Choose your profession", professions))
@@ -302,8 +374,22 @@ def odds_text(state: GameState, world: World, action: Action) -> str:
     return " sure" if odds.outcome is Outcome.SUCCESS else " no chance"
 
 
+def show_fight(state: GameState, world: World, console: Console) -> None:
+    """Each foe's intent comes from the engine, so the player always sees it (D-014, GAME-04)."""
+    assert world.data is not None
+    if state.fight is None:
+        return
+    console.print(f"[bold]Exchange {state.fight.exchange}[/bold]")
+    for foe in state.fight.standing:
+        hits = f"{foe.hits_left} hit{'s' if foe.hits_left > 1 else ''} left"
+        console.print(f"  {foe.name} (Tier {foe.tier}, {hits}) shows {intent_label(world.data, foe.intent)}")
+    if state.downed:
+        console.print(f"  [red bold]You are Downed.[/red bold] Last Breaths: {state.last_breath}")
+
+
 def _show_actions(state: GameState, world: World, console: Console) -> None:
     console.print(status_line(state))
+    show_fight(state, world, console)
     if state.trial_ready:
         console.print(
             "[bold]An Ascension Trial is ready.[/bold] Type [bold]trial[/bold] when you choose to face it."
@@ -526,6 +612,9 @@ class Game:
             self.console.print(Panel(Markdown(last), border_style="blue"))
             self.player_choices()  # A choice left open by quitting, or by forking at that turn.
         while True:
+            if self.state.dead:
+                self.console.print(_DEAD)
+                return
             _show_actions(self.state, self.world, self.console)
             offers = offer_choices(self.state, self.world)
             first = len(self.state.suggested) + 1
@@ -589,7 +678,7 @@ def _play(args: argparse.Namespace, console: Console, ask: Ask, client: LLMClien
             )
             return 1
         client = AnthropicClient(config.narrator_model, config.base_url, config.think)
-    rules = Rules(world.data, {k: f.set_by for k, f in world.flags.items()})
+    rules = Rules(world.data, {k: f.set_by for k, f in world.flags.items()}, config.permadeath)
     with Database.open(Path(args.db) if args.db else config.db_path) as db:
         tid = db.find_timeline(args.timeline) if args.timeline else db.latest_timeline()
         if tid is None or args.fresh:
@@ -622,6 +711,75 @@ def _fork(args: argparse.Namespace, console: Console) -> int:
     return 0
 
 
+def _roll(args: argparse.Namespace, console: Console) -> int:
+    """`pantheon roll`: a d100 check by the engine's own rules, outside any game (M1f, no LLM)."""
+    rng = RngStreams.from_seed(args.seed)
+    request = CheckRequest(
+        difficulty=Difficulty(args.difficulty),
+        stat=args.stat,
+        skill_rank=args.skill,
+        actor_tier=args.tier,
+        challenge_tier=args.challenge,
+        approach=Approach(args.approach),
+        bonus=args.bonus,
+    )
+    try:
+        odds = check_odds(request)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        return 1
+    shown = "settled by the tier gap" if odds.shown is None else f"{odds.shown}% shown ({odds.chance} raw)"
+    console.print(f"Tier gap {odds.tier_gap:+d}, chance {shown}, seed {args.seed}")
+    for _ in range(args.count):
+        result = resolve_check(rng, request)
+        rolled = "no roll" if result.roll is None else f"rolled {result.roll:02d}"
+        extra = " + complication" if result.complication else ""
+        console.print(f"  {rolled}: {result.outcome.value.replace('_', ' ')}{extra}")
+    return 0
+
+
+def _timeline(db: Database, prefix: str | None, console: Console) -> str | None:
+    tid = db.find_timeline(prefix) if prefix else db.latest_timeline()
+    if tid is None:
+        console.print("[red]There is no timeline yet. Start one with `pantheon play`.[/red]")
+    return tid
+
+
+def _show_sheet(args: argparse.Namespace, console: Console) -> int:
+    """`pantheon sheet`: the character sheet of a timeline, read from the save (M1f)."""
+    config = load_config(Path(args.config) if args.config else None)
+    world = load_world(config.world_dir)
+    with Database.open(Path(args.db) if args.db else config.db_path) as db:
+        tid = _timeline(db, args.timeline, console)
+        if tid is None:
+            return 1
+        state = db.load_state(tid)
+    console.print(sheet(state, world))
+    show_fight(state, world, console)
+    return 0
+
+
+def _log(args: argparse.Namespace, console: Console) -> int:
+    """`pantheon log`: the recorded events, turn by turn, as the Ledger shows them (M1f, GAME-04)."""
+    config = load_config(Path(args.config) if args.config else None)
+    with Database.open(Path(args.db) if args.db else config.db_path) as db:
+        tid = _timeline(db, args.timeline, console)
+        if tid is None:
+            return 1
+        logged = db.events(tid)
+    if args.turn is not None:
+        logged = [e for e in logged if e["turn"] == args.turn]
+    if args.type:
+        logged = [e for e in logged if e["type"] == args.type]
+    shown = logged[-args.last :] if args.last else logged
+    console.print(f"[dim]Timeline {tid[:8]}: {len(shown)} of {len(logged)} events[/dim]")
+    for event in shown:
+        lines = ledger_lines([(event["type"], event["payload"])])
+        text = lines[0] if lines else escape(json.dumps(event["payload"], separators=(",", ":")))
+        console.print(f"[dim]t{event['turn']:<4}{event['type']:<22}[/dim] {text}")
+    return 0
+
+
 def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClient | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pantheon")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -629,12 +787,27 @@ def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClien
     play = sub.add_parser("play", help="play the latest timeline; a new game starts when there is none")
     fork = sub.add_parser("fork", help="branch a new timeline from the end of a turn")
     fork.add_argument("turn", type=int, help="the turn to branch from")
+    roll = sub.add_parser("roll", help="roll a check by the engine's rules, outside any game")
+    roll.add_argument("--stat", type=int, default=30, help="the stat's value")
+    roll.add_argument("--difficulty", choices=[d.value for d in Difficulty], default="routine")
+    roll.add_argument("--tier", type=int, default=1, help="the character's tier")
+    roll.add_argument("--challenge", type=int, default=1, help="the challenge's tier")
+    roll.add_argument("--skill", type=int, default=0, help="the skill's rank")
+    roll.add_argument("--approach", choices=[a.value for a in Approach], default="other")
+    roll.add_argument("--bonus", type=int, default=0, help="a trait or gear bonus")
+    roll.add_argument("--count", type=int, default=1, help="how many rolls")
+    roll.add_argument("--seed", type=int, default=1)
+    sheet = sub.add_parser("sheet", help="show a timeline's character sheet")
+    log = sub.add_parser("log", help="show a timeline's recorded events")
+    log.add_argument("--turn", type=int, help="only this turn")
+    log.add_argument("--type", help="only this event type, such as xp_gained")
+    log.add_argument("--last", type=int, help="only the last N events")
     for command in (new, play):
         command.add_argument("--seed", type=int, default=0, help="seed (0 = config or random)")
-    for command in (new, play, fork):
+    for command in (new, play, fork, sheet, log):
         command.add_argument("--db", help="database path (default: data/pantheon.db)")
         command.add_argument("--config", help="config file (default: config.toml)")
-    for command in (play, fork):
+    for command in (play, fork, sheet, log):
         command.add_argument("--timeline", help="the start of a timeline's id (default: the latest)")
     play.add_argument("--fresh", action="store_true", help="start a new timeline instead of resuming")
     from pantheon.ui.cli import session  # It builds on this module's screens, so it loads after them.
@@ -650,6 +823,12 @@ def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClien
             return _new(args, console)
         if args.command == "fork":
             return _fork(args, console)
+        if args.command == "roll":
+            return _roll(args, console)
+        if args.command == "sheet":
+            return _show_sheet(args, console)
+        if args.command == "log":
+            return _log(args, console)
         return _play(args, console, ask or console.input, client)
     except SaveError as exc:
         console.print(f"[red]{exc}[/red]")

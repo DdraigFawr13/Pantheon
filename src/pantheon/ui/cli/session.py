@@ -25,21 +25,36 @@ from rich.text import Text
 
 from pantheon.config import Config, load_config
 from pantheon.engine.calendar import clock_value, date_of, format_date
+from pantheon.engine.combat import downed_exchange, intent_label
 from pantheon.engine.commands import (
     CharacterChoices,
     allocate_point,
+    choose_attunement,
     choose_class,
     choose_profession,
     create_character,
     innate_affinity_options,
 )
+from pantheon.engine.loot import format_cp
 from pantheon.engine.progression import choose_evolution, evolution_options, pick_skill
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
-from pantheon.engine.tools import ToolResult, apply_tool, attempt_trial, resolve_offer, tool_definition
+from pantheon.engine.tools import (
+    ToolResult,
+    apply_tool,
+    attempt_trial,
+    equip_item,
+    resolve_offer,
+    tool_definition,
+    unequip_item,
+    use_item,
+)
+from pantheon.engine.traits import needs_attunement, trait_of
 from pantheon.narrator.assemble import REMINDER, assemble, due_material, state_view
 from pantheon.narrator.loop import (
+    DOWNED_NOTE,
+    FIGHT_REFEREE_PROMPT,
     NARRATE_OUTCOME,
     OUTCOME_MEANINGS,
     REFEREE_PROMPT,
@@ -61,9 +76,11 @@ from pantheon.ui.cli.app import (
     offer_choices,
     offer_terms,
     sheet,
+    show_fight,
     status_line,
 )
 from pantheon.world.loader import World, load_world
+from pantheon.world.schemas import Item
 
 PLAYING = ".playing"
 _RECENT_SHOWN = 2
@@ -95,6 +112,9 @@ class Replay:
     results: list[ToolResult]
     allowed: set[int]
     outcomes: list[str]
+    summaries: list[str] = field(default_factory=list)  # What each exchange did, from the engine (D-039).
+    fighting: bool = False  # A fight was on when the turn began.
+    downed: bool = False  # The turn began Downed in a fight, so the foes' exchange ran on its own.
 
 
 class Session:
@@ -176,11 +196,19 @@ class Session:
         )
         allowed = numbers_in(state_view(state))  # Prose may quote the engine's own sheet (D-033).
         outcomes: list[str] = []
-        if pending.chosen_check is not None:
-            chosen = apply_tool(sim, "request_check", pending.chosen_check)
+        summaries: list[str] = []
+        fighting, downed = state.fight is not None, state.fight is not None and state.downed
+        if downed:
+            exchange = downed_exchange(sim)  # The Downed cannot act; the foes press on (D-039).
+            allowed |= numbers_in(exchange)
+            summaries.append(exchange["summary"])
+        elif pending.chosen_check is not None:
+            name = "fight_move" if "move" in pending.chosen_check else "request_check"
+            chosen = apply_tool(sim, name, pending.chosen_check)
             if chosen.accepted:
                 allowed |= numbers_in(chosen.data)
                 outcomes.append(chosen.data["outcome"])
+                summaries += [chosen.data["summary"]] if "summary" in chosen.data else []
         results = []
         for call in pending.calls:
             result = apply_tool(sim, call["name"], call["args"])
@@ -189,14 +217,17 @@ class Session:
                 allowed |= numbers_in(result.data)
                 if "outcome" in result.data:
                     outcomes.append(result.data["outcome"])
-        return Replay(sim, results, allowed, outcomes)
+                    summaries += [result.data["summary"]] if "summary" in result.data else []
+        return Replay(sim, results, allowed, outcomes, summaries, fighting, downed)
 
     def offered(self, pending: Pending, run: Replay) -> tuple[str, ...]:
         """The tools this step allows, by the same rules as the API loop (D-031)."""
+        if pending.narration is None and run.downed:
+            return ()  # The foes' exchange ran by itself (D-039).
         return turn_tools(
             run.sim.state,
             pending.player_input,
-            rolled=pending.chosen_check is not None,
+            rolled=pending.chosen_check is not None or bool(run.outcomes),
             narrated=pending.narration is not None,
             checked=bool(run.sim.checks),
         )
@@ -225,7 +256,7 @@ class Session:
             raise SessionError("Say what the player does, or pass --option N.")
         pending = Pending(tid, self.db.last_turn(tid) + 1, player_input, chosen)
         run = self.replay(pending)
-        if chosen is not None and not run.outcomes:
+        if chosen is not None and not run.outcomes and not run.downed:
             pending.chosen_check = None  # The check no longer applies; the referee may roll a fresh one.
             run = self.replay(pending)
         self.save_pending(pending)
@@ -246,17 +277,23 @@ class Session:
 
     def next_step(self, pending: Pending, run: Replay) -> None:
         out = self.console.print
-        if run.outcomes and pending.narration is None:
-            note = ", then ".join(OUTCOME_MEANINGS[o] for o in run.outcomes)
+        if pending.narration is None:
             for type_, payload in run.sim.events:
                 if type_ == "check_resolved":
                     out(f"Engine check: {escape(json.dumps(payload))}")
-            out(escape(NARRATE_OUTCOME.format(outcomes=note)))
+            for summary in run.summaries:
+                out(f"Engine fight: {escape(summary)}")
+            if run.downed:
+                out(escape(DOWNED_NOTE.format(summary=" ".join(run.summaries))))
+            elif run.outcomes:
+                note = ", then ".join(OUTCOME_MEANINGS[o] for o in run.outcomes)
+                out(escape(NARRATE_OUTCOME.format(outcomes=note)))
         names = self.offered(pending, run)
         if pending.narration is None:
-            if names and not run.outcomes:
-                out(escape(REFEREE_PROMPT.replace("reply with the single word NONE", "write the prose")))
-                out("Step: `session tool request_check '{...}'` if it is a check, else write the prose.")
+            referee = {"fight_move": FIGHT_REFEREE_PROMPT, "request_check": REFEREE_PROMPT}
+            if names:
+                out(escape(referee[names[0]].replace("reply with the single word NONE", "write the prose")))
+                out(f"Step: `session tool {names[0]} --file data/tool.json` if it rolls, else the prose.")
             out("Step: write the prose to data/narration.md, then `session narrate data/narration.md`.")
             return
         if run.sim.suggested:
@@ -264,9 +301,11 @@ class Session:
             return
         out(escape(SCRIBE_PROMPT if len(names) > 1 else SUGGEST_PROMPT))
         out(f"Tools now: {', '.join(names)}. `session tools` shows their fields.")
-        out("Step: `session tool <name> '<json>'` for each, then `session commit`.")
+        out("Step: each call's JSON in data/tool.json, then `session tool <name> --file data/tool.json`.")
 
-    def tool(self, name: str, raw: str) -> None:
+    def tool(self, name: str, raw: str, file: str | None = None) -> None:
+        if file is not None:
+            raw = Path(file).read_text(encoding="utf-8")  # No shell quoting to break the JSON (D-041).
         pending = self.need_pending()
         run = self.replay(pending)
         names = self.offered(pending, run)
@@ -338,6 +377,9 @@ class Session:
         due = []
         if state.needs_class:
             due.append("class: " + ", ".join(f"{c.id} ({c.primary}/{c.secondary})" for c in data.classes))
+        trait = trait_of(state, data)
+        if trait is not None and needs_attunement(state, data):
+            due.append(f"attunement ({trait.name}): " + ", ".join(trait.attunements))
         if state.needs_profession:
             due.append("profession: " + ", ".join(data.professions.all()))
         if state.free_points > 0:
@@ -370,6 +412,13 @@ class Session:
             )
             for option, cls in zip(groups[-1]["options"], data.classes, strict=True):
                 option["blurb"], option["trait"] = cls.blurb, cls.trait
+        trait = trait_of(state, data)
+        if trait is not None and needs_attunement(state, data):
+            group(
+                "attunement",
+                f"{trait.name}: your element",
+                [(e, e.capitalize(), "Spells of it cost less and land surer") for e in trait.attunements],
+            )
         if state.needs_profession:
             kinds = (
                 ("Gathering", data.professions.gathering),
@@ -426,6 +475,7 @@ class Session:
             for line in due:
                 out(f"  {escape(line)}")
         out(status_line(state))
+        show_fight(state, self.world, self.console)
         if state.trial_ready:
             out("[bold]An Ascension Trial is ready.[/bold] The player may face it (`session trial`).")
         for number, action in enumerate(state.suggested, 1):
@@ -464,6 +514,7 @@ class Session:
         sim = self.command_sim()
         handlers = {
             "class": choose_class,
+            "attunement": choose_attunement,
             "profession": choose_profession,
             "point": allocate_point,
             "skill": pick_skill,
@@ -493,6 +544,19 @@ class Session:
             self.console.print(f"Still to choose: {escape(line)}")
         if text:
             self.console.print(f'Next: `session begin "{text}"`')
+
+    def gear(self, verb: str, what: str) -> None:
+        """Player commands for gear: use a consumable, equip a weapon or armour, or take one off (D-047)."""
+        self.no_pending()
+        sim = self.command_sim()
+        handlers = {"use": use_item, "equip": equip_item, "unequip": unequip_item}
+        try:
+            handlers[verb](sim, what)
+        except Rejected as exc:
+            raise SessionError(str(exc)) from exc
+        self.commit_commands(sim)
+        for line in ledger_lines(sim.events):
+            self.console.print(f"  {line}")
 
     def trial(self) -> None:
         self.no_pending()
@@ -544,6 +608,7 @@ class Session:
             for n, (cid, label) in enumerate(offer_choices(state, self.world), len(state.suggested) + 1)
         ]
         data = self.world.data
+        trait = trait_of(state, data)
         skills = {k.id: k for k in data.skills}
         gods = {g.id: g.name for g in data.gods}
         origin = next((o for o in data.origins.origins if o.id == state.origin), None)
@@ -617,6 +682,25 @@ class Session:
             "max_mana": state.max_mana,
             "max_stamina": state.max_stamina,
             "downed": state.downed,
+            "mana": state.mana,
+            "stamina": state.stamina,
+            "trait": trait.name if trait else "",
+            "attunement": (state.attunement or "").capitalize(),
+            "fight": self.fight_data(state),
+            "codex": self.codex(state, logged),
+            "purse": format_cp(state.purse_cp),
+            "gear": [
+                {
+                    "id": k,
+                    "name": item.name if item else k,
+                    "kind": item.kind if item else "",
+                    "count": n,
+                    "in_use": k in state.equipped.values(),
+                    "detail": _item_detail(item) if item else "",
+                }
+                for k, n in state.inventory.items()
+                for item in [data.item_of(k)]
+            ],
             "coin": state.coin,
             "stats": {s: state.stats[s] for s in STATS},
             "affinities": {a.capitalize(): r for a, r in state.affinities.items()},
@@ -633,6 +717,104 @@ class Session:
             "choices_due": self.choices_due(state),
             "choice_groups": self.choice_groups(state),
             "trial_ready": state.trial_ready,
+        }
+
+    def codex(self, state: GameState, logged: list[dict[str, Any]]) -> dict[str, Any]:
+        """Game knowledge for the page's Codex tab: public data only, and foes the character has met."""
+        assert self.world.data is not None
+        data = self.world.data
+        cap = str.capitalize
+        oaths = {o.id: o for o in data.oaths}
+        classes = {c.id: c.name for c in data.classes}
+        bestiary: dict[str, dict[str, Any]] = {}
+        hits: dict[str, list[Any]] = {}  # This fight's foe id to [name, hits left].
+        for event in logged:
+            payload = event["payload"]
+            if event["type"] == "fight_started":
+                hits = {f["id"]: [f["name"], f["hits_left"]] for f in payload["foes"]}
+                for foe in payload["foes"]:
+                    entry = bestiary.setdefault(
+                        foe["name"],
+                        {
+                            "name": foe["name"],
+                            "tier": foe["tier"],
+                            "threat": foe["threat"],
+                            "met": 0,
+                            "down": 0,
+                        },
+                    )
+                    entry["met"] += 1
+            elif event["type"] == "foe_hit" and payload["foe"] in hits:
+                hits[payload["foe"]][1] -= payload["hits"]
+                if hits[payload["foe"]][1] <= 0:
+                    bestiary[hits[payload["foe"]][0]]["down"] += 1
+        return {
+            "classes": [
+                {
+                    "name": c.name,
+                    "stats": f"{cap(c.primary)} / {cap(c.secondary)}",
+                    "blurb": c.blurb,
+                    "trait": c.trait,
+                    "current": c.id == state.class_id,
+                }
+                for c in data.classes
+            ],
+            "peoples": [
+                {
+                    "name": p.name,
+                    "stat": "+3 to any stat" if p.stat == "any" else f"+3 {cap(p.stat)}",
+                    "affinity": ", ".join(
+                        "any basic affinity"
+                        if a == "any_basic"
+                        else "one from their birth rift"
+                        if a == "birth_rift"
+                        else cap(a)
+                        for a in p.innate_affinity
+                    ),
+                    "current": p.id == state.people,
+                }
+                for p in data.peoples
+            ],
+            "gods": [
+                {
+                    "name": g.name,
+                    "affinities": " and ".join(cap(a) for a in g.affinities),
+                    "favours": ", ".join(classes.get(c, c) for c in g.favoured_classes),
+                    "oaths": [
+                        {"name": o.name, "gift": o.perk, "burden": o.burden}
+                        for o in data.oaths
+                        if o.god == g.id
+                    ],
+                    "sworn": any(oaths[o].god == g.id for o in state.oaths if o in oaths),
+                }
+                for g in data.gods
+            ],
+            "bestiary": list(bestiary.values()),
+        }
+
+    def fight_data(self, state: GameState) -> dict[str, Any] | None:
+        """The fight as the page shows it: each foe's shown intent comes from the engine (D-014)."""
+        assert self.world.data is not None
+        fight = state.fight
+        if fight is None:
+            return None
+        return {
+            "exchange": fight.exchange,
+            "last_breath": state.last_breath,
+            "momentum": fight.momentum,
+            "trait_used": fight.trait_used,
+            "foes": [
+                {
+                    "id": f.id,
+                    "name": f.name,
+                    "tier": f.tier,
+                    "threat": f.threat,
+                    "hits_left": f.hits_left,
+                    "intent": intent_label(self.world.data, f.intent),
+                    "cursed": fight.cursed == f.id,
+                }
+                for f in fight.standing
+            ],
         }
 
     def setup_data(self) -> dict[str, Any]:
@@ -737,6 +919,16 @@ class Session:
             self.console.print(escape(json.dumps(tool_definition(name))), soft_wrap=True)
 
 
+def _item_detail(item: Item) -> str:
+    parts = [
+        f"+{item.attack_bonus} on attacks" if item.attack_bonus else "",
+        f"blows {item.block_percent} points softer" if item.block_percent else "",
+        f"heals {item.heal_percent}% of max HP" if item.heal_percent else "",
+        f"worth {format_cp(item.value_cp)}",
+    ]
+    return ", ".join(p for p in parts if p)
+
+
 def export_db(db_path: Path, out: Path) -> None:
     """A text dump of the whole save, so git can store and diff it (D-041)."""
     if not db_path.exists():
@@ -825,6 +1017,7 @@ def add_parser(sub: Any) -> None:
     tool = steps.add_parser("tool", help="one narrator tool call")
     tool.add_argument("name")
     tool.add_argument("args", nargs="?", default="{}")
+    tool.add_argument("--file", help="read the JSON arguments from this file")
     narrate = steps.add_parser("narrate", help="submit the prose, from a file")
     narrate.add_argument("file")
     steps.add_parser("commit", help="save the turn and show the options")
@@ -835,6 +1028,13 @@ def add_parser(sub: Any) -> None:
     choose.add_argument("kind")
     choose.add_argument("choice")
     steps.add_parser("trial", help="face the Ascension Trial")
+    for verb, about in (
+        ("use", "use a consumable item"),
+        ("equip", "wield or wear an item"),
+        ("unequip", "take off a slot"),
+    ):
+        gear = steps.add_parser(verb, help=about)
+        gear.add_argument("what", help="an item id, or for unequip a slot (weapon, armour)")
     steps.add_parser("sheet", help="the character sheet")
     steps.add_parser("hooks", help="consequences that may come back")
     screen = steps.add_parser("screen", help="write the game page's data as JSON")
@@ -899,7 +1099,7 @@ def _dispatch(session: Session, args: argparse.Namespace) -> None:
         case "begin":
             session.begin(args.text, args.option)
         case "tool":
-            session.tool(args.name, args.args)
+            session.tool(args.name, args.args, args.file)
         case "narrate":
             session.narrate(Path(args.file))
         case "commit":
@@ -910,6 +1110,8 @@ def _dispatch(session: Session, args: argparse.Namespace) -> None:
             session.choose(args.kind, args.choice)
         case "trial":
             session.trial()
+        case "use" | "equip" | "unequip":
+            session.gear(args.step, args.what)
         case "sheet":
             session.console.print(sheet(session.state(), session.world))
         case "hooks":

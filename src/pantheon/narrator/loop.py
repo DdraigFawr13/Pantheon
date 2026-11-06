@@ -12,6 +12,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
 
+from pantheon.engine.combat import downed_exchange
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import EventRecord, GameState
 from pantheon.engine.timeline import Rules, Simulation
@@ -28,6 +29,16 @@ REFEREE_PROMPT = (
     "or deceptive whose result is not certain, call request_check now and choose the stat, difficulty and "
     "challenge_tier. If the action names a stat in brackets, use that stat. Asking a question, talking, "
     "looking around and walking somewhere safe are never checks: for those, reply with the single word NONE.]"
+)
+FIGHT_REFEREE_PROMPT = (
+    "[Referee step, no story yet. A fight is on, so unless the player is only talking, call fight_move now. "
+    "move is attack (with target, a foe's id from the Due list), guard or flee; stat is the stat the action "
+    "really uses; skill only if a skill on the sheet applies. Reply with the single word NONE only for pure "
+    "talk, in which case no exchange happens.]"
+)
+DOWNED_NOTE = (
+    "[The character is Downed and cannot act; what the player typed is only what they try. The engine has "
+    "decided: {summary} Narrate exactly that.]"
 )
 NARRATE_OUTCOME = (
     "[The engine has decided: {outcomes}. Narrate exactly that result, and do not soften it. "
@@ -47,11 +58,16 @@ SCRIBE_PROMPT = (
     "register_hook only for a new choice or person who should matter later. advance_time whenever the scene "
     "took real time, such as a journey or a sleep (rest also heals). send_petition if a sworn god asked a "
     "small thing; resolve_petition when one was done or refused. engage_clock if a tested deed touched a "
-    "global clock's threads. Always finish with "
+    "global clock's threads. start_fight when foes attack or the player attacks them, and end_fight only if "
+    "the story ends one early; the engine sets all fight damage, and searches won fights itself. grant_loot "
+    "when a passed check opened a stash (cache:<what>) or earned a bounty (bounty:<who>). adjust_inventory "
+    "and adjust_currency when items or coin change hands in the story, at the economy list's prices; "
+    "invent no item outside the item list. Always finish with "
     "suggest_actions: 3 to 4 actions that fit this exact moment, one non-violent, one with a cost or risk in "
     "its cost field, no digits. Each label is one brief plain line. Give an uncertain action a check (stat, "
     "difficulty, challenge_tier, stakes); talking, asking and looking have none. A line only this character "
-    "could choose gets a tag naming its Oath, class, profession or people, from the sheet.]"
+    "could choose gets a tag naming its Oath, class, profession or people, from the sheet. During a fight, "
+    "give each action a fight (move, target, stat) instead of a check.]"
 )
 SCRIBE_TOOLS = (
     "grant_xp",
@@ -63,6 +79,11 @@ SCRIBE_TOOLS = (
     "send_petition",
     "resolve_petition",
     "engage_clock",
+    "grant_loot",
+    "adjust_inventory",
+    "adjust_currency",
+    "start_fight",
+    "end_fight",
     "suggest_actions",
 )
 SUGGEST_PROMPT = (
@@ -70,7 +91,8 @@ SUGGEST_PROMPT = (
     "non-violent action and one with a visible cost or risk in its cost field. Give an uncertain action a "
     "check (stat, difficulty, challenge_tier, stakes); talking, asking and looking have none. A line only "
     "this character could choose gets a tag naming its Oath, class, profession or people, from the sheet. "
-    "Use no digits. Write no more prose.]"
+    "During a fight, give each action a fight (move, target, stat) instead of a check. Use no digits. Write "
+    "no more prose.]"
 )
 
 
@@ -110,6 +132,7 @@ class _Turn:
         self.tokens = [0, 0, 0]
         self.log: list[str] = []
         self.outcomes: list[str] = []
+        self.details: list[str] = []  # What each exchange did, from the engine (D-039).
         self.recent: list[str] = []
         # The template renders tools before the history, so a changing list empties the model's cache (D-031).
         self.tools = tool_definitions()
@@ -147,6 +170,7 @@ class _Turn:
                     self.log.append(f"ok {call.name}")
                     if "outcome" in result.data:
                         self.outcomes.append(result.data["outcome"])
+                        self.details += [result.data["summary"]] if "summary" in result.data else []
                 else:
                     self.rejections[call.name] += 1
                     self.log.append(f"rejected {call.name}: {result.reason}")
@@ -155,30 +179,41 @@ class _Turn:
 
     def roll_chosen(self, messages: list[dict[str, Any]], check: dict[str, Any]) -> bool:
         """Roll the check the player saw on the option they picked (D-036). False if it no longer applies."""
-        result = apply_tool(self.sim, "request_check", check)
+        result = apply_tool(self.sim, "fight_move" if "move" in check else "request_check", check)
         if not result.accepted:
             self.log.append(f"rejected chosen check: {result.reason}")
             return False
         self.allowed |= numbers_in(result.data)
         self.outcomes.append(result.data["outcome"])
         note = NARRATE_OUTCOME.format(outcomes=OUTCOME_MEANINGS[result.data["outcome"]])
-        messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{note}"}
+        summary = f" {result.data['summary']}" if "summary" in result.data else ""
+        messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{note}{summary}"}
         return True
+
+    def downed(self, messages: list[dict[str, Any]]) -> None:
+        """A hostile exchange runs whatever the player typed, since the Downed cannot act (D-039)."""
+        data = downed_exchange(self.sim)
+        self.allowed |= numbers_in(data)
+        note = DOWNED_NOTE.format(summary=data["summary"])
+        messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{note}"}
 
     def referee(self, messages: list[dict[str, Any]]) -> None:
         """Roll before any prose exists, so the story has to follow the dice (ENG-02, ENG-04)."""
+        in_fight = self.sim.state.fight is not None
+        prompt = FIGHT_REFEREE_PROMPT if in_fight else REFEREE_PROMPT
         trial = [
             *messages[:-1],
-            {"role": "user", "content": f"{messages[-1]['content']}\n\n{REFEREE_PROMPT}"},
+            {"role": "user", "content": f"{messages[-1]['content']}\n\n{prompt}"},
         ]
         for _ in range(self.max_retries + 1):
             reply = self.call(trial, self.tools, fast=True)
             if not reply.tool_calls:
                 return
-            results = self.run_tools(reply, {"request_check"})
+            results = self.run_tools(reply, {"fight_move" if in_fight else "request_check"})
             trial += [{"role": "assistant", "content": reply.blocks()}, {"role": "user", "content": results}]
             if self.outcomes:
                 note = ", then ".join(OUTCOME_MEANINGS[o] for o in self.outcomes)
+                note = " ".join([note, *self.details])
                 messages += [
                     {"role": "assistant", "content": reply.blocks()},
                     {
@@ -251,13 +286,16 @@ def turn_tools(
 ) -> tuple[str, ...]:
     """The tools a turn may use now: the one rule behind the API loop and `pantheon session` (D-031).
 
-    Before the prose, only the referee's `request_check`. Until the player answers the Dual Offer the scene
-    is only talk, so there is nothing to roll; bracketed text is the game speaking. After the prose, the
+    Before the prose, only the referee's `request_check`, or `fight_move` in a fight (D-039); nothing while
+    Downed in a fight, since the foes' exchange runs by itself. Until the player answers the Dual Offer the
+    scene is only talk, so there is nothing to roll; bracketed text is the game speaking. After the prose, the
     scribe's tools. XP rewards a tested deed, so a turn with no check cannot grant it.
     """
     if not narrated:
         talk = player_input.startswith("[")
-        return () if rolled or not state.offer_resolved or talk else ("request_check",)
+        if rolled or not state.offer_resolved or talk or (state.fight is not None and state.downed):
+            return ()
+        return ("fight_move",) if state.fight is not None else ("request_check",)
     names = SCRIBE_TOOLS if state.offer_resolved else ("suggest_actions",)
     return names if checked else tuple(n for n in names if n != "grant_xp")
 
@@ -287,14 +325,22 @@ def take_turn(
     run.allowed = numbers_in(state_view(state))  # Prose may quote the engine's own sheet (D-033).
     narration: str | None = None
     try:
-        rolled = chosen_check is not None and run.roll_chosen(messages, chosen_check)
+        rolled = False
+        if state.fight is not None and state.downed:
+            run.downed(messages)
+            rolled = True
+        elif chosen_check is not None:
+            rolled = run.roll_chosen(messages, chosen_check)
         if turn_tools(state, player_input, rolled=rolled):
             run.referee(messages)
         narration = run.narrate(messages)
         if narration is not None:
             narration = place_notices(narration, sim.events)
             names = turn_tools(state, player_input, narrated=True, checked=bool(sim.checks))
-            run.scribe(messages, narration, names, max_rounds)
+            if any(type_ == "reckoning" for type_, _ in sim.events):  # The dead earn nothing for dying.
+                names = ("suggest_actions",)
+            if not sim.state.dead:
+                run.scribe(messages, narration, names, max_rounds)
     except LLMUnavailable as exc:
         run.log.append(f"model unavailable: {exc}")
     if narration is not None and not sim.suggested:

@@ -111,7 +111,7 @@ Built right after M1a, before the rest of M1, so the plan's top risks are tested
 
 ## M1: Engine core (4 to 6 sessions)
 
-M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is testable alone.
+M1a to M1c are merged; M1d to M1f are built on PR #19 (`claude/m1-build`). Ordered so each step is testable alone.
 
 **M1a Dice and checks** (ENG-03, ENG-04, ENG-05)
 - Seeded RNG per timeline, split into named streams (checks, loot, opening draw, rival, world) so rolls in one system never shift another; stream state serialisable for forks (D-022).
@@ -125,7 +125,7 @@ M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is t
 - Shards: absorb, fuse fragments, skill evolution at rank 5.
 - Player commands (`allocate_point`, `pick_skill`, `absorb_shard`, `fuse_fragments`, `choose_evolution`).
 
-**M1c Event log, replay, fork, versions** (ENG-06, ENG-08, ENG-10, ENG-11). Built on `m1c-on-main`, PR #15 (D-038). Oath timers and daily Boons wait for canon rules, and training gains for G-27.
+**M1c Event log, replay, fork, versions** (ENG-06, ENG-08, ENG-10, ENG-11). Merged in PR #15 (D-038). Oath timers and daily Boons wait for canon rules, and training gains for G-27.
 - One command funnel: validate, then roll, then mutate, then append. A rejected tool call fails at validate and consumes no randomness (D-022).
 - Events store resolved outcomes; state is a pure fold; snapshots every 10 turns.
 - Save versions upgrade one step at a time through a migration chain; a save newer than the game is refused, never overwritten (ENG-10, GAME-05).
@@ -133,13 +133,13 @@ M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is t
 - Calendar (1 Seedtide 1,140 AS start, Blank Days), `advance_time`, clocks (one segment per season, neglect rule), petitions as hooks.
 - Tests: `hypothesis` generates action sequences; replay equals live state; bounds hold.
 
-**M1d Combat and death**
+**M1d Combat and death**. Built on `m1d-combat` (D-039), merged into PR #19 with nine solo fight traits (D-045) and fights in session play. The other traits and real foe tables wait for M3.5.
 - Exchanges, enemy intents as data, skill costs and cooldowns, pool regeneration, overspend and Injury roll (D-009), Downed, Last Breath per hostile exchange, Reckoning escalation (fourth is final).
 
-**M1e Reward tables v0** (ENG-09, G-08)
-- `rewards.yaml`: XP per kind scaled by tier to hit D-014 pacing; Standing deltas; damage by outcome and rarity; Tier 1 loot tables. A small simulation script checks that the tables reach Tier 2 in about 8 hours of typical play (estimate inputs recorded in DECISIONS as Assumed).
+**M1e Reward tables v0** (ENG-09, G-08). Built on PR #19 with the owner's numbers (D-047): tier-scaled XP, foe XP, loot, coin, five canon items and gear.
+- `rewards.yaml`: XP per kind scaled by tier to hit D-014 pacing; Standing deltas; damage by outcome and rarity; Tier 1 loot tables. A small simulation script checks that the tables reach Tier 2 in about 7 hours of typical play (D-047; estimate inputs in `scripts/pacing_sim.py`).
 
-**M1f Dev CLI**
+**M1f Dev CLI**. Built on PR #19.
 - `pantheon roll`, `pantheon sheet`, `pantheon log`, no LLM. `pantheon fork N` came early, with M1c.
 
 **Acceptance:** roadmap M1; engine coverage at least 90 %. **You test:** read a transcript of a level-up, a shard absorption and an evolution; optional: run the CLI.
@@ -185,7 +185,7 @@ Canon batches for your approval (`canon:`), each a small PR:
 
 Then the engine wiring and a full playtest from a new timeline to Tier 2.
 
-**Acceptance:** roadmap M3.5. **You test:** play to Tier 2 (about 8 hours); your notes go into `docs/playtests/` and decide what "fun" means here (GAME-06).
+**Acceptance:** roadmap M3.5. **You test:** play to Tier 2 (about 7 hours); your notes go into `docs/playtests/` and decide what "fun" means here (GAME-06).
 
 ## Total and order
 

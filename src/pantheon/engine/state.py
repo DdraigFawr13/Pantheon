@@ -51,6 +51,30 @@ class Injury(BaseModel):
     reason: str = ""
 
 
+class Foe(BaseModel):
+    id: str
+    name: str
+    tier: int
+    threat: str
+    hits_left: int
+    intent: str
+
+
+class Fight(BaseModel):
+    foes: list[Foe]
+    exchange: int = 1
+    ambush: bool = False  # The character struck first, unseen (Opening, D-045).
+    opened: bool = False  # The first attack has been made.
+    momentum: int = 0
+    cursed: str | None = None  # The foe a Malediction marks.
+    form: bool = False  # Beast Form is on.
+    trait_used: bool = False  # The class's once-per-fight trait.
+
+    @property
+    def standing(self) -> list[Foe]:
+        return [f for f in self.foes if f.hits_left > 0]
+
+
 class GameState(BaseModel):
     created: bool = False
     name: str = ""
@@ -76,7 +100,10 @@ class GameState(BaseModel):
     trial_recovery: bool = False
     oaths: list[str] = Field(default_factory=list)
     standing: dict[str, int] = Field(default_factory=dict)
-    coin: int = 0
+    coin: int = 0  # Whole silver.
+    coin_cp: int = 0  # Copper beyond the silver, 0 to 11 (12 cp = 1 sp).
+    inventory: dict[str, int] = Field(default_factory=dict)  # Item id to count.
+    equipped: dict[str, str] = Field(default_factory=dict)  # Slot (weapon, armour) to item id.
     wounds: int = 0
     downed: bool = False
     opening_gods: list[str] = Field(default_factory=list)
@@ -89,6 +116,26 @@ class GameState(BaseModel):
     minutes: int = 0
     clocks: dict[str, int] = Field(default_factory=dict)
     clocks_engaged: dict[str, int] = Field(default_factory=dict)
+    fight: Fight | None = None
+    mana_spent: int = 0
+    stamina_spent: int = 0
+    cooldowns: dict[str, int] = Field(default_factory=dict)
+    last_breath: int = 0
+    reckonings: int = 0
+    dead: bool = False
+    attunement: str | None = None
+
+    @property
+    def purse_cp(self) -> int:
+        return self.coin * 12 + self.coin_cp
+
+    @property
+    def mana(self) -> int:
+        return self.max_mana - self.mana_spent
+
+    @property
+    def stamina(self) -> int:
+        return self.max_stamina - self.stamina_spent
 
     @property
     def day(self) -> int:
@@ -167,8 +214,11 @@ def apply_event(state: GameState, type_: str, payload: dict[str, Any]) -> None:
             else:
                 state.wounds -= payload["amount"]
                 state.downed = False
+                state.last_breath = 0
                 if payload["source"] == "rest":
                     state.trial_recovery = False
+                    state.mana_spent = state.stamina_spent = 0
+                    state.cooldowns = {}
         case "skill_offered":
             state.skill_offers.append(list(payload["options"]))
         case "skill_offers_cleared":
@@ -191,6 +241,71 @@ def apply_event(state: GameState, type_: str, payload: dict[str, Any]) -> None:
         case "injury_gained":
             state.injuries.append(Injury(**payload))
             state.stats[payload["stat"]] -= payload["amount"]
+            state.wounds = min(state.wounds, state.max_hp)
+        case "fight_started":
+            state.fight = Fight(foes=[Foe(**f) for f in payload["foes"]], ambush=payload.get("ambush", False))
+        case "currency_changed":
+            state.coin, state.coin_cp = divmod(state.purse_cp + payload["delta_cp"], 12)
+        case "item_changed":
+            count = state.inventory.get(payload["item"], 0) + payload["quantity"]
+            if count > 0:
+                state.inventory[payload["item"]] = count
+            else:
+                state.inventory.pop(payload["item"], None)
+                state.equipped = {s: i for s, i in state.equipped.items() if i != payload["item"]}
+        case "item_equipped":
+            state.equipped[payload["slot"]] = payload["item"]
+        case "item_unequipped":
+            state.equipped.pop(payload["slot"], None)
+        case "loot_granted":
+            pass  # A heading for the Ledger; the coin, items and shards follow as their own events.
+        case "attuned":
+            state.attunement = payload["element"]
+        case "trait_used":
+            assert state.fight is not None
+            state.fight.trait_used = True
+            if payload["kind"] == "curse":
+                state.fight.cursed = payload["foe"]
+            else:
+                state.fight.form = True
+        case "foe_hit":
+            assert state.fight is not None
+            next(f for f in state.fight.foes if f.id == payload["foe"]).hits_left -= payload["hits"]
+        case "skill_spent":
+            if payload["pool"] == "mana":
+                state.mana_spent += payload["cost"]
+            elif payload["pool"] == "stamina":
+                state.stamina_spent += payload["cost"]
+            if payload["cooldown"]:
+                state.cooldowns[payload["skill"]] = payload["cooldown"]
+        case "overspend_rolled":
+            pass
+        case "exchange_ended":
+            state.mana_spent -= payload["mana_regen"]
+            state.stamina_spent -= payload["stamina_regen"]
+            state.cooldowns = {k: v - 1 for k, v in state.cooldowns.items() if v > 1}
+            if state.fight is not None:
+                state.fight.exchange += 1
+                state.fight.momentum = payload.get("momentum", state.fight.momentum)
+                state.fight.opened = state.fight.opened or payload.get("attacked", False)
+                for foe in state.fight.foes:
+                    foe.intent = payload["intents"].get(foe.id, foe.intent)
+        case "fight_ended":
+            state.fight = None
+            state.cooldowns = {}
+        case "last_breath":
+            state.last_breath = payload["marks"]
+        case "level_lost":
+            state.level = payload["level"]
+            state.xp = 0
+            for stat, loss in payload["losses"].items():
+                state.stats[stat] -= loss
+        case "reckoning":
+            state.reckonings = payload["count"]
+            state.wounds = state.mana_spent = state.stamina_spent = state.last_breath = 0
+            state.downed = False
+        case "died":
+            state.dead = True
         case "xp_lost":
             state.xp -= payload["amount"]
         case "trial_resolved":
