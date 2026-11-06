@@ -81,21 +81,24 @@ At awakening (the first Oath, which sets Level 1) the character takes a **base c
 | Sellsword | Vigor / Agility | **Momentum:** each successful exchange in a fight adds +5 to the next attack, up to +15 |
 | Reaver | Vigor / Resolve | **Blood Up:** below half HP, +10 on attacks and -10 on defence until the fight ends |
 | Warden | Resolve / Vigor | **Bulwark:** may take a blow aimed at an ally within reach |
-| Oathknight | Resolve / Presence | **Sworn Edge:** +10 on checks that honour an Oath's Burden; may spend mana to heal an ally by touch |
+| Oathknight | Vigor / Presence | **Sworn Edge:** +10 on checks that honour an Oath's Burden; may spend mana to heal an ally by touch |
+| Marshal | Presence / Vigor | **Rally:** allies who can hear get +5 on checks; once per fight, one ally acts again |
 | Fistsworn | Agility / Resolve | **Still Centre:** unarmoured, defends with Agility and Resolve; stamina skills cost 20 % less |
 | Spellblade | Vigor / Intellect | **Edgecasting:** casts a spell through a weapon strike in the same exchange |
 | Cutpurse | Agility / Intellect | **Opening:** +10 and double damage on the first strike against an unaware foe |
-| Wayfinder | Agility / Resolve | **Pathsense:** never lost; acts before enemy intents resolve in the first exchange |
+| Wayfinder | Agility / Vigor | **Pathsense:** never lost; acts before enemy intents resolve in the first exchange |
 | Inquisitor | Intellect / Presence | **Studied Mark:** after one exchange or scene observing a target, +10 on all checks against it |
+| Riftwalker | Agility / Presence | **Fold Step:** once per fight, step through space to any point in sight; senses a rift's core within a floor |
 | Arcanist | Intellect / Resolve | **Spellbook:** one extra skill offered at each skill pick |
 | Elementalist | Intellect / Vigor | **Attuned:** choose Flame, Frost, Storm, Stone, Wind or Tide at awakening; spells of that element cost 20 % less mana and get +5 |
 | Wildblood | Presence / Vigor | **Surge:** may spend HP instead of mana to cast |
 | Cantor | Presence / Intellect | **Carrying Voice:** Song skills cost 20 % less mana and reach everyone who can hear |
+| Seer | Presence / Intellect | **Glimpse:** once per scene, before a check is rolled, learn whether it would succeed and choose whether to go on |
 | Votary | Resolve / Presence | **Channel:** healing and warding skills cost 20 % less; Divine Favor opens at Standing 50, not 60 |
-| Hexer | Intellect / Presence | **Malediction:** once per fight, curse one foe: -10 on all its checks |
-| Gravewalker | Resolve / Presence | **Ancestral Voice:** may question the spirits of the dead; Death and Spirit skills cost 20 % less |
-| Wildkin | Vigor / Resolve | **Bonded Beast:** a beast companion that levels with the character |
-| Greenwarden | Resolve / Intellect | **Old Growth:** +10 on checks in the wild; Growth and Life skills cost 20 % less |
+| Hexer | Presence / Resolve | **Malediction:** once per fight, curse one foe: -10 on all its checks |
+| Gravewalker | Resolve / Intellect | **Ancestral Voice:** may question the spirits of the dead; Death and Spirit skills cost 20 % less |
+| Wildkin | Presence / Agility | **Bonded Beast:** a beast companion that levels with the character |
+| Greenwarden | Resolve / Agility | **Old Growth:** +10 on checks in the wild; Growth and Life skills cost 20 % less |
 | Skinchanger | Vigor / Agility | **Beast Form:** once per fight, take a beast shape: +10 on physical checks, no spells or speech until it ends |
 | Hearthwright | Intellect / Resolve | **Kitcraft:** +10 on crafting checks; fuses shards from 2 fragments instead of 3 |
 | Runesmith | Vigor / Intellect | **Rune-Etch:** once a day, inscribe a rune on an item: +5 on checks that use it until the next rest |

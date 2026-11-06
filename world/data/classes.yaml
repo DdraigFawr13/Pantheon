@@ -20,10 +20,16 @@
   blurb: "The shield-bearer. Stands in front of others and takes the hit so they don't have to."
 - id: oathknight
   name: Oathknight
-  primary: resolve
+  primary: vigor
   secondary: presence
   trait: "Sworn Edge: +10 on checks that honour an Oath's Burden; may spend mana to heal an ally by touch"
   blurb: "The holy warrior. Fights for a god's Oath and draws strength from keeping it."
+- id: marshal
+  name: Marshal
+  primary: presence
+  secondary: vigor
+  trait: "Rally: allies who can hear get +5 on checks; once per fight, one ally acts again"
+  blurb: "The captain. Makes everyone around them braver, sharper and better placed."
 - id: fistsworn
   name: Fistsworn
   primary: agility
@@ -45,21 +51,27 @@
 - id: wayfinder
   name: Wayfinder
   primary: agility
-  secondary: resolve
+  secondary: vigor
   trait: "Pathsense: never lost; acts before enemy intents resolve in the first exchange"
-  blurb: "The scout and hunter. Never lost, always first to move, deadly at range."
+  blurb: "The scout and archer. Never lost, first to move, and deadly at range. Travels without an animal."
 - id: inquisitor
   name: Inquisitor
   primary: intellect
   secondary: presence
   trait: "Studied Mark: after one exchange or scene observing a target, +10 on all checks against it"
   blurb: "The investigator. Reads people and scenes, and turns what they learn into an edge."
+- id: riftwalker
+  name: Riftwalker
+  primary: agility
+  secondary: presence
+  trait: "Fold Step: once per fight, step through space to any point in sight; senses a rift's core within a floor"
+  blurb: "Reads rift currents and steps through the folds in space they leave behind."
 - id: arcanist
   name: Arcanist
   primary: intellect
   secondary: resolve
   trait: "Spellbook: one extra skill offered at each skill pick"
-  blurb: "The scholar-mage. Learns spells from study and has more of them than anyone."
+  blurb: "The scholar of the strange schools: wards, bindings, illusion, mind and space. Never the one throwing fire."
 - id: elementalist
   name: Elementalist
   primary: intellect
@@ -71,13 +83,19 @@
   primary: presence
   secondary: vigor
   trait: "Surge: may spend HP instead of mana to cast"
-  blurb: "Magic in the blood, not the book. Raw, strong, and paid for in their own body."
+  blurb: "Born with magic that will not sit still. Wild, unstable, any affinity in the blood, and paid for in HP."
 - id: cantor
   name: Cantor
   primary: presence
   secondary: intellect
   trait: "Carrying Voice: Song skills cost 20 % less mana and reach everyone who can hear"
   blurb: "The voice. Song and speech that steady friends, rattle enemies and talk a room round."
+- id: seer
+  name: Seer
+  primary: presence
+  secondary: intellect
+  trait: "Glimpse: once per scene, before a check is rolled, learn whether it would succeed and choose whether to go on"
+  blurb: "Sees a little ahead. Prophecy, omens and hidden things, at a price."
 - id: votary
   name: Votary
   primary: resolve
@@ -86,26 +104,26 @@
   blurb: "A god's priest. Heals, wards and calls on a sworn god's favour."
 - id: hexer
   name: Hexer
-  primary: intellect
-  secondary: presence
+  primary: presence
+  secondary: resolve
   trait: "Malediction: once per fight, curse one foe: -10 on all its checks"
   blurb: "Curses, bargains and quiet spite. Makes enemies weaker instead of themselves stronger."
 - id: gravewalker
   name: Gravewalker
   primary: resolve
-  secondary: presence
+  secondary: intellect
   trait: "Ancestral Voice: may question the spirits of the dead; Death and Spirit skills cost 20 % less"
   blurb: "The speaker for the dead. Talks with spirits and works death and ancestor magic."
 - id: wildkin
   name: Wildkin
-  primary: vigor
-  secondary: resolve
+  primary: presence
+  secondary: agility
   trait: "Bonded Beast: a beast companion that levels with the character"
   blurb: "The beast-bonded. Fights beside an animal companion that grows as they do."
 - id: greenwarden
   name: Greenwarden
   primary: resolve
-  secondary: intellect
+  secondary: agility
   trait: "Old Growth: +10 on checks in the wild; Growth and Life skills cost 20 % less"
   blurb: "The druid. Plants, weather and healing, strongest far from walls."
 - id: skinchanger

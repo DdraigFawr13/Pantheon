@@ -31,7 +31,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** two-pan scales. **Cult:** the Assize.
 - **Temperament:** exacting, fair, unforgiving of breach.
 - **Wants:** the Pact restored and re-sworn. Order that binds even gods.
-- **Oath:** Open Hand. **Favoured affinities:** Binding, Mind. **Favoured classes:** Oathknight, Cantor, Fistsworn.
+- **Oath:** Open Hand. **Favoured affinities:** Binding, Mind. **Favoured classes:** Oathknight, Cantor, Fistsworn, Inquisitor.
 
 ### Kaul, the Iron Father
 
@@ -39,7 +39,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** hammer on anvil. **Cult:** the Ironwrit.
 - **Temperament:** blunt, honorable by his own code, contemptuous of waste.
 - **Wants:** strength tested and a world that does not rot from ease. Leans toward Veshra's order.
-- **Oath:** Held Line. **Favoured affinities:** Iron, Flame. **Favoured classes:** Sellsword, Warden, Runesmith, Elementalist.
+- **Oath:** Held Line. **Favoured affinities:** Iron, Flame. **Favoured classes:** Sellsword, Warden, Runesmith, Marshal.
 
 ### Ysmere, the Tidemother
 
@@ -63,7 +63,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** shuttered lantern. **Cult:** the Lantern Orders.
 - **Temperament:** cryptic. Every prophecy has a price. Rarely states a position.
 - **Wants:** publicly, nothing.
-- **Oath:** Kept Light. **Favoured affinities:** Light, Space. **Favoured classes:** Arcanist, Spellblade, Inquisitor.
+- **Oath:** Kept Light. **Favoured affinities:** Light, Space. **Favoured classes:** Arcanist, Spellblade, Riftwalker, Seer.
 
 ### Drovash, the Laughing Thief
 
