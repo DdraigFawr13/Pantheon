@@ -4,42 +4,31 @@ Updated: 2026-11-06. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1.7 (D-041), play in Claude Code with the session as narrator, is a draft PR on `ccr-2cd1b9d3-xt21f0`, waiting for the owner's approval. The v4.4.0 upgrade (#17) and M1c (#15) are merged. M1d combat (#16, D-039) is an open draft. The owner's API key works, but only one turn of the new style is saved.
+M1.7 (D-041, session play) and the 25-class roster (D-042) are on draft PR #18, branch `ccr-2cd1b9d3-xt21f0`, waiting for the owner's approval to merge. M1a to M1c are merged. **Next: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main` after #18 merges.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18.
 
 ## Just done
 
-- 2026-10-30 PR #2 merged. Canon batch: `world/power_tiers.md` rewritten as the d100 System; peoples, economy and calendar drafted; Delves renamed rifts; sealed affinity added under `world/sealed/` and checked by a reviewer agent; random opening gods (D-017); SPEC (ENG-04/05/07, WLD-04), architecture tools, narrator prompt and roadmap (M2.5, M3.5) updated.
-- 2026-10-30 Owner's GPU check: Ollama 0.40.13 uses Vulkan on the RX 6700 XT; `qwen3:8b` ran at 100 % GPU (37 of 37 layers, 5.6 GB at a 4,096-token context, about 68 tokens/s on one short prompt) with coherent replies. `moondream` gave garbage on a text-only prompt; `qwen3:8b` did not. Local models are viable; narration quality is judged in M2.
-- 2026-10-30 Whole-repo audit (`docs/audit/2026-10-30-repo-audit.md`) and its fixes in PR #7: the three M0 blockers (D-024: flag registry in `world/data/flags.yaml` and `world/sealed/data/flags.yaml`, enforced by the loader and `tests/world/test_flags.py`; sealed type and path guard), design fixes (D-025), branch-name practice (D-026), canon corrections and gaps G-10 to G-22. Sealed and secret changes passed the reviewer agent.
-- 2026-10-30 M0: uv project, package layout, world loader and reveal-gate grammar, names-only data tables, SQLite store, `pantheon new` with the seeded opening-god draw; 51 tests, engine coverage 100 %, CI runs ruff, mypy and pytest.
+- 2026-11-03 Master upgrade to v4.4.0 (D-040), PR #17 merged.
+- 2026-11-06 M1.7 (D-041): `pantheon session` runs each turn step as a command; `/play` skill; `play-guard` hook (Bash only `uv run pantheon session` and `scripts/saves.sh`, public reads only); saves as a text dump on the `saves` branch; the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b) shows story, Character, Journal and Gear tabs from `session screen` JSON and sends taps to the session as comments.
+- 2026-11-06 D-042: 25 base classes with traits and blurbs (`world/data/classes.yaml`, power_tiers.md table, gods' favoured classes); `class-design` skill; roster page https://claude.ai/artifact/96Gk7pos2FRTar4ezcyRfS.
+- 2026-11-06 First session play, five turns: `docs/playtests/2026-11-06-session-play.md`. The owner: "the game works and the fundamentals are fun", the writing needs work and maybe shortening to move quicker ("we can get to that later"). Ddraig Fawr (he/him), Elementalist attuned to Storm, Enchanter, sworn to Ysmere; timeline `ddb27b36` on the `saves` branch.
 
-- 2026-10-30 M1a: `engine/checks.py` (ENG-04, ENG-05) with band edges, tier gaps -4 to +4, Overcome Conditions and a pinned-hash determinism test (ENG-03). Assumptions in D-028; new gaps G-23, G-24. `.gitattributes` fixes the false drift failure on Windows clones.
+## Next (the M1 build session)
 
-- 2026-10-30 M1.5: events and fold, seven narrator tools, Anthropic adapter, referee, narrator and scribe steps (D-031), character creation, CLI play. Four live local-model runs found: the model decided the Dual Offer itself (now a player command), skipped checks (now rolled first), and took 145 to 359 s per turn. The owner rejected local play (D-032).
-
-- 2026-10-30 Style workshop (forms below): third person past, plain prose, engine numbers in prose, tagged options, plain Oath terms, drawn sheet. A blind trial kept Haiku as narrator.
-
-- 2026-10-30 M1c: `pantheon fork N` and `play --timeline`, schema 2 with a step-by-step upgrade and a backup, refusal of unreadable saves, calendar and `advance_time`, five clocks with the neglect rule, petitions. Hypothesis checks that replay through a real save equals live state. Tried on a copy of the owner's save: all events and turns kept, original unchanged. Its two old timelines cannot fork before their last recorded dice (D-038).
-
-- 2026-11-06 M1.7 (D-041): `pantheon session` (start, prompt, setup, create, begin, tool, narrate, commit, choose, trial and more), `/play` skill, `play-guard` hook, `scripts/saves.sh` with the `saves` branch. 409 tests pass at 96.79 % coverage. Then the terminal look in chat and the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b): 2026-11-06 first real session: taps reach the session, the page's tabs and creation form work, the `saves` push works, and the guard now allows reading Claude Code's own tool-results output. The owner's character Ddraig Fawr (he/him; Cantor, Turning Tide) played turn 1; the owner said turn 1's voice was off (too lyrical), so the skill now checks each scene against D-033. Then the owner asked for new classes: D-042's 25 classes are canon, with a `class-design` skill; the game was forked back to the Dual Offer (timeline ddb27b36; the Cantor run is 83daee68) so he picks from them.
-
-- 2026-11-03 Master upgrade to v4.4.0 (D-040): sync run twice, `--check` OK, 397 tests pass at 97.65 % coverage, guard hook asks on `git push --force`. CI now skips draft PRs.
-
-## Next
-
-0. Owner approves and merges M1.7. Then the owner says "play" in a Claude Code session: the `/play` skill pulls the save, and each turn pushes it to the `saves` branch. The owner's PC save stays on the PC unless pushed with `scripts/saves.sh push` (Git Bash).
-1. Watch in session play: whether the play guard blocks anything play needs, and whether the `saves` push works from the cloud. Same watch list as API play: checks given, `<<CHECK>>` placed, `advance_time` used, no invented belongings or injuries.
-2. Next in the plan is M1d (combat, #16), then M1e (rewards and loot). M1d's new tools (`start_fight`, `fight_move`, `end_fight`) need session support when it merges: `fight_move` is rolled before prose like `request_check`. Tune `world/data/rewards.yaml` from play.
-3. Whenever the owner plays a longer session, save it to `docs/playtests/` from `data/pantheon.db`: this completes M1.5's and M1.6's live transcript. Tables: `turn`, `event` (`payload_json`).
-
-Known from the first live turn (timeline 685eeb5a): about 23,000 tokens in and 4,800 out, about half a cent at list price (estimate from those counts); the prose read well. Watch for invented belongings and injuries (LESSONS).
+1. Owner merges #18 (GIT-07). Cut a branch from `main`. Read BUILD_PLAN "M1: Engine core" for M1d to M1f.
+2. **M1d combat:** bring PR #16 onto current `main` (merge `main` into `m1d-combat`, resolve, re-run checks; never force-push it, GIT-03), or rebuild it from its diff if that is cleaner. Then add session support: `start_fight`, `fight_move` and `end_fight` in `session tool` and `/play`; a chosen `fight_move` rolls before prose like `request_check`; show foe intents and the fight on the page's screen JSON. D-039 lists what #16 left out.
+3. **M1e rewards and loot:** `world/data/rewards.yaml` and Tier 1 loot tables (ENG-09, G-08); items, coin changes and an inventory, so the page's Gear tab shows real things; the pacing simulation script. Canon numbers need `canon:` commits and the owner's approval.
+4. **M1f dev CLI:** `pantheon roll`, `pantheon sheet`, `pantheon log`.
+5. Class traits (D-042) are text only; decide with the owner which to implement in M1d (combat traits) and which wait.
+6. Small fixes found in play: let `session tool` read its JSON from a file (`--file data/tool.json`), so the guard's no-`;` rule and shell quoting stop breaking tool calls; record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
+7. After M1: report requirements met, deferred and defects; offer an audit (VER-09); republish the plan page (D-018).
 
 ## Open questions
 
-- Reward, loot and evolution numbers are engine data to tune in M1 (canon gap G-08).
-- What does training give (G-27)? Time skips work; training gains nothing until the owner answers.
-- Do the D-038 clock rates hold in play? With every clock neglected, The Lantern's Price fills after 180 counted days.
-- Owner confirms the PR #7 canon corrections (sea travel 100 km per day, Tier 0 stat range 15 to 35) and answers gaps G-10 to G-20 before the M3.5 content batches need them (`docs/canon_gaps.md`).
+- Prose length and pace: the owner may want shorter scenes (D-033 says 200 to 400 words). Ask before changing D-033.
+- Reward, loot and evolution numbers are engine data to tune (G-08). What does training give (G-27)?
+- Do the D-038 clock rates hold in play?
+- Owner answers gaps G-10 to G-20 before the M3.5 content batches (`docs/canon_gaps.md`).
 
 ## Plan page (D-018)
 
@@ -57,4 +46,4 @@ Known from the first live turn (timeline 685eeb5a): about 23,000 tokens in and 4
 
 ## Decisions since the last plan update
 
-- 2026-11-06 D-007 to D-038, D-040, D-041 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037, D-038 Assumed).
+- 2026-11-06 D-007 to D-038, D-040 to D-042 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037, D-038 Assumed).
