@@ -37,7 +37,7 @@ from pantheon.engine.progression import choose_evolution, evolution_options, pic
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, Action, EventRecord, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
-from pantheon.engine.tools import attempt_trial, resolve_offer
+from pantheon.engine.tools import attempt_trial, equip_item, resolve_offer, unequip_item, use_item
 from pantheon.engine.traits import needs_attunement, trait_of
 from pantheon.llm.anthropic_adapter import AnthropicClient
 from pantheon.llm.client import LLMClient
@@ -57,7 +57,7 @@ OPENING_INPUT = (
 )
 _REFUSE_TERMS = "No class or level. You grow through shards, gear, allies and reputation."
 _BAR_WIDTH = 10
-_COMMANDS = "[dim]Commands: sheet · hooks · help · quit[/dim]"
+_COMMANDS = "[dim]Commands: sheet · hooks · use/equip/unequip <item> · help · quit[/dim]"
 _FIGHT_COMMANDS = "[dim]Commands: inspect 2 · sheet · hooks · help · quit[/dim]"
 _BARE_COMMANDS = {
     "sheet": "/sheet",
@@ -67,11 +67,13 @@ _BARE_COMMANDS = {
     "quit": "/quit",
     "trial": "/trial",
 }
+_BARE_GEAR = re.compile(r"(use|equip|unequip)\s+\S+", re.I)
 _BARE_INSPECT = re.compile(r"inspect(\s+\S+)?", re.I)
 _HELP = (
     "Describe what you do in your own words; the scene names the odds of what your character weighs, and a "
     "risky action shows its odds before it rolls. In a fight, type a move's number or your own.\n"
     "Commands: sheet (your character) · hooks (what may come back) · inspect 2 (a fight move, free)\n"
+    "use <item> · equip <item> · unequip weapon|armour (gear, no turn)\n"
     "help (this) · quit (saves first). The Oath choices are numbers on the list."
 )
 _NO_LIST = "There is no list outside a fight; type what you do."
@@ -576,6 +578,19 @@ class Game:
         if any(type_ == "level_up" for type_, _ in outcome.events):
             self.console.print(sheet(self.state, self.world))
 
+    def _gear(self, verb: str, what: str) -> None:
+        """Use, equip or unequip through the engine, with no turn (D-047); a refusal changes nothing."""
+        handlers = {"use": use_item, "equip": equip_item, "unequip": unequip_item}
+        sim = self._command_sim()
+        try:
+            handlers[verb](sim, what)
+        except Rejected as exc:
+            self.console.print(f"[red]{escape(str(exc))}[/red]")
+            return
+        self._commit_commands(sim)
+        for line in ledger_lines(sim.events):
+            self.console.print(f"  {line}")
+
     def _settle_offer(self, choice: str) -> str | None:
         sim = self._command_sim()
         try:
@@ -637,6 +652,8 @@ class Game:
                 self.console.print("Use the numbers on the list to swear an Oath.")
             case "/refuse":
                 return self._settle_offer("refuse")
+            case "/use" | "/equip" | "/unequip":
+                self._gear(command[1:].lower(), rest.strip())
             case _:
                 self.console.print(_HELP)
         return None
@@ -669,7 +686,7 @@ class Game:
             if not line:
                 continue
             line = _BARE_COMMANDS.get(line.lower(), line)
-            if _BARE_INSPECT.fullmatch(line):
+            if _BARE_INSPECT.fullmatch(line) or _BARE_GEAR.fullmatch(line):
                 line = f"/{line}"
             choice = None
             if line.isdecimal() and first <= int(line) < first + len(offers):
