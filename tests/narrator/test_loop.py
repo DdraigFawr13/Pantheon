@@ -9,7 +9,7 @@ from pantheon.engine.commands import CharacterChoices, choose_class, choose_prof
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import GameState, xp_to_next
 from pantheon.engine.timeline import Rules, Simulation
-from pantheon.engine.tools import resolve_offer
+from pantheon.engine.tools import apply_tool, resolve_offer
 from pantheon.llm.client import LLMReply, ToolCall
 from pantheon.llm.mock import MockClient
 from pantheon.narrator.assemble import _PROMPT, SCENE_LENGTH, assemble, history_window
@@ -560,3 +560,19 @@ def test_nar08_a_previewed_check_refused_at_the_roll_rolls_nothing_else() -> Non
     gone = {**HARD_CLIMB, "challenge_tier": 99}
     outcome, client = run([LLMReply(text=PROSE), SUGGEST], locks={}, chosen_check=gone, previewed=True)
     assert outcome.state.checks_made == 0 and len(client.calls) == 2  # No referee ran.
+
+
+def test_prompt_lists_known_people_and_places() -> None:
+    state, _ = sworn_state()
+    _, quiet = assemble(state, WORLD, [], "I look around")
+    assert "Known people:" not in quiet[-1]["content"] and "Known places:" not in quiet[-1]["content"]
+    sim = Simulation(state, RngStreams.from_seed(2), RULES, 3)
+    tam = {"name": "Tam", "role": "rifter", "tier": 1, "disposition": "wary"}
+    cellar = {"name": "The Drowned Cellar", "region": "ford_reaches", "description": "A flooded cellar."}
+    assert apply_tool(sim, "introduce_npc", tam).accepted
+    assert apply_tool(sim, "introduce_location", cellar).accepted
+    _, messages = assemble(sim.state, WORLD, [], "I look around")
+    latest = messages[-1]["content"]
+    assert "Known people:\n- Tam, rifter, Tier 1, wary (turn 3)" in latest
+    assert "Known places:\n- The Drowned Cellar, The Ford Reaches: A flooded cellar." in latest
+    assert "Reuse a known person or place" in _PROMPT.read_text(encoding="utf-8")

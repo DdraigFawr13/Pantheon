@@ -104,6 +104,17 @@ def due_material(state: GameState, world: World) -> str:
         f"- Hook {h.id} (turn {h.turn}): {h.description}. Due: {h.due_condition}."
         for h in open_hooks[-_MAX_HOOKS_SHOWN:]
     ]
+    if state.npcs:
+        lines.append("Known people:")
+        lines += [
+            f"- {n.name}, {n.role}, Tier {n.tier}, {n.disposition} (turn {n.turn})"
+            for n in state.npcs[-_MAX_HOOKS_SHOWN:]
+        ]
+    if state.locations:
+        lines.append("Known places:")
+        lines += [
+            f"- {p.name}, {p.region_name}: {p.description}" for p in state.locations[-_MAX_HOOKS_SHOWN:]
+        ]
     for clock in world.data.clocks:
         value = clock_value(state, world.data, clock.id)
         if value >= clock.segments:

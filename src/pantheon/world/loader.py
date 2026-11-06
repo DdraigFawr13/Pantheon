@@ -56,6 +56,7 @@ class RegisteredFlag:
     kind: str
     set_by: str
     sealed: bool
+    needs_npc_role: str | None = None
 
 
 @dataclass
@@ -140,7 +141,7 @@ def load_flags(path: Path, *, sealed: bool) -> list[RegisteredFlag]:
 
 
 def _registered(flag: Flag, sealed: bool) -> RegisteredFlag:
-    return RegisteredFlag(flag.key, flag.kind, flag.set_by, sealed)
+    return RegisteredFlag(flag.key, flag.kind, flag.set_by, sealed, flag.needs_npc_role)
 
 
 STATE_FIELDS = ("tier", "level")
@@ -175,6 +176,7 @@ _TABLES = (
     "clocks",
     "combat",
     "items",
+    "regions",
 )
 _LATER_TABLES = ("skills", "titles", "evolutions")  # Canon batches in M3.5; the game runs without them.
 

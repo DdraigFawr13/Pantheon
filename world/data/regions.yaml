@@ -1,0 +1,32 @@
+# Regions, key locations and named notables (canon data), transcribed from world/geography.md.
+# A region's tier_cap is the highest Tier anyone living there can be; null means geography.md names none.
+# Only the Ford Reaches has one ("Residents of the Ford Reaches are at most Tier 3", Starting area).
+# The engine uses this to refuse a duplicate place or person and a stranger above the cap (introduce_npc,
+# introduce_location). A canon gap, G-40, asks where the character is; until then the home region applies.
+regions:
+  - {id: hale_plains, name: Hale Plains, tier_cap: null}
+  - {id: ironmarch_hills, name: Ironmarch Hills, tier_cap: null}
+  - {id: southern_coast, name: Southern Coast, tier_cap: null}
+  - {id: antler_wilds, name: Antler Wilds, tier_cap: null}
+  - {id: barrow_lands, name: Barrow-Lands, tier_cap: null}
+  - {id: candle_peaks, name: Candle Peaks, tier_cap: null}
+  - {id: ford_reaches, name: The Ford Reaches, tier_cap: 3}
+
+places:
+  - {id: halewick, name: Halewick, region: hale_plains}
+  - {id: kaulgard, name: Kaulgard, region: ironmarch_hills}
+  - {id: saltmere, name: Saltmere, region: southern_coast}
+  - {id: halcyr, name: Halcyr, region: candle_peaks}
+  - {id: sorrowfield, name: Sorrowfield, region: barrow_lands}
+  - {id: tallyhouse_of_brannock, name: The Tallyhouse of Brannock, region: ford_reaches}
+  - {id: cinder_ford, name: Cinder Ford, region: ford_reaches}
+  - {id: sunken_stair, name: The Sunken Stair, region: ford_reaches}
+  - {id: rooks_road, name: "The Rooks' Road", region: ford_reaches}
+  - {id: greywater_shrine, name: Greywater Shrine, region: ford_reaches}
+  # geography.md gives the Long Wall's region as "Hale-Ironmarch border", which is not a region; G-40.
+  - {id: long_wall, name: The Long Wall, region: hale_plains}
+  - {id: eldermere, name: Eldermere, region: antler_wilds}
+  - {id: black_orchard, name: The Black Orchard, region: barrow_lands}
+
+notables:
+  - {name: Hale Dunmore, role: Tallyhouse Registrar, tier: 3}

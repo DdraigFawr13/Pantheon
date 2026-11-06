@@ -112,11 +112,14 @@ class Flag(_Strict):
     set_by: Literal["engine", "beat", "narrator"]
     when: str = Field(min_length=1)
     accept: str | None = None
+    needs_npc_role: str | None = None  # Open only once a known person has this role (introduce_npc).
 
     @model_validator(mode="after")
     def _narrator_flags_need_a_rule(self) -> Flag:
         if self.set_by == "narrator" and not self.accept:
             raise ValueError(f"flag {self.key}: set_by narrator needs an accept rule the engine checks")
+        if self.needs_npc_role and self.set_by != "narrator":
+            raise ValueError(f"flag {self.key}: needs_npc_role is only for narrator flags")
         return self
 
 
@@ -219,6 +222,46 @@ class Clock(_Strict):
         return self
 
 
+class Region(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    tier_cap: int | None = Field(ge=0, le=8)  # The key is required; null means canon names no cap.
+
+
+class Place(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    region: str
+
+
+class Notable(_Strict):
+    """A person canon already names, so the narrator cannot introduce them as a stranger."""
+
+    name: str
+    role: str
+    tier: int = Field(ge=0, le=8)
+
+
+class Regions(_Strict):
+    regions: tuple[Region, ...]
+    places: tuple[Place, ...]
+    notables: tuple[Notable, ...] = ()
+
+    @model_validator(mode="after")
+    def _ids_are_unique_and_places_are_in_regions(self) -> Regions:
+        for kind, ids in (("region", [r.id for r in self.regions]), ("place", [p.id for p in self.places])):
+            if len(set(ids)) != len(ids):
+                raise ValueError(f"{kind} ids must be unique")
+        known = {r.id for r in self.regions}
+        for place in self.places:
+            if place.region not in known:
+                raise ValueError(f"place {place.id}: unknown region {place.region}")
+        return self
+
+    def region_of(self, region_id: str) -> Region | None:
+        return next((r for r in self.regions if r.id == region_id), None)
+
+
 CheckDifficulty = Literal["routine", "hard", "severe", "heroic"]
 
 
@@ -298,6 +341,7 @@ class GameData(_Strict):
     rewards: Rewards
     clocks: tuple[Clock, ...]
     combat: Combat
+    regions: Regions
     skills: tuple[Skill, ...] = ()
     items: tuple[Item, ...] = ()
     titles: tuple[Title, ...] = ()

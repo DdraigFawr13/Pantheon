@@ -22,6 +22,7 @@ flags:
     set_by: narrator
     when: "the player meets a Vessel who speaks for Drovash (world/pantheon.md, Petitions)"
     accept: "only after an npc_introduced event whose role is vessel:drovash"
+    needs_npc_role: "vessel:drovash"
   - key: unwritten_path
     kind: bool
     set_by: engine

@@ -48,7 +48,7 @@ from pantheon.engine.preview import (
 from pantheon.engine.progression import choose_evolution, evolution_options, pick_skill
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, GameState, xp_to_next
-from pantheon.engine.timeline import Rejected, Rules, Simulation
+from pantheon.engine.timeline import Rejected, Simulation
 from pantheon.engine.tools import (
     ToolResult,
     apply_tool,
@@ -87,6 +87,7 @@ from pantheon.ui.cli.app import (
     offer_choices,
     offer_start,
     offer_terms,
+    rules_for,
     sheet,
     show_fight,
     status_line,
@@ -143,7 +144,7 @@ class Session:
         self.world = world
         self.config = config
         self.console = console
-        self.rules = Rules(world.data, {k: f.set_by for k, f in world.flags.items()})
+        self.rules = rules_for(world)
 
     # Files beside the database.
 
@@ -868,6 +869,14 @@ class Session:
                 f"{s.target} {'fragment' if s.fragment else s.kind} ({s.rarity})" for s in state.shards
             ],
             "rumours": list(state.rumours),
+            "cast": [
+                {"name": n.name, "role": n.role, "tier": n.tier, "disposition": n.disposition, "turn": n.turn}
+                for n in state.npcs
+            ],
+            "places": [
+                {"name": p.name, "region": p.region_name, "description": p.description, "turn": p.turn}
+                for p in state.locations
+            ],
             "clocks": clocks,
             "timeline": tid[:8],
             "turn": last,

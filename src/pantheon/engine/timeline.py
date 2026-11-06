@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from pantheon.engine.checks import Outcome
@@ -21,6 +21,7 @@ class Rules:
     data: GameData
     flag_setters: dict[str, str]
     permadeath: bool = False
+    flag_roles: dict[str, str] = field(default_factory=dict)  # Flag key to the NPC role that opens it.
 
 
 class Simulation:

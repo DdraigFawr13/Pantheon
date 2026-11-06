@@ -56,10 +56,12 @@ SCRIBE_PROMPT = (
     "[Scribe step, no more story. Record only what this scene really did; most turns need just one or two "
     "calls. grant_xp if a check was passed or survived, if offered. apply_effect if the player was hurt (use "
     "a check_id or hazard:<name>). adjust_standing only if a named person or god who matters saw a deed. "
-    "register_hook only for a new choice or person who should matter later. advance_time whenever the scene "
-    "took real time, such as a journey or a sleep (rest also heals). send_petition if a sworn god asked a "
-    "small thing; resolve_petition when one was done or refused. engage_clock if a tested deed touched a "
-    "global clock's threads. start_fight when foes attack or the player attacks them, and end_fight only if "
+    "register_hook only for a new choice or person who should matter later. introduce_npc or "
+    "introduce_location the first time an invented person or place matters, and reuse the known ones. "
+    "advance_time whenever the scene took real time, such as a journey or a sleep (rest also heals). "
+    "send_petition if a sworn god asked a small thing; resolve_petition when one was done or refused. "
+    "engage_clock if a tested deed touched a global clock's threads. start_fight when foes attack or the "
+    "player attacks them, and end_fight only if "
     "the story ends one early; the engine sets all fight damage, and searches won fights itself. grant_loot "
     "when a passed check opened a stash (cache:<what>) or earned a bounty (bounty:<who>). adjust_inventory "
     "and adjust_currency when items or coin change hands in the story, at the economy list's prices; "
@@ -75,6 +77,8 @@ SCRIBE_TOOLS = (
     "apply_effect",
     "adjust_standing",
     "register_hook",
+    "introduce_npc",
+    "introduce_location",
     "set_flag",
     "advance_time",
     "send_petition",

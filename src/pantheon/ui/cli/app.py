@@ -245,6 +245,17 @@ def sheet(state: GameState, world: World) -> Panel:
     return Panel("\n".join(lines), title="The Ledger" if state.oaths else "Unwritten", border_style="yellow")
 
 
+def rules_for(world: World, permadeath: bool = False) -> Rules:
+    """The rules both CLIs run: flags the narrator may open with a known person are kept apart (D-024)."""
+    assert world.data is not None
+    return Rules(
+        world.data,
+        {k: f.set_by for k, f in world.flags.items() if not f.needs_npc_role},
+        permadeath,
+        {k: f.needs_npc_role for k, f in world.flags.items() if f.needs_npc_role},
+    )
+
+
 def ledger_lines(events: list[EventRecord]) -> list[str]:
     """What the engine decided this turn, shown beside the prose (GAME-04)."""
     lines = []
@@ -268,6 +279,10 @@ def ledger_lines(events: list[EventRecord]) -> list[str]:
                 )
             case "rumour_recorded":
                 lines.append(f"Rumour: {p['text']}")
+            case "npc_introduced":
+                lines.append(f"Met: {p['name']}, {p['role']} (Tier {p['tier']}, {p['disposition']})")
+            case "location_introduced":
+                lines.append(f"Found: {p['name']} ({p['region_name']})")
             case "oath_sworn":
                 lines.append(
                     f"[bold]Oath sworn:[/bold] {p['oath']}. {p['affinity']} rank {p['affinity_rank']}."
@@ -739,7 +754,7 @@ def _play(args: argparse.Namespace, console: Console, ask: Ask, client: LLMClien
             )
             return 1
         client = AnthropicClient(config.narrator_model, config.base_url, config.think)
-    rules = Rules(world.data, {k: f.set_by for k, f in world.flags.items()}, config.permadeath)
+    rules = rules_for(world, config.permadeath)
     with Database.open(Path(args.db) if args.db else config.db_path) as db:
         tid = db.find_timeline(args.timeline) if args.timeline else db.latest_timeline()
         if tid is None or args.fresh:
