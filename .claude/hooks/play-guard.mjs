@@ -42,7 +42,7 @@ function inside(path) {
 const READABLE = [/^prompts\/[^/]+$/, /^world\/[^/]+\.md$/, /^data\//, /^\.claude\/skills\/play\//];
 // Session steps the play skill uses. `export` and `import` replace or write saves, so only scripts/saves.sh runs them.
 const STEPS = new Set(["start", "stop", "status", "prompt", "tools", "setup", "create", "begin", "tool", "narrate",
-  "commit", "abandon", "choose", "trial", "sheet", "hooks", "screen", "inspect"]);
+  "commit", "abandon", "go", "choose", "trial", "use", "equip", "unequip", "sheet", "hooks", "screen", "inspect"]);
 // Tools that read or write no project file.
 const HARMLESS = new Set(["ArtifactComments", "AskUserQuestion", "ToolSearch", "TodoWrite", "TaskCreate", "TaskUpdate",
   "TaskList", "TaskGet", "ReadNotifications"]);
@@ -95,6 +95,8 @@ function bashAllowed(command) {
   if (w[i] === "-q") i++;
   if (w[i] !== "pantheon" || w[i + 1] !== "session" || !STEPS.has(w[i + 2])) return false;
   // Steps that take a file read or write it only in the save folder.
+  const file = w.indexOf("--file");
+  if (file >= 0 && !(inside(w[file + 1]) || "").startsWith("data/")) return false;
   if (w[i + 2] === "narrate" || w[i + 2] === "screen") {
     const rel = inside(w[i + 3]);
     return w.length === i + 4 && rel !== null && rel.startsWith("data/");
