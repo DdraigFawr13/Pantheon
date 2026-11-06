@@ -21,11 +21,11 @@ From `docs/BUILD_PLAN.md` M2c and D-052 (3): the narrator may invent people and 
 
 - No memory or retrieval: known people and places go into the prompt as a short list (the last 12, like hooks); FTS5 and summaries are M3 (MEM-02, MEM-03).
 - No second or third Oath per god: `world/data/oaths.yaml` holds one Oath per god (G-20), so a later Oath is always from a god not yet sworn.
-- No Oath for the Unwritten (a character who refused both opening Oaths): whether they may swear later is canon (G-37, new); `offer_oath` is rejected for them.
+- No Oath for the Unwritten (a character who refused both opening Oaths): whether they may swear later is canon (G-41, new); `offer_oath` is rejected for them.
 - No Oath conflicts (`resolve_oath_conflict` is a later player command, D-052 (6)) and no perk mechanics: Oath perks are prose until G-14 settles check categories, so a Breach suspends the perk in words and the Standing in numbers (Open question 1).
 - No engine-checked Burdens: the Turning Tide's 30 days could be checked by the calendar, but D-038 (11) defers Oath timers; `test_burden` is the narrator's judgement, as `docs/architecture.md` section 6 says (Open question 2).
 - No beats: `beat:<clock_id>` causes are listed in data and refused by `advance_clock` until M2d adds `record_beat`.
-- No NPC stats, pools or foe entries: a fight with a known NPC still goes through `start_fight` with its own `foes`. No character location: where the character is becomes state later (G-36, new).
+- No NPC stats, pools or foe entries: a fight with a known NPC still goes through `start_fight` with its own `foes`. No character location: where the character is becomes state later (G-40, new).
 - No change to the Dual Offer (`resolve_offer`) or to Trials.
 
 ## Journeys and checks
@@ -100,7 +100,7 @@ Each check is a new test, named with its requirement ID, in `tests/engine/test_s
 - A1 The only region tier cap is the Ford Reaches' 3 (`world/geography.md:48`). The factions' "Highest tier present" lines are faction facts, not caps, so other regions carry no cap.
 - A2 The clock causes in the canon round below are the proposal; the owner's round sets them.
 - A3 `atonement_days: 90`, a season, so a Breach is not forgotten by `_lapse_petitions` in the petition's 7 days.
-- A4 Until the character's whereabouts are state (G-36), `introduce_npc` applies the Ford Reaches cap to every call, and takes no `region` argument.
+- A4 Until the character's whereabouts are state (G-40), `introduce_npc` applies the Ford Reaches cap to every call, and takes no `region` argument.
 - A5 Oath slots by tier from D-010 live as data `rewards.oath.slots: {1: 1, 2: 2, 4: 3, 6: 4}`; a tier between thresholds takes the last threshold reached (Tier 3: 2, Tier 5: 3). Sworn Oaths, breached or not, fill slots. D-010 gains a pointer to the data (SRC-01).
 - A6 A god offers only when Standing with it is 0 or more (`state.standing.get(god, 0)`).
 - A7 `Hook.atones: str | None` names the Oath an atonement petition restores; no description matching.
@@ -113,7 +113,7 @@ Each check is a new test, named with its requirement ID, in `tests/engine/test_s
 - **Free-text NPC and place notes in `register_hook`**: rejected because hooks are consequences, not a cast list; the prompt would mix them and a duplicate could never be refused. It fails when the narrator names the same Rifter three ways.
 - **A full canon cast file for `introduce_npc` to check against**: rejected because canon names only Dunmore and the caravan-master (`world/protagonist_seed.md:56`) and a cast is M3.5 content. Kept instead: a `notables` list in `regions.yaml` with the people canon already names.
 - **`advance_clock` with check or fight outcomes as causes** (the first draft): rejected because a failed check about anything would move The Rift Tide, which is the failure "only when the story supports it" forbids, and `fight_ended` results (`victory`, `fled`, `story`, `death`, `reckoning`) name no faction. It fails after a tavern argument. Standing changes name an entity, so they can be tied to a clock.
-- **A region argument or a "last location" default for `introduce_npc`**: rejected because either lets the narrator pass a Tier 4 into Cinder Ford by naming another region. It fails the first time the narrator wants a stronger foe. The cap is one number until the character's region is state (G-36).
+- **A region argument or a "last location" default for `introduce_npc`**: rejected because either lets the narrator pass a Tier 4 into Cinder Ford by naming another region. It fails the first time the narrator wants a stronger foe. The cap is one number until the character's region is state (G-40).
 - **Suspending the Oath's +1 affinity rank on a Breach by emitting a lower rank**: rejected because a rank already spent on a skill would leave the sheet inconsistent, and canon does not say what suspension does to skills learned. Open question 1.
 - **Letting the narrator swear with `offer_oath` plus an `accepted` flag**: rejected by D-029: the first live run swore for the player.
 - **A Breach that the player confirms by command**: not chosen; `docs/architecture.md` section 6 makes `test_burden` the narrator's judgement with the situation recorded. Open question 2 puts the alternative to the owner.
@@ -131,7 +131,7 @@ Each check is a new test, named with its requirement ID, in `tests/engine/test_s
 
 ### Data (canon, one `canon:` commit per slice, WLD-03)
 
-- S1, `world/data/regions.yaml` (new, transcribed from `world/geography.md` Regions and Key locations): `regions: [{id, name, tier_cap: int | null}]` with ids `hale_plains`, `ironmarch_hills`, `southern_coast`, `antler_wilds`, `barrow_lands`, `candle_peaks`, `ford_reaches` (`tier_cap: 3`, A1); `places: [{id, name, region}]` for the 13 key locations (The Long Wall's region is "Hale-Ironmarch border" in the table: it goes under `hale_plains` with a comment, and G-36 asks); `notables: [{name, role, tier}]` with `Hale Dunmore, Tallyhouse Registrar, 3` (`world/geography.md:48`). Schema classes `Region`, `Place`, `Notable`, `Regions` in `world/schemas.py` (strict, like `Clock`), `GameData.regions`, loaded by `world/loader.py` like `clocks`. `world/data/README.md` lists it. `flags.yaml`: `met_drovash_vessel` gains `needs_npc_role: vessel:drovash` (`Flag.needs_npc_role: str | None`).
+- S1, `world/data/regions.yaml` (new, transcribed from `world/geography.md` Regions and Key locations): `regions: [{id, name, tier_cap: int | null}]` with ids `hale_plains`, `ironmarch_hills`, `southern_coast`, `antler_wilds`, `barrow_lands`, `candle_peaks`, `ford_reaches` (`tier_cap: 3`, A1); `places: [{id, name, region}]` for the 13 key locations (The Long Wall's region is "Hale-Ironmarch border" in the table: it goes under `hale_plains` with a comment, and G-40 asks); `notables: [{name, role, tier}]` with `Hale Dunmore, Tallyhouse Registrar, 3` (`world/geography.md:48`). Schema classes `Region`, `Place`, `Notable`, `Regions` in `world/schemas.py` (strict, like `Clock`), `GameData.regions`, loaded by `world/loader.py` like `clocks`. `world/data/README.md` lists it. `flags.yaml`: `met_drovash_vessel` gains `needs_npc_role: vessel:drovash` (`Flag.needs_npc_role: str | None`).
 - S2, `world/data/rewards.yaml`: `oath: {breach_standing: 20, atonement_days: 90, offer_days: 30, slots: {1: 1, 2: 2, 4: 3, 6: 4}}` (20 from `world/power_tiers.md:141`; the rest A3, A5, A9). Schema `OathRewards` on `Rewards.oath`.
 - S3, `world/data/clocks.yaml`: each clock gains `causes: [<cause>, …]`, `Clock.causes: tuple[str, ...]` with at least one entry, each `standing:<id>` (a god id or a faction Standing key: `hale`, `tallyhouse`, `convent`, `lantern`, `harbors`, `underlanes`, `ironmarch`, `wilds` as `world/factions.md` names them; the validator in `world/schemas.py` holds the list as `STANDING_ENTITIES`) or `beat:<this clock's id>`. Proposed (A2, the owner's call): `seat_vote: [standing:hale, standing:tallyhouse, standing:veshra, beat:seat_vote]`; `rift_tide: [standing:tallyhouse, beat:rift_tide]`; `grain_war: [standing:hale, standing:ironmarch, standing:kaul, beat:grain_war]`; `ember_fever: [standing:convent, standing:maru_ghen, beat:ember_fever]`; `lanterns_price: [standing:lantern, standing:ilvane, beat:lanterns_price]`.
 
@@ -179,7 +179,7 @@ Each later slice rebases on the one before: all three add entries to `SCRIBE_TOO
 
 - **Morgan tries:** play one turn in which the narrator meets someone; the Ledger reads "Met: …", the Journal tab shows People and Places, the next scene reuses the name; the narrator may set `met_drovash_vessel` after meeting a Vessel of Drovash.
 - **Checks that fail now:** J1, J2, J3, J7 (people and places), J8 (regions), J9.
-- **Files:** `world/data/regions.yaml` (new, `canon:`), `world/data/flags.yaml` (`needs_npc_role`, `canon:`), `world/data/README.md`, `src/pantheon/world/schemas.py` (`Region`, `Place`, `Notable`, `Regions`, `GameData.regions`, `Flag.needs_npc_role`), `src/pantheon/world/loader.py`, `tests/world/test_loader.py` (J8), `src/pantheon/engine/state.py` (`Npc`, `Location`, folds), `src/pantheon/engine/tools.py` (two tools, `_set_flag`, constants, `_TOOLS`), `src/pantheon/narrator/loop.py`, `src/pantheon/narrator/assemble.py`, `prompts/narrator.md`, `src/pantheon/ui/cli/app.py` (`ledger_lines`), `src/pantheon/ui/cli/session.py` (`screen`), `docs/play/pantheon-table.html` (Journal cards; republish), `tests/engine/test_story_tools.py`, `tests/narrator/test_loop.py`, `tests/test_session.py`, `docs/canon_gaps.md` (G-36, G-37).
+- **Files:** `world/data/regions.yaml` (new, `canon:`), `world/data/flags.yaml` (`needs_npc_role`, `canon:`), `world/data/README.md`, `src/pantheon/world/schemas.py` (`Region`, `Place`, `Notable`, `Regions`, `GameData.regions`, `Flag.needs_npc_role`), `src/pantheon/world/loader.py`, `tests/world/test_loader.py` (J8), `src/pantheon/engine/state.py` (`Npc`, `Location`, folds), `src/pantheon/engine/tools.py` (two tools, `_set_flag`, constants, `_TOOLS`), `src/pantheon/narrator/loop.py`, `src/pantheon/narrator/assemble.py`, `prompts/narrator.md`, `src/pantheon/ui/cli/app.py` (`ledger_lines`), `src/pantheon/ui/cli/session.py` (`screen`), `docs/play/pantheon-table.html` (Journal cards; republish), `tests/engine/test_story_tools.py`, `tests/narrator/test_loop.py`, `tests/test_session.py`, `docs/canon_gaps.md` (G-40, G-41).
 - **Waits on:** none.
 
 ### S2 Oaths after the opening and Burdens
@@ -210,6 +210,6 @@ Each later slice rebases on the one before: all three add entries to `SCRIBE_TOO
 
 ## Open questions
 
-1. What does "blessing suspended" do to the Oath's +1 affinity rank and its perk while breached? Canon (`world/power_tiers.md:141`) names the effect, not the mechanics; perks are not modelled (G-14). This spec shows the suspension and charges Standing only; G-38 for the owner.
+1. What does "blessing suspended" do to the Oath's +1 affinity rank and its perk while breached? Canon (`world/power_tiers.md:141`) names the effect, not the mechanics; perks are not modelled (G-14). This spec shows the suspension and charges Standing only; G-42 for the owner.
 2. Should a Breach need the player's confirmation (the narrator proposes, the player confirms by command), or stay the narrator's judgement as `docs/architecture.md` section 6 says? Recommendation: the narrator's judgement, with the situation shown; revisit after the owner's playtest if a Breach ever feels unfair.
 3. Should S3 wait for M2d's beats? Recommendation: build it in M2c with Standing causes; beats add to the same data later.
