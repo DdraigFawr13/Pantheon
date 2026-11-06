@@ -25,7 +25,7 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 ## Next
 
 1. Audit fixes merged as PR #24 (owner approved 2026-11-06).
-2. **In progress (branch `claude/plan-m2`): plan M2** (`planning-interview`). Round 1 form is out (link below, collection `m2round1`); wait for "round 1 done". Then the review round, the final page and write-spec. Found: the bounty board is planned twice (M2 item 7, M3.5 batch 4).
+2. **In progress (branch `claude/plan-m2`, draft PR #26): plan M2** (`planning-interview`). Round 1 answered (hints, odds before a roll, 150 to 250 words). The review page with round 2 is out (link below, collection `m2review1`); wait for "review done". Then the final page and write-spec.
 3. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
@@ -46,6 +46,7 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 ## Design forms (owner's answers live in each page's database)
 
 - M2 round 1: https://claude.ai/artifact/S1M8kTeHdi6pX1njM7FXvA
+- M2 review and round 2: https://claude.ai/artifact/LcHA2Zu4vbVaX4jYuhdBEP
 
 - Round 1: https://claude.ai/artifact/JSEqjnAXHhNCrWkR4fXdwQ
 - Review and round 2: https://claude.ai/artifact/RcPLtGKcnpqMVpqvQLtUtQ
