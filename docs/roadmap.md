@@ -71,7 +71,7 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 ## M4: Branching structure
 
 - Arc skeleton format (beats with preconditions) and beat scheduler.
-- Soft guidance back to the story (owner, 2026-11-06; D-045): when the player strays, the scheduler keeps open threads that lead to planned story lines and progression in reach. A due beat or hook gets one way back in each turn's options and closing thought, in the scene's own terms. It is never forced and never labelled "main quest", and if the player ignores it the world moves on. It replaces D-045's prompt rule with an engine-chosen thread.
+- Soft guidance back to the story (owner, 2026-11-06; D-048): when the player strays, the scheduler keeps open threads that lead to planned story lines and progression in reach. A due beat or hook gets one way back in each turn's options and closing thought, in the scene's own terms. It is never forced and never labelled "main quest", and if the player ignores it the world moves on. It replaces D-048's prompt rule with an engine-chosen thread.
 - Global clocks and a faction tick (clocks advance on elapsed in-world time and on events).
 - Hook ledger surfaces due hooks to the narrator.
 - Oath conflict detection producing forced-choice scenes.
