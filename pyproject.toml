@@ -42,7 +42,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src/pantheon/engine"]
+files = ["src/pantheon"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

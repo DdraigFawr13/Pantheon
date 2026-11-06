@@ -121,7 +121,7 @@ def assemble(
     rest = rest.replace("{{chronicle}}", "(not kept in this build; recent turns follow as messages)").replace(
         "{{retrieved_lore}}", lore
     )
-    system = [
+    system: list[dict[str, Any]] = [
         {"type": "text", "text": prefix + canon, "cache_control": {"type": "ephemeral"}},
         {"type": "text", "text": rest.strip()},
     ]

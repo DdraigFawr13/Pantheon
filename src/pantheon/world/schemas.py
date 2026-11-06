@@ -192,4 +192,5 @@ class GameData(_Strict):
 
     def class_of(self, class_id: str | None) -> BaseClass | Evolution | None:
         """A base class or an evolved one, by id. The engine treats both the same after evolving."""
-        return next((c for c in (*self.classes, *self.evolutions) if c.id == class_id), None)
+        known: tuple[BaseClass | Evolution, ...] = (*self.classes, *self.evolutions)
+        return next((c for c in known if c.id == class_id), None)

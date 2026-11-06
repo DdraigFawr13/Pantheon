@@ -67,7 +67,7 @@ Requirement IDs are stable. Reference them in commits and tests.
 | First UI | CLI (`rich`) | Fastest path to a playable loop |
 | Second UI | FastAPI + server-sent events + HTMX | Streaming prose, no SPA build step |
 | Tests | `pytest`, `pytest-cov`, `hypothesis` for engine invariants | Seeded, deterministic; coverage measures OPS-05 |
-| Lint/type | `ruff`, `mypy --strict` on `engine/` | Engine correctness is the project's backbone |
+| Lint/type | `ruff`, `mypy --strict` on `src/pantheon` (D-044) | Engine correctness is the project's backbone |
 
 ## 4. Layout to create
 
@@ -88,7 +88,7 @@ The `engine/` package shall not import from `narrator/`, `llm/`, or `ui/`. Enfor
 ## 6. Definition of done (per milestone)
 
 - All acceptance criteria in `docs/roadmap.md` for the milestone pass.
-- `ruff`, `mypy --strict` (engine), and `pytest` pass.
+- `ruff`, `mypy --strict` (all of `src/pantheon`, D-044), and `pytest` pass.
 - A short playtest transcript is saved to `docs/playtests/` for any milestone that touches the narrator loop.
 - `docs/DECISIONS.md` is current.
 
