@@ -18,9 +18,10 @@ _LORE = ("peoples", "geography", "factions", "economy")
 _OPENING_LORE = "protagonist_seed"
 _PROMPT = Path(__file__).resolve().parents[3] / "prompts" / "narrator.md"
 _MAX_HOOKS_SHOWN = 12
+SCENE_LENGTH = "150 to 250 words"  # The one home of the scene length (D-033 as amended by D-052).
 # Small local models follow the end of the prompt best. Not stored with the turn (first live playtest).
 REMINDER = (
-    "[Narrator: write the scene once: 200 to 400 words, third person, past tense, close on the character, in "
+    f"[Narrator: write the scene once: {SCENE_LENGTH}, third person, past tense, close on the character, in "
     "plain everyday prose. The character reasons on the page, using stats by name, with a dry italic thought "
     "now and then. Numbers only from the sheet or this turn's results; never state dice. Invent no "
     "belongings and no injury the result did not give. Move the scene forward with something new, and never "
@@ -138,6 +139,7 @@ def assemble(
     """Return (system blocks, messages). The first block is the stable, cached canon prefix (OPS-04)."""
     template = _PROMPT.read_text(encoding="utf-8").split("\n---\n", 1)[1].strip()
     template = template.replace("`config.gameplay.violence`", f'the "{violence}" setting')
+    template = template.replace("{{scene_length}}", SCENE_LENGTH)
     prefix, rest = template.split("{{canon_core}}")
     canon = "\n\n".join(_public_body(world, entry) for entry in _CANON_CORE)
     lore = "\n\n".join(_public_body(world, entry) for entry in prompt_lore_ids(state))

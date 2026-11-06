@@ -12,7 +12,7 @@ from pantheon.engine.timeline import Rules, Simulation
 from pantheon.engine.tools import resolve_offer
 from pantheon.llm.client import LLMReply, ToolCall
 from pantheon.llm.mock import MockClient
-from pantheon.narrator.assemble import assemble, history_window
+from pantheon.narrator.assemble import _PROMPT, SCENE_LENGTH, assemble, history_window
 from pantheon.narrator.loop import TurnOutcome, take_turn
 from pantheon.narrator.notices import CHECK_MARKER, check_notice
 from pantheon.narrator.validators import prose_problems, strip_action_list
@@ -371,6 +371,14 @@ def test_nar01_layers_are_in_fixed_order() -> None:
     assert '"name":"Wren"' in messages[-1]["content"]
     assert messages[-1]["content"].index("Character sheet") < messages[-1]["content"].index("I hide.")
     assert [m["role"] for m in messages] == ["user", "assistant", "user"]
+
+
+def test_d052_the_scene_length_has_one_home_and_reaches_both_prompts() -> None:
+    assert SCENE_LENGTH == "150 to 250 words"  # D-033 as amended by D-052.
+    assert "{{scene_length}}" in _PROMPT.read_text(encoding="utf-8")  # The prompt file holds no number.
+    state, _ = sworn_state()
+    system, messages = assemble(state, WORLD, [], "I hide.")
+    assert SCENE_LENGTH in system[0]["text"] and SCENE_LENGTH in messages[-1]["content"]
 
 
 def test_ops04_the_system_prefix_is_cached_and_stable_while_the_sheet_changes() -> None:

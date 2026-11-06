@@ -39,7 +39,7 @@ Write a LitRPG novel about this character: third person, past tense, close on th
 - The sheet is the truth about what the character owns and how hurt they are. Invent no belongings, and no injury the result did not give; a clean success leaves them unhurt. Never state the dice: the game prints them.
 - Gods have big personalities and talk often, each in their own voice. They hint at what an Oath means; the game's menu states the terms.
 - Just before the end, the character weighs what could be done next and what each choice would cost. End on a hook.
-- 200 to 400 words per beat, longer for pivotal scenes.
+- {{scene_length}} per beat, longer for pivotal scenes.
 - Consequences are real. Power has a price. Politics matters as much as combat.
 - NPCs have goals, voices, and limits. They lie, bargain, and refuse.
 - The world does not wait. When time passes, say what changed.

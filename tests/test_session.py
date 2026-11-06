@@ -577,7 +577,8 @@ def test_d050_backing_off_rolls_nothing_and_rewording_keeps_the_odds(game: Game)
     assert game("abandon")[0] == 0
     game("begin", "I talk the guard into lending me a rope")
     _, third = game("tool", "request_check", talk)
-    assert "Presence check, routine" in third  # A different approach gets its own odds.
+    assert "Preview" not in third and "Engine check" in third  # A different approach gets its own odds,
+    # and a Routine one rolls at once (D-051).
 
 
 def test_d050_the_closing_thought_carries_the_odds_and_there_is_no_menu(game: Game) -> None:
@@ -604,6 +605,32 @@ def test_d050_an_approach_whose_odds_were_not_shown_is_previewed_first(game: Gam
     code, out = game("begin", "--option", "3")
     assert code == 0
     assert "Engine check" not in out and "Preview" in out and "Agility check, hard" in out
+
+
+def test_nar08_a_routine_typed_check_rolls_at_once_with_its_odds(game: Game) -> None:
+    game.sworn()
+    game("begin", "I step over the low fence")
+    easy = json.dumps({"stat": "agility", "difficulty": "routine", "challenge_tier": 0, "stakes": "a trip"})
+    code, out = game("tool", "request_check", easy)
+    assert code == 0
+    assert "Preview" not in out  # Only Hard checks or harder wait for the player (D-051).
+    engine = json.loads(out.split("Engine check: ")[1].split("\n")[0])
+    assert engine["chance"] > 0 and "roll" in engine  # The notice still shows the chance and the roll.
+    code, out = game("go")
+    assert code == 1 and "No preview is waiting" in out
+
+
+def test_nar08_a_routine_approach_whose_odds_were_not_shown_rolls_at_once(game: Game) -> None:
+    routine = json.loads(SUGGEST)
+    routine["actions"][2]["check"]["difficulty"] = "routine"
+    game.sworn()
+    game("begin", "[I swear. Narrate the aftermath.]")
+    game.narrate("The Ledger opened in Wren's head like a door left ajar.")  # It marks no approach.
+    game("tool", "suggest_actions", json.dumps(routine))
+    assert game("commit")[0] == 0
+    code, out = game("begin", "--option", "3")
+    assert code == 0
+    assert "Preview" not in out and "Engine check" in out
 
 
 def test_d050_a_marker_for_a_missing_approach_is_refused_at_commit(game: Game) -> None:

@@ -150,7 +150,7 @@ M1a to M1f are merged (M1d to M1f in PR #19). Ordered so each step is testable a
 
 Already built in M1.5 to M1.7: the `llm/` layer with `MockClient` and the Anthropic adapter, prompt assembly, the API turn loop with retry cap and fallback, the validators, character creation, CLI play and session play, odds without a menu (PR #25, D-050), and 17 engine tools (`src/pantheon/engine/tools.py`). M2 is the remaining work, in four parts; the owner plays after M2a.
 
-**M2a The feel** (NAR-03, NAR-08; 1 session)
+**M2a The feel** (NAR-03, NAR-08; 1 session). Built on `claude/m2a-feel`.
 - PR #25 built odds without a menu (D-050): closing-thought odds, a preview with `session go` or `session abandon`, and the Go and Back off card on the Table page.
 - Only Hard checks or harder stop at the preview; Routine checks roll at once and show their chance and roll (D-051).
 - Scenes of 150 to 250 words, longer for big moments, with the number in one home (now in `prompts/narrator.md` and `narrator/assemble.py`).
