@@ -350,6 +350,6 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 
 ## D-054 The chronicle: the story so far, read from the save
 
-- **Status:** Assumed (2026-11-06; built in an owner-invited free session, "build anything useful or joyful")
+- **Status:** Accepted (2026-11-06; owner approved PR #29: "Approved"; built in an owner-invited free session, "build anything useful or joyful")
 - **Decision:** `pantheon chronicle [--timeline] [--format md|html] [--out]` (`ui/chronicle.py`, `Database.turns`) writes a timeline's committed turns in order (player words, accepted prose, the turn's Ledger lines through the same `ledger_lines` the game shows), then the open and settled threads and the sheet. Markdown matches the `docs/playtests/` "Turns" shape; HTML is a phone page in the Pantheon Table's tokens with no script. The `/chronicle` skill publishes it as an artifact and keeps one URL in HANDOFF. It reads the save and changes nothing.
 - **Why:** The owner reads on a phone and the saga so far lived only in chat scrollback and hand-copied playtest files; a page from the save is the one source (SRC-01) and costs no API call. Reporting only (GAME-03) keeps it outside the engine's rules.

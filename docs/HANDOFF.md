@@ -12,7 +12,7 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 ## Just done
 
-- 2026-11-06 `pantheon chronicle` and the `/chronicle` skill (D-054, Assumed): the story so far from the save as Markdown (playtest shape) or a phone page; tests in `tests/test_chronicle.py`. Page URL under Pages.
+- 2026-11-06 `pantheon chronicle` and the `/chronicle` skill (D-054, Accepted; PR #29 merged, owner approved): the story so far from the save as Markdown (playtest shape) or a phone page; tests in `tests/test_chronicle.py`. Page URL under Pages.
 - 2026-11-06 Design audit of M1d to M1f (owner chose design only): `docs/audit/2026-11-06-design.md`, 28 findings (3 strongly recommended: M2 plan stale, architecture section 3 stale, tapped options undecided). PR #23. Owner: "Do as you recommend": all 28 accepted (D-049); 23 fixed in e9f2a6f. Re-run pacing sim: 9.9 h to the Tier 2 Trial against D-014's 7 h target, median fight 6 exchanges (estimates; owner's fight playtest decides any retune).
 
 - 2026-11-06 Master upgrade to v4.11.0 (D-043) and the repo and tests audits, PR #20 merged; audit fixes, PR #21 merged.
