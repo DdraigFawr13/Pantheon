@@ -371,3 +371,17 @@ def test_session_an_invalid_create_says_why_and_saves_no_character(game: Game) -
     code, out = game(*_create_args(age="15"))
     assert code == 1 and "Character not created" in " ".join(out.split())
     assert "No character yet" in game("status")[1]
+
+
+def test_wld02_playing_never_writes_to_world(game: Game) -> None:
+    world = Path(__file__).resolve().parents[1] / "world"
+    public = [p for p in world.rglob("*") if p.is_file() and not {"secret", "sealed"} & set(p.parts)]
+
+    def fingerprint() -> dict[str, tuple[int, bytes]]:
+        return {str(p): (p.stat().st_mtime_ns, p.read_bytes()) for p in public}
+
+    before = fingerprint()
+    game.sworn()
+    state, _ = game.state()
+    assert state.oaths  # A real turn ran: an Oath was sworn and saved.
+    assert fingerprint() == before
