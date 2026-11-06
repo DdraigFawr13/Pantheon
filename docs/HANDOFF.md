@@ -6,7 +6,7 @@ Updated: 2026-11-06. A fresh session must be able to continue from this file alo
 
 M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are merged. PR #20 (master v4.11.0, D-043, two audits) and PR #21 (every audit finding fixed or recorded; the play guard denies by default, D-044) are merged. Still open from the audit: canon gaps G-28 to G-32 (the owner answers them); MEM-01 to MEM-04 have no tests until M3.
 
-**M1 is complete: M1d, M1e and M1f merged as PR #19** (owner approved 2026-11-06), which brought in #16 (D-039); #16 is closed as superseded. **Next: M2 (narrator loop)**, starting with an M1 audit offer (VER-09) and the owner's playtest with a fight.
+**M1 is complete: M1d, M1e and M1f merged as PR #19** (owner approved 2026-11-06), which brought in #16 (D-039); #16 is closed as superseded. **M2 (narrator loop) is planned** (D-051, D-052): four parts, M2a first, then the owner plays a session with a fight.
 
 D-048: a due hook or a moved clock always gets one suggested action leading back to it (prompt rule; M4's beat scheduler enforces it later). D-050 (design audit F3): no option menu outside fights; the closing thought carries the odds, a typed action that rolls is previewed first (`session go`); the owner may move to preview-only (shape A) later. Mock-up: https://claude.ai/artifact/8jXbpgTg7zXjRk7bhfWZxb
 
@@ -14,7 +14,6 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 - 2026-11-06 Design audit of M1d to M1f (owner chose design only): `docs/audit/2026-11-06-design.md`, 28 findings (3 strongly recommended: M2 plan stale, architecture section 3 stale, tapped options undecided). PR #23. Owner: "Do as you recommend": all 28 accepted (D-049); 23 fixed in e9f2a6f. Re-run pacing sim: 9.9 h to the Tier 2 Trial against D-014's 7 h target, median fight 6 exchanges (estimates; owner's fight playtest decides any retune).
 
-- 2026-11-03 Master upgrade to v4.4.0 (D-040), PR #17 merged.
 - 2026-11-06 Master upgrade to v4.11.0 (D-043) and the repo and tests audits, PR #20 merged; audit fixes, PR #21 merged.
 - 2026-11-06 M1.7 (D-041): `pantheon session` runs each turn step as a command; `/play` skill; `play-guard` hook (rules: D-044 (1)); saves as a text dump on the `saves` branch; the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b) shows story, Character, Journal and Gear tabs from `session screen` JSON and sends taps to the session as comments.
 - 2026-11-06 D-042: 25 base classes with traits and blurbs (`world/data/classes.yaml`, power_tiers.md table, gods' favoured classes); `class-design` skill; roster page https://claude.ai/artifact/96Gk7pos2FRTar4ezcyRfS.
@@ -25,14 +24,14 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 ## Next
 
 1. Audit fixes merged as PR #24 (owner approved 2026-11-06).
-2. **Next session: plan M2** with the `planning-interview` skill (WS-03), on a new branch from `main`: only what M2 still needs (about 10 narrator tools unbuilt, the bounty board data, NAR-06/07 on session play; Ollama side-by-side and streaming look moot by D-032 and D-029). Options vs odds is settled (D-050, PR #25); prose length (D-033) comes first.
+2. **M2 planned and merged as PR #26** (owner approved 2026-11-06; D-051, D-052). Next: build M2a on a new branch from `main`. Only Hard checks or harder stop at the preview (D-051, NAR-08); scenes are 150 to 250 words, with the number in one home. It is small, so no spec; then the owner plays a session with a fight. M2b to M2d follow (BUILD_PLAN M2), each with the `write-spec` skill.
 3. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
 
 ## Open questions
 
-- Prose length and pace: the owner may want shorter scenes (D-033 says 200 to 400 words). Ask before changing D-033.
+- Pace: 9.9 h to Tier 2 against D-014's 7 h (estimate, D-047 (8)); the owner's fight playtest decides, with no preferred lever yet.
 - Reward, loot and evolution numbers are engine data to tune (G-08). What does training give (G-27)?
 - Do the D-038 clock rates hold in play?
 - Owner answers gaps G-10 to G-20 before the M3.5 content batches (`docs/canon_gaps.md`).
@@ -42,6 +41,9 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 - https://claude.ai/artifact/HkerL2UNT7oeQcFPW2dZmy: republish whenever the plan or roadmap changes.
 
 ## Design forms (owner's answers live in each page's database)
+
+- M2 round 1: https://claude.ai/artifact/S1M8kTeHdi6pX1njM7FXvA
+- M2 review and round 2 (approved in chat): https://claude.ai/artifact/LcHA2Zu4vbVaX4jYuhdBEP
 
 - Round 1: https://claude.ai/artifact/JSEqjnAXHhNCrWkR4fXdwQ
 - Review and round 2: https://claude.ai/artifact/RcPLtGKcnpqMVpqvQLtUtQ
@@ -53,4 +55,4 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 ## Decisions since the last plan update
 
-- 2026-11-06 D-007 to D-048 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037 to D-039, D-045 Assumed).
+- 2026-11-06 D-007 to D-052 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037 to D-039, D-045 Assumed).

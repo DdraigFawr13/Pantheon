@@ -34,15 +34,17 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 
 **Acceptance:** replay equivalence holds under `hypothesis`; seeded determinism test passes; tier-gap rules covered at gaps -4 to +4; d100 outcome bands covered at their edges; engine coverage at least 90 %.
 
-## M2: Narrator loop (NAR-01 to NAR-07, OPS-01 to OPS-04)
+## M2: Narrator loop (NAR-01 to NAR-08, OPS-01 to OPS-04)
 
-- `LLMClient` protocol, Anthropic adapter, `MockClient`.
-- Prompt assembly with layers 1 to 3 and 8; tool-call loop with validation, retry cap, forced-prose round and engine fallback turn.
-- Prose validator for NAR-04; `suggest_actions` tool for NAR-03.
-- Character creation flow from `world/protagonist_seed.md`.
-- Streaming output in the CLI; status panel rendered from state.
+Built in M1.5 to M1.7: the `LLMClient` protocol, the Anthropic adapter, `MockClient`, prompt assembly, the API loop with retry cap and fallback, the validators, character creation and session play. Remaining (D-050 to D-052):
 
-**Acceptance:** a 10-turn scripted playtest completes with no engine invariant violations; rejected tool calls are surfaced and retried at most twice; no unsupplied numeric outcomes in prose across the scripted run; a `MockClient` outage produces a fallback turn and no lost events.
+- M2a: odds without a menu (built in PR #25, D-050); only Hard checks or harder stop at the preview (D-051); 150 to 250 word scenes.
+- M2b: retry cap, dropped-call log and fallback turn in session play; D-050's design in `pantheon play`.
+- M2c: `introduce_npc`, `introduce_location`, `offer_oath`, `test_burden`, `advance_clock`.
+- M2d: a first Tallyhouse bounty board and `record_beat`.
+- Status panel rendered from state (built); no streaming (D-029).
+
+**Acceptance:** a 10-turn scripted playtest on both play paths completes with no engine invariant violations; rejected tool calls are surfaced and retried at most twice; no unsupplied numeric outcomes in prose; a model outage produces a fallback turn and no lost events; a preview draws no random numbers before confirm; the owner plays a session with a fight and records the findings.
 
 ## M2.5: Phone page
 

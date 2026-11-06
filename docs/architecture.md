@@ -118,7 +118,7 @@ All arguments are validated by Pydantic. Unknown tools are rejected. Where the n
 | `apply_effect` | `target`, `kind` (`damage`/`heal`/`condition`), `source` (`check_id` or named hazard), `reason` | Size from the source check's outcome and the effect table; bounds-checks; returns new values; HP 0 emits `downed` |
 | `grant_xp` | `kind` (for example `minor`, `major`, `milestone`), `reason` | Amount from the XP table; per-turn cap; returns level state |
 | `adjust_standing` | `entity` (god/faction/npc), `kind` (`slight`/`notable`/`grave`), `direction` (`+`/`-`), `witness` (`npc:<id>`/`evidence:<item>`/`record:<office>`/`none`), `reason` | Delta from the Standing table; clamps to [-100, 100]; with `witness: none` records a rumour instead (D-013) |
-| `grant_title` | `title_id`, `witness`, `reason` | Validates the title's condition against state; needs a witness |
+| `grant_title` (M3.5, with titles data, D-052) | `title_id`, `witness`, `reason` | Validates the title's condition against state; needs a witness |
 | `send_petition` | `god`, `ask`, `due_condition` | Registers a petition as a hook, from a sworn god, one open per god; passing its deadline counts as ignored and lowers Standing (D-038) |
 | `resolve_petition` | `hook_id`, `granted`, `reason` | Closes an open petition and adjusts Standing; not in the turn it arrived (D-038) |
 | `engage_clock` | `clock_id`, `reason` | Records that a tested deed this turn touched a clock's threads, so it is not neglected this season; once per clock per day (D-038) |
@@ -132,9 +132,9 @@ All arguments are validated by Pydantic. Unknown tools are rejected. Where the n
 | `introduce_npc` | `name`, `role`, `tier`, `disposition` | Rejects duplicates and tier above region cap |
 | `introduce_location` | `name`, `region`, `description` | Registers for retrieval |
 | `offer_oath` | `god`, `oath_id` | Checks prerequisites and oath conflicts |
-| `resolve_oath_conflict` | `conflict_id`, `choice` (`honor:<oath>`) | Breaches the other Oath (blessing suspended, Standing -20) per `world/power_tiers.md` |
-| `begin_trial` | `kind`, `description`, `witness`, `stakes` | Only legal at a tier threshold (level multiple of 10) |
-| `resolve_trial` | `trial_id` | Outcome (Ascend, Setback, Breaking) from the trial's recorded checks, not from the narrator; Ascend unlocks the player's evolution choice |
+| `resolve_oath_conflict` (later: a player command once canon defines Oath conflicts, D-052) | `conflict_id`, `choice` (`honor:<oath>`) | Breaches the other Oath (blessing suspended, Standing -20) per `world/power_tiers.md` |
+| `begin_trial` (cut: `session trial` is the player command, D-037, D-052) | `kind`, `description`, `witness`, `stakes` | Only legal at a tier threshold (level multiple of 10) |
+| `resolve_trial` (cut, as `begin_trial`) | `trial_id` | Outcome (Ascend, Setback, Breaking) from the trial's recorded checks, not from the narrator; Ascend unlocks the player's evolution choice |
 | `mark_hostile_exchange` (replaced: the engine adds a mark each turn in a fight while Downed, D-039) | `reason` | While Downed, adds a Last Breath mark; three marks is death or Reckoning per config |
 | `record_beat` | `beat_id`, `outcome` | Marks an arc beat consumed |
 | `suggest_actions` | `actions`: 3 to 4 of `{label, violent: bool, cost: str?, tag: str?}` | Rejects sets without a non-violent action and an action with a cost (NAR-03), and tags the character does not have (D-033); the UI renders them |
