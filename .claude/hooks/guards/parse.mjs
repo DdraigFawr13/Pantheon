@@ -29,6 +29,7 @@ export function parse(command, depth = 0, ctx = { next: 0 }) {
   let stage = 0;
   const flush = () => {
     if (words.length || redirects.length || heredocs.length) {
+      if (ctx.heads && words.length && !(pipeline in ctx.heads)) ctx.heads[pipeline] = words[0];
       const [first, ...inner] = build(words, redirects, heredocs, depth, ctx);
       out.push({ ...first, pipeline, stage }, ...inner);
     }
@@ -47,8 +48,10 @@ export function parse(command, depth = 0, ctx = { next: 0 }) {
         flush();
         if (t.value === '|' || t.value === '|&') stage += 1;
         else {
+          const from = pipeline;
           pipeline = ctx.next++;
           stage = 0;
+          ctx.links?.push({ from, op: t.value, to: pipeline });
         }
       } else pending = t.value;
       continue;
@@ -64,6 +67,57 @@ export function parse(command, depth = 0, ctx = { next: 0 }) {
   }
   flush();
   for (const body of nested) out.push(...parse(body, depth + 1, ctx));
+  return out;
+}
+
+const BRACKETS = new Set(['(', ')', '{', '}']);
+
+/** The connector a run of separators amounts to: brackets drop out, newlines count only alone. */
+function connector(ops) {
+  const real = ops.filter((o) => !BRACKETS.has(o));
+  const strong = real.filter((o) => o !== '\n');
+  return strong.at(-1) ?? real.at(-1) ?? null;
+}
+
+/**
+ * The command line as lists, one per shell body (the top level and each nested `bash -c`, `$( )`
+ * or `eval` body): [[{ op, head, depth, commands }]]. `op` is the separator before the pipeline
+ * (`;`, `&&`, `||`, `&`, a newline, or null for the first); `head` is its first word before keywords
+ * are dropped (`if`, `!`, `while`); `depth` counts the `( )` and `{ }` groups around it; `commands`
+ * are its simple commands as `parse` returns them. A bracket is not a separator here, so
+ * `(a; b) && c` reads as a; b && c at depths 1, 1 and 0.
+ */
+export function lists(command) {
+  const ctx = { next: 0, links: [], heads: {} };
+  const commands = parse(command, 0, ctx);
+  const byPipeline = new Map();
+  for (const c of commands) {
+    if (!byPipeline.has(c.pipeline)) byPipeline.set(c.pipeline, []);
+    byPipeline.get(c.pipeline).push(c);
+  }
+  const next = new Map(ctx.links.map((l) => [l.from, l]));
+  const targets = new Set(ctx.links.map((l) => l.to));
+  const out = [];
+  for (let start = 0; start < ctx.next; start++) {
+    if (targets.has(start)) continue;
+    const list = [];
+    let ops = [];
+    let depth = 0;
+    for (let id = start, link; id !== undefined; id = link?.to) {
+      const cmds = byPipeline.get(id) ?? [];
+      if (cmds.length) {
+        list.push({ op: list.length ? connector(ops) : null, head: ctx.heads[id] ?? null, depth, commands: cmds });
+        ops = [];
+      }
+      link = next.get(id);
+      if (link) {
+        ops.push(link.op);
+        if (link.op === '(' || link.op === '{') depth += 1;
+        if (link.op === ')' || link.op === '}') depth -= 1;
+      }
+    }
+    if (list.length) out.push(list);
+  }
   return out;
 }
 

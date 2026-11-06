@@ -4,18 +4,19 @@ Updated: 2026-11-06. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1.7 (D-041, session play) and the 25-class roster (D-042) are on draft PR #18, branch `ccr-2cd1b9d3-xt21f0`, waiting for the owner's approval to merge. M1a to M1c are merged. **Next: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main` after #18 merges.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18.
+M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are merged. Branch `ccr-2a3ebc70-8wd8jg`: master upgrade to v4.11.0 (D-043) and a whole-repo audit (`docs/audit/2026-11-06-repo.md`), waiting for the owner's replies. **Next: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main`.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18.
 
 ## Just done
 
 - 2026-11-03 Master upgrade to v4.4.0 (D-040), PR #17 merged.
+- 2026-11-06 Master upgrade to v4.11.0 (D-043): CI-07, GIT-08, `ui-style` and `ui-mockups` skills, five new guard checks.
 - 2026-11-06 M1.7 (D-041): `pantheon session` runs each turn step as a command; `/play` skill; `play-guard` hook (Bash only `uv run pantheon session` and `scripts/saves.sh`, public reads only); saves as a text dump on the `saves` branch; the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b) shows story, Character, Journal and Gear tabs from `session screen` JSON and sends taps to the session as comments.
 - 2026-11-06 D-042: 25 base classes with traits and blurbs (`world/data/classes.yaml`, power_tiers.md table, gods' favoured classes); `class-design` skill; roster page https://claude.ai/artifact/96Gk7pos2FRTar4ezcyRfS.
 - 2026-11-06 First session play, five turns: `docs/playtests/2026-11-06-session-play.md`. The owner: "the game works and the fundamentals are fun", the writing needs work and maybe shortening to move quicker ("we can get to that later"). Ddraig Fawr (he/him), Elementalist attuned to Storm, Enchanter, sworn to Ysmere; timeline `ddb27b36` on the `saves` branch.
 
 ## Next (the M1 build session)
 
-1. Owner merges #18 (GIT-07). Cut a branch from `main`. Read BUILD_PLAN "M1: Engine core" for M1d to M1f.
+1. Cut a branch from `main`. Read BUILD_PLAN "M1: Engine core" for M1d to M1f.
 2. **M1d combat:** bring PR #16 onto current `main` (merge `main` into `m1d-combat`, resolve, re-run checks; never force-push it, GIT-03), or rebuild it from its diff if that is cleaner. Then add session support: `start_fight`, `fight_move` and `end_fight` in `session tool` and `/play`; a chosen `fight_move` rolls before prose like `request_check`; show foe intents and the fight on the page's screen JSON. D-039 lists what #16 left out.
 3. **M1e rewards and loot:** `world/data/rewards.yaml` and Tier 1 loot tables (ENG-09, G-08); items, coin changes and an inventory, so the page's Gear tab shows real things; the pacing simulation script. Canon numbers need `canon:` commits and the owner's approval.
 4. **M1f dev CLI:** `pantheon roll`, `pantheon sheet`, `pantheon log`.

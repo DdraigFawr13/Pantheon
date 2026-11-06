@@ -12,7 +12,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "matcher": "Bash|Edit|Write|NotebookEdit|Read|Grep|mcp__claude-code-remote__send_later|mcp__claude-code-remote__create_trigger|mcp__github__pull_request_read|mcp__github__get_check_run|mcp__github__update_pull_request",
         "hooks": [
           {
             "type": "command",
@@ -38,6 +38,18 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guards/stop.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guards/post-tool-use.mjs\"",
             "timeout": 10
           }
         ]
