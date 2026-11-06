@@ -129,6 +129,8 @@ From the design audit (F4, `docs/audit/2026-11-06-design.md`) and D-052: session
 - Dual Offer numbering: `offer_start(state)` in `app.py` is `len(state.suggested) + 1` in a fight, else 1. `Game.run`, `Session.menu` and `Session.screen` use it.
 - `prompts/narrator.md`: the closing-thought marker rule, so the API narrator writes markers too; the play skill's step 3 points there.
 
+**Build notes (S2, choices the re-check left open):** `Session.tool` now validates a proposed check before locking it. A Routine first preview of a stat also fixes it, so a later Hard proposal of the same stat rolls at once (D-050's rule cuts both ways). The referee stops at the first `request_check` that needs a preview; the others in that reply are ignored. Fight moves are stamped through `check_preview`'s move path. `Session.inspect` is unchanged (it is the narrator's command); only `pantheon play`'s `inspect` is limited to fights. `strip_markers` in `preview.py` handles a turn with no actions.
+
 ## Slices
 
 ### S1 Session play counts rejections, drops and falls back

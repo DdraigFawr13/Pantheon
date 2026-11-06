@@ -499,3 +499,35 @@ def test_nar_ten_turn_scripted_playtest_commits_and_replays(tmp_path: Path) -> N
         xp -= xp_to_next(level)
         level += 1
     assert (final.level, final.xp) == (level, xp)
+
+
+HARD_CLIMB = {"stat": "agility", "difficulty": "hard", "challenge_tier": 1, "stakes": "the climb"}
+
+
+def test_nar08_loop_stops_at_the_preview_before_any_roll() -> None:
+    locks: dict[str, dict[str, Any]] = {}
+    outcome, client = run([tools(call("request_check", **HARD_CLIMB))], locks=locks)
+    assert outcome.preview == HARD_CLIMB and outcome.events == [] and outcome.narration == ""
+    assert outcome.state.checks_made == 0 and len(client.calls) == 1 and "agility" in locks
+
+
+def test_nar08_loop_rolls_the_previewed_check_without_a_new_referee() -> None:
+    outcome, client = run([LLMReply(text=PROSE), SUGGEST], locks={}, chosen_check=HARD_CLIMB, previewed=True)
+    checks = [p for t, p in outcome.events if t == "check_resolved"]
+    assert len(checks) == 1 and checks[0]["difficulty"] == "hard" and len(client.calls) == 2
+
+
+def test_nar08_loop_rolls_a_routine_check_at_once_but_under_the_stats_lock() -> None:
+    outcome, _ = run([CHECK, LLMReply(text=PROSE), SUGGEST], locks={})
+    assert outcome.preview is None and outcome.state.checks_made == 1
+    outcome, _ = run([CHECK], locks={"agility": HARD_CLIMB})  # A reworded Hard climb is still Hard.
+    assert outcome.preview is not None and outcome.preview["difficulty"] == "hard"
+
+
+def test_d050_loop_stamps_the_closing_thought_odds() -> None:
+    actions = [*ACTIONS[:2], {"label": "Climb on", "cost": "a fall", "check": HARD_CLIMB}]
+    prose = f"{PROSE} He could climb on <<ODDS 3>>, ask <<ODDS 1>>, or fly <<ODDS 7>>."
+    outcome, _ = run([NONE, LLMReply(text=prose), tools(call("suggest_actions", actions=actions))])
+    assert "(no roll)" in outcome.narration and "(Agility " in outcome.narration
+    assert "<<ODDS" not in outcome.narration and "or fly." in outcome.narration
+    assert any("ODDS 7" in line for line in outcome.log)

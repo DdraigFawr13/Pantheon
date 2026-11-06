@@ -10,7 +10,7 @@ from pantheon.storage.db import Database
 from pantheon.ui.cli.app import _bar, ledger_lines
 from tests.test_play import NEW_GAME, PROSE, WORLD, narration, play, talk
 
-SWORN = [*NEW_GAME, "4", "1", "1"]
+SWORN = [*NEW_GAME, "1", "1", "1"]
 HOUND = {"name": "Ash Hound", "tier": 1, "threat": "minion"}
 START = ToolCall("f", "start_fight", {"foes": [HOUND], "reason": "it lunges"})
 FIGHT_ACTIONS = [

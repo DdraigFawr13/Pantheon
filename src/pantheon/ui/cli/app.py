@@ -19,7 +19,7 @@ from rich.panel import Panel
 
 from pantheon.config import Config, load_config
 from pantheon.engine.calendar import date_of, format_date
-from pantheon.engine.checks import Approach, CheckRequest, Difficulty, Outcome, check_odds, resolve_check
+from pantheon.engine.checks import Approach, CheckRequest, Difficulty, check_odds, resolve_check
 from pantheon.engine.combat import intent_label
 from pantheon.engine.commands import (
     CharacterChoices,
@@ -32,11 +32,12 @@ from pantheon.engine.commands import (
 )
 from pantheon.engine.loot import format_cp
 from pantheon.engine.opening import draw_opening_gods
+from pantheon.engine.preview import chance, preview_text
 from pantheon.engine.progression import choose_evolution, evolution_options, pick_skill
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, Action, EventRecord, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
-from pantheon.engine.tools import attempt_trial, check_preview, resolve_offer
+from pantheon.engine.tools import attempt_trial, resolve_offer
 from pantheon.engine.traits import needs_attunement, trait_of
 from pantheon.llm.anthropic_adapter import AnthropicClient
 from pantheon.llm.client import LLMClient
@@ -56,7 +57,8 @@ OPENING_INPUT = (
 )
 _REFUSE_TERMS = "No class or level. You grow through shards, gear, allies and reputation."
 _BAR_WIDTH = 10
-_COMMANDS = "[dim]Commands: inspect 2 · sheet · hooks · help · quit[/dim]"
+_COMMANDS = "[dim]Commands: sheet · hooks · help · quit[/dim]"
+_FIGHT_COMMANDS = "[dim]Commands: inspect 2 · sheet · hooks · help · quit[/dim]"
 _BARE_COMMANDS = {
     "sheet": "/sheet",
     "hooks": "/hooks",
@@ -67,10 +69,14 @@ _BARE_COMMANDS = {
 }
 _BARE_INSPECT = re.compile(r"inspect(\s+\S+)?", re.I)
 _HELP = (
-    "Type a number from the list, or describe what you do in your own words.\n"
-    "Commands: inspect 2 (look at option 2, free) · sheet (your character) · hooks (what may come back)\n"
+    "Describe what you do in your own words; the scene names the odds of what your character weighs, and a "
+    "risky action shows its odds before it rolls. In a fight, type a move's number or your own.\n"
+    "Commands: sheet (your character) · hooks (what may come back) · inspect 2 (a fight move, free)\n"
     "help (this) · quit (saves first). The Oath choices are numbers on the list."
 )
+_NO_LIST = "There is no list outside a fight; type what you do."
+_GO_AHEAD = "Go ahead? (y/n) "
+_INSPECT_OUTSIDE = "inspect works on fight moves; outside a fight the scene names the odds."
 _SAVED = "Saved. `pantheon play` resumes here."
 _FIGHT_ENDS = {
     "victory": "no foe is left standing",
@@ -366,12 +372,7 @@ def _show(outcome: TurnOutcome, console: Console) -> None:
 def odds_text(state: GameState, world: World, action: Action) -> str:
     """The odds on a suggested action, from the same calculation as the roll (D-036)."""
     assert world.data is not None
-    if action.check is None:
-        return ""
-    odds = check_preview(state, world.data, action.check)
-    if odds.shown is not None:
-        return f" {odds.shown}%"
-    return " sure" if odds.outcome is Outcome.SUCCESS else " no chance"
+    return "" if action.check is None else f" {chance(state, world.data, action.check)}"
 
 
 def show_fight(state: GameState, world: World, console: Console) -> None:
@@ -394,10 +395,17 @@ def _show_actions(state: GameState, world: World, console: Console) -> None:
         console.print(
             "[bold]An Ascension Trial is ready.[/bold] Type [bold]trial[/bold] when you choose to face it."
         )
+    if state.fight is None:
+        return  # No menu outside a fight: the scene's closing thought carries the odds (D-050).
     for number, action in enumerate(state.suggested, 1):
         odds = odds_text(state, world, action)
         tag = f"[bold]\\[{action.tag.upper()}{odds}][/bold] " if action.tag else ""
         console.print(f"  {number}. {tag}{action.label}")
+
+
+def offer_start(state: GameState) -> int:
+    """The Dual Offer's first number: after a fight's moves, or 1 when no list is shown (D-050)."""
+    return len(state.suggested) + 1 if state.fight is not None else 1
 
 
 def inspect_option(state: GameState, world: World, rest: str) -> str:
@@ -494,6 +502,8 @@ class Game:
         self.ask = ask
         self.console = console
         self.state = db.load_state(tid)
+        self.locks: dict[str, dict[str, Any]] = {}  # This turn's stat locks (D-050), in memory only.
+        self.locks_turn = 0
 
     def _command_sim(self) -> Simulation:
         rng = RngStreams.from_state(self.db.rng_state(self.tid), self.db.seed(self.tid))
@@ -509,10 +519,11 @@ class Game:
         _player_choices(sim, self.ask, self.console)
         self._commit_commands(sim)
 
-    def turn(self, player_input: str, chosen_check: dict[str, Any] | None = None) -> None:
-        turn = self.db.last_turn(self.tid) + 1
+    def _take(
+        self, player_input: str, turn: int, chosen_check: dict[str, Any] | None, previewed: bool
+    ) -> TurnOutcome:
         with self.console.status("The world answers..."):
-            outcome = take_turn(
+            return take_turn(
                 self.client,
                 self.world,
                 self.rules,
@@ -526,15 +537,37 @@ class Game:
                 violence=self.config.violence,
                 chosen_check=chosen_check,
                 seed=self.db.seed(self.tid),
+                locks=self.locks,
+                previewed=previewed,
             )
+
+    def turn(self, player_input: str, chosen_check: dict[str, Any] | None = None) -> None:
+        turn = self.db.last_turn(self.tid) + 1
+        if self.locks_turn != turn:
+            self.locks, self.locks_turn = {}, turn
+        outcome = self._take(player_input, turn, chosen_check, previewed=False)
+        spent = (0, 0, 0)
+        if outcome.preview is not None:  # A Hard check or harder waits for the player (NAR-08).
+            assert self.world.data is not None
+            self.console.print(
+                f"Preview: {escape(preview_text(self.state, self.world.data, outcome.preview))}"
+            )
+            stakes = outcome.preview.get("stakes")
+            at_stake = f"At stake: {stakes}. " if stakes else ""
+            self.console.print(f"  {escape(at_stake)}Nothing has been rolled yet.")
+            if self.ask(_GO_AHEAD).strip().lower() not in ("y", "yes"):
+                self.console.print("You back off. Nothing was rolled or saved.")
+                return
+            spent = (outcome.tokens_in, outcome.tokens_cached, outcome.tokens_out)
+            outcome = self._take(player_input, turn, outcome.preview, previewed=True)
         record = TurnRecord(
             turn,
             player_input,
             outcome.narration,
             outcome.is_fallback,
-            outcome.tokens_in,
-            outcome.tokens_cached,
-            outcome.tokens_out,
+            outcome.tokens_in + spent[0],
+            outcome.tokens_cached + spent[1],
+            outcome.tokens_out + spent[2],
         )
         self.db.commit_turn(self.tid, record, outcome.events, outcome.rng_state, outcome.state)
         self.state = outcome.state
@@ -585,7 +618,12 @@ class Game:
             case "/sheet":
                 self.console.print(sheet(self.state, self.world))
             case "/inspect":
-                self.console.print(inspect_option(self.state, self.world, rest))
+                if self.state.fight is None:  # Odds outside a fight come only from the scene (D-050).
+                    self.console.print(
+                        "inspect works on fight moves; outside a fight the scene names the odds."
+                    )
+                else:
+                    self.console.print(inspect_option(self.state, self.world, rest))
             case "/trial":
                 return self._attempt_trial()
             case "/hooks":
@@ -617,13 +655,16 @@ class Game:
                 return
             _show_actions(self.state, self.world, self.console)
             offers = offer_choices(self.state, self.world)
-            first = len(self.state.suggested) + 1
+            first = offer_start(self.state)
             terms = offer_terms(self.state, self.world)
             for number, (choice_id, label) in enumerate(offers, first):
                 self.console.print(f"  {number}. [bold]{label}[/bold]")
                 self.console.print(f"     [dim]{terms[choice_id]}[/dim]")
-            self.console.print("  [dim]Or type your own.[/dim]")
-            self.console.print(f"  {_COMMANDS}")
+            fighting = self.state.fight is not None
+            self.console.print(
+                "  [dim]Or type your own.[/dim]" if fighting else "  [dim]Type what you do.[/dim]"
+            )
+            self.console.print(f"  {_FIGHT_COMMANDS if fighting else _COMMANDS}")
             line = self.ask("\nWhat do you do? ").strip()
             if not line:
                 continue
@@ -650,6 +691,9 @@ class Game:
                 self.console.print(_SAVED)
                 return
             chosen_check = None
+            if line.isdecimal() and not fighting:
+                self.console.print(_NO_LIST)
+                continue
             if line.isdecimal() and 1 <= int(line) <= len(self.state.suggested):
                 action = self.state.suggested[int(line) - 1]
                 chosen_check = action.check

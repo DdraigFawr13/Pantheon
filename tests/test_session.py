@@ -260,7 +260,7 @@ def test_session_screen_is_plain_data_for_the_game_page(game: Game, tmp_path: Pa
     assert screen["turn"] == 1 and screen["name"] == "Wren"
     assert screen["prose"] and not screen["in_progress"]
     assert screen["options"] == []  # No option list outside a fight (D-050); the scene names the approaches.
-    assert [o["n"] for o in screen["offers"]] == [4, 5, 6]
+    assert [o["n"] for o in screen["offers"]] == [1, 2, 3]  # Numbered from 1 with no list (D-053).
     assert screen["preview"] is None
     assert all("[" not in line for line in screen["ledger"])  # No terminal markup reaches the page.
 
@@ -737,3 +737,13 @@ def test_nar07_session_prose_accepted_after_three_refusals_still_commits_normall
             "SELECT is_fallback FROM turn WHERE timeline_id = ? ORDER BY turn DESC LIMIT 1", (tid,)
         ).fetchone()
     assert row[0] == 0
+
+
+def test_nar08_session_a_refused_check_does_not_fix_its_stats_terms(game: Game) -> None:
+    game.sworn()
+    game("begin", "I climb the slick wall")
+    bad = json.loads(CLIMB) | {"challenge_tier": 99}
+    assert "Rejected" in game("tool", "request_check", json.dumps(bad))[1]
+    routine = json.loads(CLIMB) | {"difficulty": "routine"}
+    code, out = game("tool", "request_check", json.dumps(routine))
+    assert code == 0 and "Preview:" not in out and "Engine check" in out  # Rolled at once (D-051).

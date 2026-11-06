@@ -95,7 +95,7 @@ def test_new_game_creates_a_character_and_plays_the_opening(tmp_path: Path, caps
 
 
 def test_swearing_from_the_menu_then_choosing_class_and_profession(tmp_path: Path, capsys: Any) -> None:
-    lines = [*NEW_GAME, "4", "1", "1", "/sheet", "/hooks", "/help", "/quit"]
+    lines = [*NEW_GAME, "1", "1", "1", "/sheet", "/hooks", "/help", "/quit"]
     _code, state, _ = play(tmp_path, lines, [*talk(), *narration()])
     assert state.level == 1 and len(state.oaths) == 1
     assert state.class_id == "sellsword"
@@ -106,7 +106,7 @@ def test_swearing_from_the_menu_then_choosing_class_and_profession(tmp_path: Pat
 
 
 def test_refusing_from_the_menu_stays_unwritten(tmp_path: Path) -> None:
-    _code, state, _ = play(tmp_path, [*NEW_GAME, "6", "/quit"], [*talk(), *narration()])
+    _code, state, _ = play(tmp_path, [*NEW_GAME, "3", "/quit"], [*talk(), *narration()])
     assert state.level == 0 and state.flags["unwritten_path"] is True
 
 
@@ -132,7 +132,7 @@ def test_a_suggested_action_becomes_the_players_turn_and_the_ledger_shows_result
         ),
         ToolCall("k", "register_hook", {"description": "The stones remember", "due_condition": "later"}),
     )
-    lines = [*NEW_GAME, "4", "1", "1", "1", "/quit"]
+    lines = [*NEW_GAME, "1", "1", "1", "Ask what it wants", "/quit"]
     _code, state, tid = play(tmp_path, lines, [*talk(), *narration(), *narration(*calls, check=check)])
     with Database.open(tmp_path / "game.db") as db:
         assert db.recent_turns(tid, 1)[0][0] == "Ask what it wants"
@@ -167,58 +167,95 @@ def tagged_turn(actions: list[dict[str, Any]]) -> list[LLMReply | None]:
     return [LLMReply(text=f"{PROSE} The stair shifts under you."), reply]
 
 
-def sworn_game(god: str = "4") -> list[str]:
+def sworn_game(god: str = "1") -> list[str]:
     return [*NEW_GAME, god, "1", "1"]
 
 
-def test_d036_options_show_real_odds_and_hide_the_cost_hint(tmp_path: Path, capsys: Any) -> None:
-    code, state, _ = play(tmp_path, [*NEW_GAME, "/quit"], talk())
-    assert code == 0
-    first_oath = {g.id: g.first_oath for g in WORLD.data.gods}[state.opening_gods[0]] if WORLD.data else ""
-    name = {o.id: o.name for o in WORLD.data.oaths}[first_oath] if WORLD.data else ""
-    actions = [TAGGED[0], {"label": "Speak the Oath", "tag": name}, TAGGED[2]]
-    capsys.readouterr()
-    lines = ["4", "1", "1", "/quit"]
-    _code, _state, _ = play(tmp_path, lines, tagged_turn(actions))
-    out = capsys.readouterr().out
-    # An Oath means Tier 1: routine 60, (30 - 35) // 5 for Presence 30, and +20 against a Tier 0 obstacle.
-    assert "[PRESENCE 79%] Ask what it wants" in out
-    assert f"[{name.upper()}] Speak the Oath" in out
-    assert "Or type your own" in out
-    assert "it may remember" not in out
-
-
-def test_d036_picking_an_option_rolls_exactly_what_it_showed(tmp_path: Path) -> None:
-    script = [*talk(), *tagged_turn([TAGGED[0], TAGGED[2], {"label": "Wait"}]), *narration()[1:]]
-    _code, _state, tid = play(tmp_path, [*sworn_game(), "1", "/quit"], script)
+def test_d050_play_stamps_closing_thought_odds_and_shows_no_menu(tmp_path: Path, capsys: Any) -> None:
+    closing = f"{PROSE} She could ask what it wants <<ODDS 1>>, or back away <<ODDS 3>>."
+    suggest = LLMReply(tool_calls=(ToolCall("s", "suggest_actions", {"actions": PLAIN}),))
+    script = [*talk(), LLMReply(text=closing), suggest]
+    _code, _state, tid = play(tmp_path, [*sworn_game(), "1", "inspect 1", "/quit"], script)
     with Database.open(tmp_path / "game.db") as db:
-        assert db.recent_turns(tid, 1)[0][0] == "Ask what it wants"
-        rolled = [e["payload"] for e in db.events(tid) if e["type"] == "check_resolved"]
-    assert len(rolled) == 1 and rolled[0]["stat"] == "presence" and rolled[0]["chance"] == 79
+        saved = db.recent_turns(tid, 1)[0][1]
+        assert db.last_turn(tid) == 2  # The bare number and inspect used no turn.
+    # An Oath means Tier 1: routine 60, (30 - 35) // 5 for Presence 30, and +20 against a Tier 0 obstacle.
+    assert "ask what it wants (Presence 79%), or back away (no roll)." in saved
+    out = capsys.readouterr().out
+    assert "1. Ask what it wants" not in out and "[PRESENCE" not in out  # No list outside a fight.
+    assert "Type what you do" in out and "There is no list outside a fight" in out
+    assert "inspect works on fight moves" in out and "it may remember" not in out
+
+
+def test_d050_play_numbers_the_dual_offer_from_one(tmp_path: Path, capsys: Any) -> None:
+    play(tmp_path, [*NEW_GAME, "/quit"], talk())
+    out = capsys.readouterr().out
+    assert "  1. Swear the" in out and "  2. Swear the" in out and "  3. Refuse both gods" in out
+
+
+PLAIN = [TAGGED[0], {"label": "Wait"}, TAGGED[2]]
+HARD = {"stat": "agility", "difficulty": "hard", "challenge_tier": 0, "stakes": "a fall"}
+
+
+def referee(check: dict[str, Any]) -> LLMReply:
+    return LLMReply(tool_calls=(ToolCall("c", "request_check", check),))
+
+
+def checks_in(tmp_path: Path, tid: str) -> list[dict[str, Any]]:
+    with Database.open(tmp_path / "game.db") as db:
+        return [e["payload"] for e in db.events(tid) if e["type"] == "check_resolved"]
+
+
+def test_nar08_play_previews_a_hard_check_and_rolls_it_on_yes(tmp_path: Path, capsys: Any) -> None:
+    script = [*talk(), *narration(), referee(HARD), *narration()[1:]]
+    _code, _state, tid = play(tmp_path, [*sworn_game(), "I climb the wall", "y", "/quit"], script)
+    out = capsys.readouterr().out
+    assert "Preview: Agility check, hard:" in out and "At stake: a fall" in out
+    rolled = checks_in(tmp_path, tid)
+    assert len(rolled) == 1 and rolled[0]["difficulty"] == "hard" and rolled[0]["stat"] == "agility"
+    with Database.open(tmp_path / "game.db") as db:
+        assert db.recent_turns(tid, 1)[0][0] == "I climb the wall" and db.last_turn(tid) == 3
+
+
+def test_nar08_play_backing_off_saves_nothing(tmp_path: Path, capsys: Any) -> None:
+    script = [*talk(), *narration(), referee(HARD)]
+    _code, _state, tid = play(tmp_path, [*sworn_game(), "I climb the wall", "n", "/quit"], script)
+    assert "You back off" in capsys.readouterr().out
+    assert checks_in(tmp_path, tid) == []
+    with Database.open(tmp_path / "game.db") as db:
+        assert db.last_turn(tid) == 2
+
+
+def test_nar08_play_rolls_a_routine_check_at_once(tmp_path: Path, capsys: Any) -> None:
+    routine = {**HARD, "difficulty": "routine"}
+    _code, _state, tid = play(
+        tmp_path,
+        [*sworn_game(), "I climb the wall", "/quit"],
+        [*talk(), *narration(), *narration(check=ToolCall("c", "request_check", routine))],
+    )
+    out = capsys.readouterr().out
+    assert "Go ahead?" not in out and "Agility check" in out
+    assert len(checks_in(tmp_path, tid)) == 1
+
+
+def test_nar08_play_locks_a_stats_first_preview_for_the_turn(tmp_path: Path, capsys: Any) -> None:
+    routine = {**HARD, "difficulty": "routine", "stakes": "a slip"}
+    script = [*talk(), *narration(), referee(HARD), referee(routine)]
+    lines = [*sworn_game(), "I climb the wall", "n", "I just hop up, it is easy", "n", "/quit"]
+    _code, _state, tid = play(tmp_path, lines, script)
+    out = capsys.readouterr().out
+    assert out.count("Preview: Agility check, hard:") == 2  # The rewording kept the first terms.
+    assert checks_in(tmp_path, tid) == []
 
 
 def test_d036_a_check_shown_in_the_story_does_not_print_again(tmp_path: Path, capsys: Any) -> None:
     marked = f"{PROSE} She tried it.\n\n<<CHECK>>\n\nThe stair held under her, and the dust settled."
     reply = LLMReply(tool_calls=(ToolCall("s", "suggest_actions", {"actions": ACTIONS}),))
-    script = [*talk(), *tagged_turn([TAGGED[0], TAGGED[2], {"label": "Wait"}]), LLMReply(text=marked), reply]
-    play(tmp_path, [*sworn_game(), "1", "/quit"], script)
+    script = [*talk(), *tagged_turn(PLAIN), referee(ROLL), LLMReply(text=marked), reply]
+    play(tmp_path, [*sworn_game(), "I ask what it wants", "/quit"], script)
     out = capsys.readouterr().out
     assert out.count("Presence check") == 1
     assert "<<CHECK>>" not in out
-
-
-def test_d036_inspect_describes_an_option_and_costs_no_turn(tmp_path: Path, capsys: Any) -> None:
-    script = [*talk(), *tagged_turn([TAGGED[0], TAGGED[2], {"label": "Wait"}])]
-    lines = [*sworn_game(), "inspect 1", "/inspect 3", "inspect 9", "inspect", "/quit"]
-    _code, _state, tid = play(tmp_path, lines, script)
-    out = " ".join(capsys.readouterr().out.split())
-    assert "Presence 30" in out and "routine" in out and "79%" in out
-    assert "its patience" in out and "it may remember" in out
-    assert "No roll" in out
-    assert "There is no option 9" in out
-    assert "inspect 2" in out
-    with Database.open(tmp_path / "game.db") as db:
-        assert db.last_turn(tid) == 2
 
 
 def test_d035_commands_work_without_a_slash_and_are_on_screen(tmp_path: Path, capsys: Any) -> None:
@@ -232,7 +269,7 @@ def test_d035_commands_work_without_a_slash_and_are_on_screen(tmp_path: Path, ca
 
 
 def test_d035_a_word_inside_a_sentence_is_still_an_action(tmp_path: Path) -> None:
-    lines = [*NEW_GAME, "4", "1", "1", "help the dying man", "/quit"]
+    lines = [*NEW_GAME, "1", "1", "1", "help the dying man", "/quit"]
     _code, _state, tid = play(tmp_path, lines, [*talk(), *narration(), *narration()])
     with Database.open(tmp_path / "game.db") as db:
         assert db.recent_turns(tid, 1)[0][0] == "help the dying man"
@@ -354,7 +391,7 @@ def test_d033_swearing_and_levelling_show_the_full_sheet_and_prompt_for_the_free
     tmp_path: Path, capsys: Any
 ) -> None:
     grant = ToolCall("g", "grant_xp", {"kind": "major", "reason": "a great deed"})  # One level (D-047).
-    lines = [*NEW_GAME, "4", "1", "1", "Do the deed", "2", "/quit"]
+    lines = [*NEW_GAME, "1", "1", "1", "Do the deed", "2", "/quit"]
     check = ToolCall("c", "request_check", {"stat": "agility", "difficulty": "routine", "challenge_tier": 0})
     _code, state, _ = play(tmp_path, lines, [*talk(), *narration(), *narration(grant, check=check)])
     assert state.level == 2 and state.free_points == 0
