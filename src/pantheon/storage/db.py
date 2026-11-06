@@ -318,6 +318,14 @@ class Database:
         except ValueError as exc:  # Never guess at a log this build cannot read (GAME-05).
             raise SaveError(f"Timeline {timeline_id[:8]} cannot be read by this build: {exc}") from exc
 
+    def turns(self, timeline_id: str) -> list[TurnRecord]:
+        """Every committed turn in order, for the chronicle and playtest write-ups."""
+        rows = self.conn.execute(
+            "SELECT turn, player_input, narration, is_fallback FROM turn WHERE timeline_id = ? ORDER BY turn",
+            (timeline_id,),
+        ).fetchall()
+        return [TurnRecord(int(r[0]), r[1], r[2], bool(r[3])) for r in rows]
+
     def recent_turns(self, timeline_id: str, count: int) -> list[tuple[str, str]]:
         rows = self.conn.execute(
             "SELECT player_input, narration FROM turn WHERE timeline_id = ? ORDER BY turn DESC LIMIT ?",
