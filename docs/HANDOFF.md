@@ -4,7 +4,13 @@ Updated: 2026-11-06. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are merged. Branch `ccr-2a3ebc70-8wd8jg`: master upgrade to v4.11.0 (D-043) and two audits (`docs/audit/2026-11-06-repo.md`, 42 findings, 2 high: the play guard can be bypassed; `docs/audit/2026-11-06-tests.md`, 28 findings), draft PR #20, waiting for the owner's replies on https://claude.ai/artifact/JbpyvdoLGoSon1tUZtHdAz (collection `audit-2026-11-06`). After replies: fill each report's Outcome, add accepted items to Next, fixes on a new branch. **Next: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main`.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18.
+M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are merged.
+
+Branch `ccr-2a3ebc70-8wd8jg`, draft PR #20: master upgrade to v4.11.0 (D-043) and two audits, `docs/audit/2026-11-06-repo.md` (42 findings, 2 high: the play guard can be bypassed) and `docs/audit/2026-11-06-tests.md` (28 findings).
+
+Audit replies: https://claude.ai/artifact/JbpyvdoLGoSon1tUZtHdAz (collection `audit-2026-11-06`). After replies: fill each report's Outcome, add accepted items to Next, fixes on a new branch.
+
+**Next: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main`.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18.
 
 ## Just done
 
