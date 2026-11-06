@@ -24,7 +24,7 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 ## Next
 
 1. Audit fixes merged as PR #24 (owner approved 2026-11-06).
-2. **M2 planned (owner approved 2026-11-06; D-051, D-052).** Next: the `write-spec` skill for M2a (only Hard checks or harder stop at the preview; 150 to 250 word scenes in one home; NAR-03 and NAR-08 already in SPEC), then build M2a on this branch, then the owner plays a session with a fight. M2b to M2d follow (BUILD_PLAN M2).
+2. **M2 planned and merged as PR #26** (owner approved 2026-11-06; D-051, D-052). Next: build M2a on a new branch from `main`. Only Hard checks or harder stop at the preview (D-051, NAR-08); scenes are 150 to 250 words, with the number in one home. It is small, so no spec; then the owner plays a session with a fight. M2b to M2d follow (BUILD_PLAN M2), each with the `write-spec` skill.
 3. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
