@@ -24,6 +24,7 @@ from rich.text import Text
 
 from pantheon.config import Config, load_config
 from pantheon.engine.calendar import clock_value, date_of, format_date
+from pantheon.engine.combat import downed_exchange, intent_label
 from pantheon.engine.commands import (
     CharacterChoices,
     allocate_point,
@@ -41,6 +42,8 @@ from pantheon.engine.tools import ToolResult, apply_tool, attempt_trial, resolve
 from pantheon.engine.traits import needs_attunement, trait_of
 from pantheon.narrator.assemble import _REMINDER, _due_material, assemble, state_view
 from pantheon.narrator.loop import (
+    _DOWNED_NOTE,
+    _FIGHT_REFEREE_PROMPT,
     _NARRATE_OUTCOME,
     _OUTCOME_MEANINGS,
     _REFEREE_PROMPT,
@@ -58,6 +61,7 @@ from pantheon.ui.cli.app import (
     _inspect,
     _odds_text,
     _sheet,
+    _show_fight,
     _status_line,
     ledger_lines,
     offer_choices,
@@ -95,6 +99,9 @@ class Replay:
     results: list[ToolResult]
     allowed: set[int]
     outcomes: list[str]
+    summaries: list[str] = field(default_factory=list)  # What each exchange did, from the engine (D-039).
+    fighting: bool = False  # A fight was on when the turn began.
+    downed: bool = False  # The turn began Downed in a fight, so the foes' exchange ran on its own.
 
 
 class Session:
@@ -165,11 +172,19 @@ class Session:
         sim = Simulation(state, RngStreams.from_state(self.db.rng_state(tid)), self.rules, pending.turn)
         allowed = _numbers_in(state_view(state))  # Prose may quote the engine's own sheet (D-033).
         outcomes: list[str] = []
-        if pending.chosen_check is not None:
-            chosen = apply_tool(sim, "request_check", pending.chosen_check)
+        summaries: list[str] = []
+        fighting, downed = state.fight is not None, state.fight is not None and state.downed
+        if downed:
+            exchange = downed_exchange(sim)  # The Downed cannot act; the foes press on (D-039).
+            allowed |= _numbers_in(exchange)
+            summaries.append(exchange["summary"])
+        elif pending.chosen_check is not None:
+            name = "fight_move" if "move" in pending.chosen_check else "request_check"
+            chosen = apply_tool(sim, name, pending.chosen_check)
             if chosen.accepted:
                 allowed |= _numbers_in(chosen.data)
                 outcomes.append(chosen.data["outcome"])
+                summaries += [chosen.data["summary"]] if "summary" in chosen.data else []
         results = []
         for call in pending.calls:
             result = apply_tool(sim, call["name"], call["args"])
@@ -178,14 +193,17 @@ class Session:
                 allowed |= _numbers_in(result.data)
                 if "outcome" in result.data:
                     outcomes.append(result.data["outcome"])
-        return Replay(sim, results, allowed, outcomes)
+                    summaries += [result.data["summary"]] if "summary" in result.data else []
+        return Replay(sim, results, allowed, outcomes, summaries, fighting, downed)
 
     def offered(self, pending: Pending, run: Replay) -> tuple[str, ...]:
         """The tools this step allows, by the same rules as the API loop (D-031)."""
         state = run.sim.state
         if pending.narration is None:
-            rolled = pending.chosen_check is not None
-            return () if rolled or not state.offer_resolved or pending.talk_only else ("request_check",)
+            rolled = run.outcomes or run.downed
+            if rolled or not state.offer_resolved or pending.talk_only:
+                return ()
+            return ("fight_move",) if run.fighting else ("request_check",)
         names = _SCRIBE_TOOLS if state.offer_resolved else ("suggest_actions",)
         if not run.sim.checks:  # XP rewards a tested deed, so a talking turn cannot farm it.
             names = tuple(n for n in names if n != "grant_xp")
@@ -215,7 +233,7 @@ class Session:
             raise SessionError("Say what the player does, or pass --option N.")
         pending = Pending(tid, self.db.last_turn(tid) + 1, player_input, chosen)
         run = self.replay(pending)
-        if chosen is not None and not run.outcomes:
+        if chosen is not None and not run.outcomes and not run.downed:
             pending.chosen_check = None  # The check no longer applies; the referee may roll a fresh one.
             run = self.replay(pending)
         self.save_pending(pending)
@@ -236,17 +254,23 @@ class Session:
 
     def next_step(self, pending: Pending, run: Replay) -> None:
         out = self.console.print
-        if run.outcomes and pending.narration is None:
-            note = ", then ".join(_OUTCOME_MEANINGS[o] for o in run.outcomes)
+        if pending.narration is None:
             for type_, payload in run.sim.events:
                 if type_ == "check_resolved":
                     out(f"Engine check: {escape(json.dumps(payload))}")
-            out(escape(_NARRATE_OUTCOME.format(outcomes=note)))
+            for summary in run.summaries:
+                out(f"Engine fight: {escape(summary)}")
+            if run.downed:
+                out(escape(_DOWNED_NOTE.format(summary=" ".join(run.summaries))))
+            elif run.outcomes:
+                note = ", then ".join(_OUTCOME_MEANINGS[o] for o in run.outcomes)
+                out(escape(_NARRATE_OUTCOME.format(outcomes=note)))
         names = self.offered(pending, run)
         if pending.narration is None:
-            if names and not run.outcomes:
-                out(escape(_REFEREE_PROMPT.replace("reply with the single word NONE", "write the prose")))
-                out("Step: `session tool request_check '{...}'` if it is a check, else write the prose.")
+            referee = {"fight_move": _FIGHT_REFEREE_PROMPT, "request_check": _REFEREE_PROMPT}
+            if names:
+                out(escape(referee[names[0]].replace("reply with the single word NONE", "write the prose")))
+                out(f"Step: `session tool {names[0]} --file data/tool.json` if it rolls, else the prose.")
             out("Step: write the prose to data/narration.md, then `session narrate data/narration.md`.")
             return
         if run.sim.suggested:
@@ -254,9 +278,11 @@ class Session:
             return
         out(escape(_SCRIBE_PROMPT if len(names) > 1 else _SUGGEST_PROMPT))
         out(f"Tools now: {', '.join(names)}. `session tools` shows their fields.")
-        out("Step: `session tool <name> '<json>'` for each, then `session commit`.")
+        out("Step: each call's JSON in data/tool.json, then `session tool <name> --file data/tool.json`.")
 
-    def tool(self, name: str, raw: str) -> None:
+    def tool(self, name: str, raw: str, file: str | None = None) -> None:
+        if file is not None:
+            raw = Path(file).read_text(encoding="utf-8")  # No shell quoting to break the JSON (D-041).
         pending = self.need_pending()
         run = self.replay(pending)
         names = self.offered(pending, run)
@@ -426,6 +452,7 @@ class Session:
             for line in due:
                 out(f"  {escape(line)}")
         out(_status_line(state))
+        _show_fight(state, self.world, self.console)
         if state.trial_ready:
             out("[bold]An Ascension Trial is ready.[/bold] The player may face it (`session trial`).")
         for number, action in enumerate(state.suggested, 1):
@@ -545,6 +572,7 @@ class Session:
             for n, (cid, label) in enumerate(offer_choices(state, self.world), len(state.suggested) + 1)
         ]
         data = self.world.data
+        trait = trait_of(state, data)
         skills = {k.id: k for k in data.skills}
         gods = {g.id: g.name for g in data.gods}
         origin = next((o for o in data.origins.origins if o.id == state.origin), None)
@@ -618,6 +646,11 @@ class Session:
             "max_mana": state.max_mana,
             "max_stamina": state.max_stamina,
             "downed": state.downed,
+            "mana": state.mana,
+            "stamina": state.stamina,
+            "trait": trait.name if trait else "",
+            "attunement": (state.attunement or "").capitalize(),
+            "fight": self.fight_data(state),
             "coin": state.coin,
             "stats": {s: state.stats[s] for s in STATS},
             "affinities": {a.capitalize(): r for a, r in state.affinities.items()},
@@ -634,6 +667,31 @@ class Session:
             "choices_due": self.choices_due(state),
             "choice_groups": self.choice_groups(state),
             "trial_ready": state.trial_ready,
+        }
+
+    def fight_data(self, state: GameState) -> dict[str, Any] | None:
+        """The fight as the page shows it: each foe's shown intent comes from the engine (D-014)."""
+        assert self.world.data is not None
+        fight = state.fight
+        if fight is None:
+            return None
+        return {
+            "exchange": fight.exchange,
+            "last_breath": state.last_breath,
+            "momentum": fight.momentum,
+            "trait_used": fight.trait_used,
+            "foes": [
+                {
+                    "id": f.id,
+                    "name": f.name,
+                    "tier": f.tier,
+                    "threat": f.threat,
+                    "hits_left": f.hits_left,
+                    "intent": intent_label(self.world.data, f.intent),
+                    "cursed": fight.cursed == f.id,
+                }
+                for f in fight.standing
+            ],
         }
 
     def setup_data(self) -> dict[str, Any]:
@@ -786,6 +844,7 @@ def add_parser(sub: Any) -> None:
     tool = steps.add_parser("tool", help="one narrator tool call")
     tool.add_argument("name")
     tool.add_argument("args", nargs="?", default="{}")
+    tool.add_argument("--file", help="read the JSON arguments from this file")
     narrate = steps.add_parser("narrate", help="submit the prose, from a file")
     narrate.add_argument("file")
     steps.add_parser("commit", help="save the turn and show the options")
@@ -860,7 +919,7 @@ def _dispatch(session: Session, args: argparse.Namespace) -> None:
         case "begin":
             session.begin(args.text, args.option)
         case "tool":
-            session.tool(args.name, args.args)
+            session.tool(args.name, args.args, args.file)
         case "narrate":
             session.narrate(Path(args.file))
         case "commit":

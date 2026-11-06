@@ -34,11 +34,19 @@ Player commands without a turn (`sheet`, `hooks`, `inspect N`) answer in the sam
 ## Each turn
 
 1. The owner's message → `session begin "what they do"`, or `session begin --option N` for a listed option. An offer number from the menu is `session choose offer <id>`; a pending class, profession, point, skill or evolution is `session choose <kind> <id>`; `trial` is `session trial`. These print the text to pass to `session begin` next.
-2. Referee: if the brief asks, and the action is uncertain and risky, call `session tool request_check '{"stat": ..., "difficulty": ..., "challenge_tier": ..., "stakes": ...}'`. Talking, asking and looking are never checks. `session tools` shows each tool's fields.
+2. Referee: if the brief asks, and the action is uncertain and risky, write `{"stat": ..., "difficulty": ..., "challenge_tier": ..., "stakes": ...}` to `data/tool.json` and run `session tool request_check --file data/tool.json`. Talking, asking and looking are never checks. `session tools` shows each tool's fields. Every tool call takes its JSON from `data/tool.json` this way, so quoting never breaks it.
 3. Write the prose with the Write tool to `data/narration.md`, then `session narrate data/narration.md`. Put `<<CHECK>>` on its own line where a rolled result lands. If it is not accepted, fix exactly what it names and submit again.
    Before submitting, check the voice against D-033 and the prompt's Tone section: plain everyday prose that says what happened, no poetic metaphors or atmosphere for its own sake; the character reasons on the page through the sheet (stats by name and number, what helps, what could go wrong); a dry italic thought; gods as big, talkative personalities; weigh the next choices near the end and close on a hook. The owner found the first scene too lyrical (2026-11-06).
 4. Scribe: only what the scene really did (`grant_xp`, `apply_effect`, `adjust_standing`, `register_hook`, `advance_time`, and the rest it lists), then always `suggest_actions` with 3 to 4 options.
-5. `session commit`, then `scripts/saves.sh push`. Show the owner the committed prose and menu.
+5. `session commit`, then `scripts/saves.sh push`.
+
+## Fights (D-039, D-043)
+
+- A fight starts when the story makes one: in the scribe step, `start_fight` with 1 to 4 foes (`name`, `tier`, `threat` minion, standard or elite) and `ambush: true` if the character struck first, unseen. One exchange is one turn.
+- In a fight the referee tool is `fight_move` (`move` attack with `target` f1, guard or flee; `stat`; optional `skill`, `trait: true` for a once-per-fight trait, `pay_with_hp` for Surge). A picked fight option rolls its move before the prose, like a picked check. `begin` prints `Engine fight:` with what the exchange did: narrate exactly that, blow by blow, and put `<<CHECK>>` where the roll lands.
+- Downed: `begin` runs the foes' exchange on its own and adds a Last Breath; narrate it, and only aid (a heal) saves them. `end_fight` is for story endings (surrender, foes fleeing), never for the Downed.
+- Options in a fight carry `fight: {move, stat, target}` instead of a check. The menu shows each foe's intent; keep the prose consistent with it.
+- LitRPG tone (D-044): the Ledger lines are the genre's notices. Let the character read them on the page (hits left, HP, a trait firing) in the D-033 voice, and keep exchanges quick. Show the owner the committed prose and menu.
 
 A rejected tool call changes nothing; fix it or move on. `session abandon` drops a broken turn. `session sheet`, `hooks` and `inspect N` answer the owner's questions without using a turn.
 
