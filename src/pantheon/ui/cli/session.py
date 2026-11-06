@@ -356,6 +356,8 @@ class Session:
                     for c in data.classes
                 ],
             )
+            for option, cls in zip(groups[-1]["options"], data.classes, strict=True):
+                option["blurb"], option["trait"] = cls.blurb, cls.trait
         if state.needs_profession:
             kinds = (
                 ("Gathering", data.professions.gathering),
@@ -552,6 +554,16 @@ class Session:
             "origin_name": origin.name if origin else state.origin,
             "flaw": state.flaw,
             "debt": state.debt,
+            "class_catalogue": [
+                {
+                    "name": c.name,
+                    "stats": f"{c.primary.capitalize()} / {c.secondary.capitalize()}",
+                    "blurb": c.blurb,
+                    "trait": c.trait,
+                    "current": c.id == state.class_id,
+                }
+                for c in data.classes
+            ],
             "class_stats": f"{current.primary.capitalize()} / {current.secondary.capitalize()}"
             if current
             else "",

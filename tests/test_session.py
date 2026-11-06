@@ -297,5 +297,7 @@ def test_session_screen_uses_names_a_player_reads(game: Game, tmp_path: Path) ->
     kinds = [g["kind"] for g in screen["choice_groups"]]
     assert kinds == ["class", "profession"]  # Both asked at once.
     assert screen["choice_groups"][0]["options"][0]["name"][0].isupper()
+    assert all(o["blurb"] and o["trait"] for o in screen["choice_groups"][0]["options"])
+    assert len(screen["class_catalogue"]) == len(screen["choice_groups"][0]["options"])
     assert not any("_" in line for line in screen["ledger"])
     assert any("Oath sworn" in line for line in screen["ledger"])

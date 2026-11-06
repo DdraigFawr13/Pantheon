@@ -57,6 +57,14 @@ h2 { font: 700 .95rem var(--display); letter-spacing: .08em; color: var(--muted)
 .picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
 .pick { display: grid; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); color: var(--ink); cursor: pointer; font: 1rem/1.25 var(--prose); }
 .pick .pdetail { font: .72rem var(--mono); color: var(--muted); }
+.picks.wide { grid-template-columns: 1fr; }
+.pblurb, .pick .pblurb { font: .95rem/1.4 var(--prose); margin-top: 2px; }
+.ptrait, .pick .ptrait { font: .74rem/1.4 var(--mono); color: var(--brass); }
+.classlist { display: grid; gap: 10px; }
+.classlist .cls { border-top: 1px dashed var(--line); padding-top: 8px; display: grid; gap: 2px; }
+.classlist .cls:first-child { border-top: 0; padding-top: 0; }
+.classlist .cls.current { border: 1px solid var(--brass); border-radius: 8px; padding: 8px 10px; background: var(--brass-soft); }
+.classlist .cname { font: 700 1rem var(--display); letter-spacing: .03em; }
 .pick[aria-pressed="true"] { border-color: var(--brass); background: var(--brass-soft); box-shadow: 0 0 0 1px var(--brass) inset; }
 .due .confirm { padding: 10px 16px; justify-self: start; }
 
@@ -231,12 +239,14 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     Object.keys(picks).forEach((k) => { if (!groups.some((g) => g.kind === k)) delete picks[k]; });
     groups.forEach((g) => {
       due.append(el("h2", null, g.title));
-      const box = el("div", "picks");
+      const box = el("div", "picks" + (g.options.some((o) => o.blurb) ? " wide" : ""));
       g.options.forEach((o) => {
         const b = el("button", "pick"); b.type = "button";
         b.setAttribute("aria-pressed", String(picks[g.kind] === o.id));
         b.append(el("span", "pname", o.name));
         if (o.detail) b.append(el("span", "pdetail", o.detail));
+        if (o.blurb) b.append(el("span", "pblurb", o.blurb));
+        if (o.trait) b.append(el("span", "ptrait", o.trait));
         b.addEventListener("click", () => { picks[g.kind] = o.id; render(); });
         box.append(b);
       });
@@ -396,9 +406,19 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     }), "No skills yet."));
     const aff = card("Affinities");
     aff.append(list(words(s.affinities).map(([a, r]) => `${a[0].toUpperCase() + a.slice(1)} · rank ${r}`), "None yet."));
+    const classes = card("Classes", "How each base class plays. Yours is marked.");
+    const cl = el("div", "classlist");
+    (s.class_catalogue || []).forEach((c) => {
+      const row = el("div", "cls" + (c.current ? " current" : ""));
+      const head = el("div"); head.append(el("span", "cname", c.name), el("span", "pill", c.stats));
+      if (c.current) head.append(el("span", "pill", "Yours"));
+      row.append(head, el("span", "pblurb", c.blurb), el("span", "ptrait", c.trait));
+      cl.append(row);
+    });
+    classes.append(cl);
     const titles = card("Titles");
     titles.append(list(s.titles || [], "No titles yet."));
-    box.append(who, stats, skills, aff, titles);
+    box.append(who, stats, skills, aff, titles, classes);
   }
 
   function renderJournal(s) {
