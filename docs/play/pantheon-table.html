@@ -45,6 +45,15 @@ main { padding-block: 18px 40px; display: grid; gap: 18px; }
 .story p { margin: 0 0 .9em; max-width: 65ch; }
 .story p em { color: var(--muted); }
 .notice { font: 600 .82rem/1.45 var(--mono); color: var(--brass); background: var(--brass-soft); border-left: 3px solid var(--brass); padding: 7px 10px; margin: .2em 0 1em; border-radius: 0 4px 4px 0; }
+.fight { border: 1px solid var(--blood); border-radius: 8px; padding: 10px 12px; background: color-mix(in srgb, var(--blood) 7%, var(--page)); display: grid; gap: 8px; }
+.fight h2 { color: var(--blood); margin: 0; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.fight h2 span { font: .72rem var(--mono); color: var(--muted); letter-spacing: 0; }
+.foe { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: baseline; border-top: 1px solid var(--line); padding-top: 6px; }
+.foe .fname { font: 700 1rem var(--display); }
+.foe .fmeta { font: .72rem var(--mono); color: var(--muted); }
+.foe .pips { font: .9rem var(--mono); color: var(--blood); letter-spacing: .1em; }
+.foe .intent { grid-column: 1 / -1; font: 600 .8rem/1.4 var(--mono); color: var(--ink); }
+.foe .intent::before { content: "Intent ▸ "; color: var(--blood); }
 .ledger { list-style: none; padding: 0; margin: 0; display: grid; gap: 3px; font: .8rem/1.4 var(--mono); color: var(--muted); }
 .ledger li::before { content: "▸ "; color: var(--brass); }
 h2 { font: 700 .95rem var(--display); letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; }
@@ -155,6 +164,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   <div id="tab-gear" class="panel" hidden></div>
   <div id="tab-story" class="panel" style="display:grid;gap:18px">
   <section class="story" id="story" aria-live="polite"><p class="empty">The story appears here once the narrator writes the first scene. Open this page beside the Claude Code session that runs the game.</p></section>
+  <section class="fight" id="fight" hidden aria-live="polite"></section>
   <ul class="ledger" id="ledger" hidden></ul>
   <section class="due" id="due" hidden></section>
   <section id="actions" hidden>
@@ -222,8 +232,9 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     meta.append(el("span", null, `${s.date} · Turn ${s.turn}`));
     const bars = $("bars"); bars.replaceChildren(
       meter("HP", s.hp, s.max_hp, "var(--blood)"),
-      ...(s.level ? [meter("XP", s.xp, s.xp_next, "var(--brass)")] : [meter("Mana", s.max_mana, s.max_mana, "var(--mana)")]),
+      ...(s.level ? [meter("XP", s.xp, s.xp_next, "var(--brass)")] : [meter("Mana", s.mana ?? s.max_mana, s.max_mana, "var(--mana)")]),
     );
+    renderFight(s.fight);
     $("sheetBtn").disabled = false;
 
     const story = $("story"); story.replaceChildren();
@@ -380,13 +391,31 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   }
   const words = (o) => Object.entries(o || {});
 
+  function renderFight(f) {
+    // The fight as the engine left it: every foe's intent is shown before the player moves (D-014).
+    const box = $("fight"); box.replaceChildren(); box.hidden = !f;
+    if (!f) return;
+    const head = el("h2", null, `Exchange ${f.exchange}`);
+    const extra = [f.momentum ? `Momentum +${f.momentum}` : "", f.last_breath ? `Last Breath ${f.last_breath} of 3` : ""].filter(Boolean).join(" · ");
+    if (extra) head.append(el("span", null, extra));
+    box.append(head);
+    (f.foes || []).forEach((foe) => {
+      const row = el("div", "foe");
+      row.append(el("span", "fname", foe.name + (foe.cursed ? " ✠" : "")), el("span", "pips", "●".repeat(foe.hits_left)));
+      row.append(el("span", "fmeta", `Tier ${foe.tier} · ${foe.threat}${foe.cursed ? " · cursed" : ""}`), el("span", "fmeta", `${foe.hits_left} hit${foe.hits_left === 1 ? "" : "s"} left`));
+      row.append(el("span", "intent", foe.intent));
+      box.append(row);
+    });
+  }
+
   function renderCharacter(s) {
     const box = $("tab-character"); box.replaceChildren();
     const who = card(`${s.name}, ${s.age}`, `${s.people_name} · ${s.origin_name}`);
     who.append(kv([["Class", s.class ? `${s.class} (${s.class_stats})` : "none yet"], ["Profession", s.profession || "none yet"],
+      ...(s.trait ? [["Trait", s.trait + (s.attunement ? ` (${s.attunement})` : "")]] : []),
       ["Tier", s.tier], ["Level", s.level || "Unwritten"], ["Flaw", s.flaw], ["Debt", s.debt]]));
     const pools = el("div", "bars");
-    pools.append(meter("HP", s.hp, s.max_hp, "var(--blood)"), meter("Mana", s.max_mana, s.max_mana, "var(--mana)"), meter("Stam", s.max_stamina, s.max_stamina, "var(--stam)"));
+    pools.append(meter("HP", s.hp, s.max_hp, "var(--blood)"), meter("Mana", s.mana ?? s.max_mana, s.max_mana, "var(--mana)"), meter("Stam", s.stamina ?? s.max_stamina, s.max_stamina, "var(--stam)"));
     if (s.level) pools.append(meter("XP", s.xp, s.xp_next, "var(--brass)"));
     who.append(pools);
     const stats = card("Stats");
