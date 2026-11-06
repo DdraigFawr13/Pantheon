@@ -150,11 +150,11 @@ M1a to M1f are merged (M1d to M1f in PR #19). Ordered so each step is testable a
 
 Already built in M1.5 to M1.7: the `llm/` layer with `MockClient` and the Anthropic adapter, prompt assembly, the API turn loop with retry cap and fallback, the validators, character creation, CLI play and session play, odds without a menu (PR #25, D-050), and 17 engine tools (`src/pantheon/engine/tools.py`). M2 is the remaining work, in four parts; the owner plays after M2a.
 
-**M2a The feel** (NAR-03, NAR-08; 1 session). Built on `claude/m2a-feel`.
+**M2a The feel** (NAR-03, NAR-08; 1 session). Merged as PR #27.
 - PR #25 built odds without a menu (D-050): closing-thought odds, a preview with `session go` or `session abandon`, and the Go and Back off card on the Table page.
 - Only Hard checks or harder stop at the preview; Routine checks roll at once and show their chance and roll (D-051).
 - Scenes of 150 to 250 words, longer for big moments, with the number in one home (now in `prompts/narrator.md` and `narrator/assemble.py`).
-- **You test:** play a session with a fight in Claude Code. Does choosing read like a book or like optimizing? If the closing thought still pulls you toward its listed approaches, D-051 (4) has the next steps.
+- Your playtest moved to the end of M2 (D-052, amended).
 
 **M2b Reliability** (NAR-06, NAR-07; 1 session)
 - Session play counts rejections in the pending turn, allows 2 retries, records a dropped-call event at commit and has a fallback turn that commits without new suggestions (D-049 (1)).
@@ -170,7 +170,7 @@ Already built in M1.5 to M1.7: the `llm/` layer with `MockClient` and the Anthro
 
 **Cut or moved (D-052):** the Ollama side-by-side (D-032), streaming prose (D-029), gear commands on `pantheon play`, the cost-estimate step (SAFE-01 still applies before any paid Haiku playtest), and `begin_trial` and `resolve_trial` (`session trial`, D-037). `grant_title` moves to M3.5 with titles data; `resolve_oath_conflict` becomes a player command once canon defines Oath conflicts.
 
-**Acceptance:** roadmap M2. **You test:** a session with a fight after M2a and again at the end; your call is the measure (GAME-06).
+**Acceptance:** roadmap M2. **You test:** after M2d, play a session with a fight in Claude Code. Does choosing read like a book or like optimizing? If the closing thought still pulls you toward its listed approaches, D-051 (4) has the next steps. Your call is the measure (GAME-06).
 
 ## M2.5: Phone page (1 session)
 

@@ -24,8 +24,8 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 ## Next
 
 1. Audit fixes merged as PR #24 (owner approved 2026-11-06).
-2. **M2 planned (PR #26, D-051, D-052). M2a built on `claude/m2a-feel`, PR open for the owner:** a Routine check, typed or picked, rolls at once with its chance and roll in the notice; Hard or harder stops at the preview (NAR-08). Scenes are 150 to 250 words, from `SCENE_LENGTH` in `narrator/assemble.py` (the prompt file reads `{{scene_length}}`). Next: the owner plays a session with a fight; then M2b with `write-spec`.
-3. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
+2. **M2a merged as PR #27** (owner approved 2026-11-06): only Hard or harder checks stop at the preview (NAR-08); scenes are 150 to 250 words (`SCENE_LENGTH`). The owner's playtest moves to after M2d (D-052, amended). **Next: M2b in a new session**: `write-spec` for session-play NAR-06/NAR-07 and D-050's design in `pantheon play`, then build (BUILD_PLAN M2b).
+3. After M2d, the owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
 
