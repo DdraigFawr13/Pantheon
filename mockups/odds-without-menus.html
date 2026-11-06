@@ -1,0 +1,132 @@
+<title>Odds Without Menus</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@700&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column of three phone frames (412 px, the owner's phone width), each showing chat and the game page for one option. Tokens copied from docs/play/pantheon-table.html. */
+:root {
+  --bg: #e8e4ec; --page: #f8f6fa; --ink: #211b27; --muted: #6a6072; --line: #d6cfdc;
+  --brass: #8a5a12; --brass-soft: #f3e7d2; --mana: #3559a6; --you: #e3dcea;
+  --display: "Alegreya SC", "Palatino Linotype", Georgia, serif;
+  --prose: "Spectral", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #16111a; --page: #211a26; --ink: #efe6dc; --muted: #ab9db0; --line: #3b2f42;
+  --brass: #e3b562; --brass-soft: #34281b; --mana: #93b2f2; --you: #2d2433; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #16111a; --page: #211a26; --ink: #efe6dc; --muted: #ab9db0; --line: #3b2f42;
+  --brass: #e3b562; --brass-soft: #34281b; --mana: #93b2f2; --you: #2d2433; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--prose); margin: 0; }
+.wrap { max-width: 900px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 28px; }
+h1 { font: 700 1.6rem/1.15 var(--display); margin: 0; letter-spacing: .02em; text-wrap: balance; }
+h2 { font: 700 1.2rem/1.2 var(--display); margin: 0 0 4px; color: var(--brass); letter-spacing: .03em; text-wrap: balance; }
+h3 { font: 700 .82rem/1.2 var(--display); margin: 14px 0 6px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+p { margin: 0 0 .7em; max-width: 65ch; }
+.lead { color: var(--muted); }
+.scroller { overflow-x: auto; }
+.frame { width: 100%; max-width: 412px; background: var(--page); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; }
+.story p { margin: 0 0 .6em; }
+.story em { color: var(--muted); }
+.you { justify-self: end; max-width: 85%; background: var(--you); border-radius: 12px 12px 2px 12px; padding: 8px 12px; font: 15px/1.4 var(--prose); }
+.notice { font: 600 13px/1.45 var(--mono); color: var(--brass); background: var(--brass-soft); border-left: 3px solid var(--brass); padding: 7px 10px; border-radius: 0 4px 4px 0; }
+.odds { font: 600 13px/1.3 var(--mono); color: var(--brass); white-space: nowrap; }
+.preview { border: 1px solid var(--brass); background: var(--brass-soft); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+.preview .what { font: 600 14px/1.4 var(--mono); }
+.preview .why { font: 14px/1.4 var(--prose); color: var(--muted); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { min-height: 44px; min-width: 96px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--brass); background: var(--page); color: var(--ink); font: 600 15px var(--prose); cursor: pointer; }
+.btn.go { background: var(--brass); color: var(--page); }
+.box { display: flex; gap: 8px; }
+.box input { flex: 1; min-height: 44px; min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; font: 15px var(--prose); background: var(--bg); color: var(--ink); }
+.hint { font: 13px/1.4 var(--mono); color: var(--muted); }
+.label { font: 600 12px var(--mono); color: var(--muted); letter-spacing: .04em; }
+.pros, .cons { margin: 0; padding-left: 20px; }
+.pros li, .cons li { margin: 2px 0; }
+.verdict { border-left: 3px solid var(--mana); padding: 8px 12px; background: var(--page); border-radius: 0 6px 6px 0; }
+section.option { display: grid; gap: 10px; }
+#check-record { font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+#check-record h2 { color: var(--muted); }
+#check-record li { margin: 3px 0; }
+.btn:focus-visible, .box input:focus-visible { outline: 2px solid var(--mana); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Odds without option menus</h1>
+    <p class="lead">Three ways to show a check's odds before you act, without a list of tapped options. Each one uses your game: Ddraig at the bottom of the Sunken Stair, the end of turn 5, with the humming sack in front of him. Every percentage on this page came from the engine, using your save.</p>
+  </header>
+
+  <section class="option" id="a">
+    <h2>A · Preview, then go</h2>
+    <p>You type anything. If it needs a roll, the game shows the odds first and waits. "Go" rolls exactly that. Anything else backs off, and nothing is rolled. Talking, asking and looking never pause.</p>
+    <div class="scroller"><div class="frame">
+      <div class="story"><p>Ddraig looked at the sack, at the dead man, at the rope going up into the dark, and started counting what they could carry in one trip.</p></div>
+      <div class="you">I work the sack loose from under the beam, slowly, without opening it.</div>
+      <div class="preview" role="group" aria-label="Check preview">
+        <div class="label">BEFORE YOU ACT</div>
+        <div class="what">Agility check, hard: 38%</div>
+        <div class="why">At stake: the sack. Nothing has been rolled yet.</div>
+        <div class="row"><button class="btn go" type="button">Go</button><button class="btn" type="button">Back off</button></div>
+      </div>
+      <div class="hint">Or type something else. Rewording the same action keeps these odds; a different approach gets new ones.</div>
+      <div class="you">Go</div>
+      <div class="notice">Agility check: 38% chance, rolled 22: success</div>
+      <div class="story"><p>He slid two fingers under the knot and eased the canvas out from under the beam a finger's width at a time…</p></div>
+      <div class="box"><input id="a-input" aria-label="What Ddraig does" placeholder="What does Ddraig do?"><button class="btn go" type="button">Send</button></div>
+    </div></div>
+    <h3>Buys</h3>
+    <ul class="pros"><li>Full freedom: any action, in your own words.</li><li>You see the real odds of exactly what you typed, before anything is rolled.</li></ul>
+    <h3>Costs</h3>
+    <ul class="cons"><li>One extra round on risky actions only (estimate: 20 to 40 s each, not measured).</li><li>The narrator picks the stat and difficulty from your words, so a vague line can get a stat you didn't expect. You see it before it rolls, and can back off.</li></ul>
+  </section>
+
+  <section class="option" id="b">
+    <h2>B · Odds in the closing thought</h2>
+    <p>The scene already ends with Ddraig weighing what to do next. The engine stamps the odds onto the approaches he considers, the way it prints the dice today. You type whatever you like.</p>
+    <div class="scroller"><div class="frame">
+      <div class="story">
+        <p>Ddraig looked at the sack, at the dead man, at the rope going up into the dark, and started counting.</p>
+        <p>He could work the sack loose from under the beam <span class="odds">(Agility 38%)</span>, and maybe learn why it hummed. He could haul the first body up the rope while his arms still worked <span class="odds">(Vigor 39%)</span>. Or he could ask Senna what else Tam was saying <span class="odds">(no roll)</span>.</p>
+        <p><em>None of those include dying down here. Good. Keep it that way.</em></p>
+      </div>
+      <div class="box"><input id="b-input" aria-label="What Ddraig does" placeholder="What does Ddraig do?"><button class="btn go" type="button">Send</button></div>
+    </div></div>
+    <h3>Buys</h3>
+    <ul class="pros"><li>No extra round: the odds are there when you read the scene.</li><li>It reads like the story, not like a menu.</li></ul>
+    <h3>Costs</h3>
+    <ul class="cons"><li>An action Ddraig didn't consider gets no odds before it rolls.</li><li>It is still a short list of choices, just written as prose. It may pull you toward the listed ones, the habit you wanted to break.</li></ul>
+  </section>
+
+  <section class="option" id="c">
+    <h2>C · Both</h2>
+    <p>The closing thought carries odds, as in B. If you type something it didn't cover, you get the preview from A first.</p>
+    <div class="scroller"><div class="frame">
+      <div class="story"><p>…Or he could ask Senna what else Tam was saying <span class="odds">(no roll)</span>.</p></div>
+      <div class="you">Before anything, I shore up the beam over the pocket with timber from the slope.</div>
+      <div class="preview" role="group" aria-label="Check preview">
+        <div class="label">BEFORE YOU ACT</div>
+        <div class="what">Intellect check, routine: 58%</div>
+        <div class="why">At stake: a collapse. Nothing has been rolled yet.</div>
+        <div class="row"><button class="btn go" type="button">Go</button><button class="btn" type="button">Back off</button></div>
+      </div>
+      <div class="hint">An approach from the closing thought rolls at once, at the odds already shown.</div>
+    </div></div>
+    <h3>Buys</h3>
+    <ul class="pros"><li>The odds are visible up front, and nothing ever rolls unseen.</li></ul>
+    <h3>Costs</h3>
+    <ul class="cons"><li>Two mechanisms to build, test and keep in step.</li><li>It shares B's list effect.</li></ul>
+  </section>
+
+  <div class="verdict"><strong>My pick: A.</strong> It is the only one that never puts a list in front of you, so it best fits wanting to play less on rails. B is the fastest. C is the most complete, and the most to build.</div>
+
+  <section id="check-record"><h2>Check record</h2>
+    <ul>
+      <li>Files checked: docs/playtests/2026-11-06-session-play.md (turn 5 text, the names Ddraig, Senna, Tam, Dunmore, the sack), docs/play/pantheon-table.html (tokens and faces), the save on the <code>saves</code> branch (timeline ddb27b36, last turn 6), src/pantheon/engine/tools.py <code>check_preview</code>, docs/DECISIONS.md D-036 (odds shown are the odds rolled), D-041 and D-048.</li>
+      <li>Odds: computed by the engine's <code>check_preview</code> on Ddraig's saved state (Agility 27, Vigor 30, Intellect 29, Tier 1): Agility hard against Tier 1 is 38%, Vigor hard is 39%, Intellect routine is 58%. The Vigor hard figure matches the 39% the game printed on turn 5. The stat and difficulty for each action are my example choices; in play, the narrator picks them.</li>
+      <li>Invented for illustration: the roll of 22 in A and the sentences after the turn-5 excerpt. They are not from your game.</li>
+      <li>Lint: <code>mockup-lint: 0 warnings</code> (minimum text 12 px; buttons and the text box are at least 44 px tall).</li>
+      <li>Widths shown: up to 412 px; each frame fits the screen on a phone. No screenshots (a concept page, not a built screen). No fresh reviewer check, so no agent cost.</li>
+    </ul>
+  </section>
+</div>

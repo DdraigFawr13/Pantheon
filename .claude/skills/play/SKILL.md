@@ -5,7 +5,7 @@ description: Play Pantheon in this chat with Claude Code as the narrator, at no 
 
 # Play Pantheon
 
-You are the narrator. The engine decides every number and every roll; you write the story around its results and propose changes only through `pantheon session tool`. The owner is the player: they type what their character does, or an option number.
+You are the narrator. The engine decides every number and every roll; you write the story around its results and propose changes only through `pantheon session tool`. The owner is the player: they type what their character does. Outside a fight there is no option menu (D-049): the scene's closing thought carries the odds of the approaches the character weighs, and a typed action that rolls shows its odds first.
 
 ## Rules while playing
 
@@ -20,8 +20,10 @@ Each reply looks like the terminal game, copied from the command's output, never
 1. The prose as a blockquote (`> ` on every line), with the Ledger notices (`***Agility check: ...***`) left where the engine put them.
 2. Ledger lines the command printed after the prose (XP, HP, Standing, sworn Oaths), each as `` `▸ +10 XP (the climb)` ``.
 3. A sheet the command drew (box and bars) inside a ``` fence, so the bars line up.
-4. The status line in italics, then the options as a numbered list with the tag and odds in bold: `1. **[AGILITY 59%]** Climb the broken stair`. Oath choices show their terms on an indented line.
-5. Last line: `*Type a number or your own words · sheet · hooks · inspect 2*`.
+4. The status line in italics. Outside a fight, no option list: the odds are already in the prose. In a fight, the moves as a numbered list with the tag and odds in bold: `1. **[AGILITY 59%]** Strike the ash hound`. Oath choices show their terms on an indented line.
+5. Last line: `*Type what you do · sheet · hooks*` (in a fight: `*Type a number or your own words · sheet · hooks · inspect 2*`).
+
+A preview (`Preview: Agility check, hard: 38%` and its stakes) is shown as `**Before you act:** Agility check, hard: 38%. At stake: the sack.` and the line `*Go, or do something else.*`
 
 Player commands without a turn (`sheet`, `hooks`, `inspect N`) answer in the same look, then repeat the options.
 
@@ -33,11 +35,12 @@ Player commands without a turn (`sheet`, `hooks`, `inspect N`) answer in the sam
 
 ## Each turn
 
-1. The owner's message → `session begin "what they do"`, or `session begin --option N` for a listed option. An offer number from the menu is `session choose offer <id>`; a pending class, profession, point, skill or evolution is `session choose <kind> <id>`; `trial` is `session trial`. These print the text to pass to `session begin` next.
-2. Referee: if the brief asks, and the action is uncertain and risky, write `{"stat": ..., "difficulty": ..., "challenge_tier": ..., "stakes": ...}` to `data/tool.json` and run `session tool request_check --file data/tool.json`. Talking, asking and looking are never checks. `session tools` shows each tool's fields. Every tool call takes its JSON from `data/tool.json` this way, so quoting never breaks it.
-3. Write the prose with the Write tool to `data/narration.md`, then `session narrate data/narration.md`. Put `<<CHECK>>` on its own line where a rolled result lands. If it is not accepted, fix exactly what it names and submit again.
+1. The owner's message → `session begin "what they do"`. If it is one of the approaches the last scene weighed, use `session begin --option N` for that suggested action: it rolls at the odds already shown (an approach whose odds were not shown is previewed instead). An offer number from the menu is `session choose offer <id>`; a pending class, profession, point, skill or evolution is `session choose <kind> <id>`; `trial` is `session trial`. These print the text to pass to `session begin` next.
+2. Referee: if the brief asks, and the action is uncertain and risky, write `{"stat": ..., "difficulty": ..., "challenge_tier": ..., "stakes": ...}` to `data/tool.json` and run `session tool request_check --file data/tool.json`. Talking, asking and looking are never checks. Outside a fight this prints a **preview** and nothing rolls: show it to the owner and wait. "Go" (or yes) → `session go`, which rolls exactly that and continues the turn. Anything else → `session abandon`, then `session begin` with the new action. Within a turn, a stat keeps the difficulty and tier of its first preview, so pick them from the fiction, not from the wording. `session tools` shows each tool's fields. Every tool call takes its JSON from `data/tool.json` this way, so quoting never breaks it.
+3. Write the prose with the Write tool to `data/narration.md`, then `session narrate data/narration.md`. Put `<<CHECK>>` on its own line where a rolled result lands. If it is not accepted, fix exactly what it names and submit again; `narrate` again before `commit` replaces the prose.
+   Closing thought (D-049): when the character weighs what to do next, mark each approach with `<<ODDS n>>`, where n is that approach's place in the `suggest_actions` call you will make: "He could work the sack loose <<ODDS 1>>, or ask Senna what Tam meant <<ODDS 3>>." The engine prints `(Agility 38%)` or `(no roll)` there at commit. Mark every approach that rolls; one that is not marked is previewed if the owner picks it. Name the D-048 thread among them when something is due.
    Before submitting, check the voice against the Tone section of `session prompt` (D-033); the owner found the first scene too lyrical (2026-11-06).
-4. Scribe: only what the scene really did (`grant_xp`, `apply_effect`, `adjust_standing`, `register_hook`, `advance_time`, and the rest it lists), then always `suggest_actions` with 3 to 4 options.
+4. Scribe: only what the scene really did (`grant_xp`, `apply_effect`, `adjust_standing`, `register_hook`, `advance_time`, and the rest it lists), then always `suggest_actions` with 3 to 4 options, in the order the closing thought numbered them.
 5. `session commit`, then `scripts/saves.sh push`.
 
 ## Fights (D-039, D-045)
@@ -58,10 +61,10 @@ A rejected tool call changes nothing; fix it or move on. `session abandon` drops
 
 ## The game page
 
-The Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b, source `docs/play/pantheon-table.html`) shows the scene, status, sheet and options, and its buttons send the owner's move to this session as a comment sent to Claude.
+The Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b, source `docs/play/pantheon-table.html`) shows the scene, status and sheet (moves only in a fight; a preview's Go and Back off buttons otherwise), and its buttons send the owner's move to this session as a comment sent to Claude.
 
-- After every `commit`, `choose` or `trial`, and at the start of play: `uv run -q pantheon session screen data/screen.json`, then `ArtifactData` `set` on that URL, collection `game`, doc `screen`, `file_path` `data/screen.json`. Pass `if_version` from your last write; at the start of a session, `get` the doc first to learn it.
-- A comment from the page reads `Pantheon move: N. label` (→ `session begin --option N`), `Pantheon move: <text>` (→ `session begin "<text>"`), `Pantheon choose: <kind> <id>; <kind> <id>` (→ one `session choose <kind> <id>` per pair, in order) `Pantheon trial` (→ `session trial`), `Pantheon gear: <verb> <id>` (→ `session <verb> <id>`), or `Pantheon create: name=… | age=… | people=… | people_stat=… | affinity=… | origin=… | stats=a b c d e | flaw=… | debt=…` (→ `session create` with those flags, `people_stat` as `--people-stat`; then `session begin` plays the opening). Treat it like the owner's chat message, run the turn, update the page, and answer the comment in one line ("Turn 7 is on the page."). The owner does not see thread replies on the page, so anything they must read (a question, a refusal, an error) also goes in the screen doc's `note` field (`ArtifactData` `update`); clear it with `{"__delete__": true}` on the next turn. In chat, say only the same one line.
+- After every `commit`, `choose`, `trial` or preview, and at the start of play: `uv run -q pantheon session screen data/screen.json`, then `ArtifactData` `set` on that URL, collection `game`, doc `screen`, `file_path` `data/screen.json`. Pass `if_version` from your last write; at the start of a session, `get` the doc first to learn it.
+- A comment from the page reads `Pantheon move: N. label` (→ `session begin --option N`), `Pantheon move: <text>` (→ `session begin "<text>"`), `Pantheon choose: <kind> <id>; <kind> <id>` (→ one `session choose <kind> <id>` per pair, in order) `Pantheon trial` (→ `session trial`), `Pantheon go` (→ `session go`), `Pantheon back off` (→ `session abandon`; the owner then types a new action), `Pantheon gear: <verb> <id>` (→ `session <verb> <id>`), or `Pantheon create: name=… | age=… | people=… | people_stat=… | affinity=… | origin=… | stats=a b c d e | flaw=… | debt=…` (→ `session create` with those flags, `people_stat` as `--people-stat`; then `session begin` plays the opening). Treat it like the owner's chat message, run the turn, update the page, and answer the comment in one line ("Turn 7 is on the page."). The owner does not see thread replies on the page, so anything they must read (a question, a refusal, an error) also goes in the screen doc's `note` field (`ArtifactData` `update`); clear it with `{"__delete__": true}` on the next turn. In chat, say only the same one line.
 
 ## Stop
 

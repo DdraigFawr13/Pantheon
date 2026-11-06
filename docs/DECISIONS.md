@@ -305,3 +305,17 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Decision:** When the due material lists a due hook, or a clock that has moved or filled, one of the 3 to 4 suggested actions leads toward that thread in the scene's own terms, and the closing weighing of choices names it. It is one action per turn, only while something is due, and the player may ignore it. This is a narrator-prompt rule (`prompts/narrator.md`, Choice design), so it relies on the narrator; M4's beat scheduler and engine-evaluated due hooks are where the engine enforces it.
 - **Why:** options grow from the current scene, so picking a side path made every next menu about that side path, and nothing pulled the player back to open threads. The owner noticed this in past play.
 
+## D-049 Odds without an option menu: odds in the closing thought, and a preview for typed actions
+
+- **Status:** Accepted (2026-11-06; owner, on the mock-up https://claude.ai/artifact/8jXbpgTg7zXjRk7bhfWZxb: "let's go with c for now and potentially switch to a in the future"). Settles design audit F3.
+- **Decision:** In session play outside a fight, there is no numbered option menu.
+  - The scene's closing thought marks the approaches the character weighs with `<<ODDS n>>`, and at commit the engine prints each one's odds there, such as "(Agility 38%)" or "(no roll)". The odds come from `check_preview`, the same calculation as the roll (D-036).
+  - A typed action that needs a roll is previewed first (`Preview: Agility check, hard: 38%`). `session go` rolls exactly that check; `session abandon` backs off with nothing rolled. Within a turn, a stat's first preview fixes its difficulty and tier, so rewording the same approach cannot reshop the odds; a different stat gets its own.
+  - A suggested action whose odds the last scene did not print is previewed when picked, so nothing rolls at odds the player did not see.
+  - `suggest_actions` is still required (NAR-03). It is now the engine's record of the approaches, not a menu. D-048's way back is one of the approaches the closing thought names.
+  - Fights keep their numbered moves beside the foes' intents (D-039).
+  - The API path (`pantheon play`) keeps its menu for now.
+  - The game page shows a Go and Back off card for a preview, and no option list outside a fight.
+- **Assumed:** prose may be replaced before commit (`narrate` again), so a wrong marker can be fixed. A preview costs one extra step on risky typed actions only.
+- **Why:** the owner likes seeing the odds before acting, but found the option menu kept them on the listed paths. Shape A (preview only, no odds in the prose) stays the likely next step, if the closing thought still pulls too hard toward its listed approaches.
+
