@@ -192,6 +192,40 @@ class Intent(_Strict):
     guards: bool = False
 
 
+class Trait(_Strict):
+    """A class trait the engine runs in fights, as plain effects a class can combine (D-043)."""
+
+    name: str
+    attack_bonus_per_success: int = Field(default=0, ge=0)
+    attack_bonus_cap: int = Field(default=0, ge=0)
+    low_hp_attack_bonus: int = 0
+    low_hp_defence_bonus: int = 0
+    defence_stats: tuple[Stat, ...] = ()
+    pool_discount_percent: dict[Literal["mana", "stamina"], int] = Field(default_factory=dict)
+    ambush_attack_bonus: int = Field(default=0, ge=0)
+    ambush_hit_multiplier: int = Field(default=1, ge=1)
+    studied_attack_bonus: int = Field(default=0, ge=0)
+    studied_from_exchange: int = Field(default=2, ge=1)
+    attunements: tuple[str, ...] = ()
+    attuned_discount_percent: int = Field(default=0, ge=0, le=100)
+    attuned_bonus: int = Field(default=0, ge=0)
+    hp_for_mana: bool = False
+    curse_attack_bonus: int = Field(default=0, ge=0)
+    curse_damage_percent: int = Field(default=0, ge=0)
+    form_bonus: int = Field(default=0, ge=0)
+    form_stats: tuple[Stat, ...] = ()
+    form_blocks_skills: bool = False
+
+    @property
+    def once_per_fight(self) -> str | None:
+        """What `trait: true` on a move does: curse a foe, take a form, or nothing."""
+        if self.curse_attack_bonus or self.curse_damage_percent:
+            return "curse"
+        if self.form_bonus:
+            return "form"
+        return None
+
+
 class Combat(_Strict):
     threats: dict[str, Threat]
     intents: tuple[Intent, ...]
@@ -207,6 +241,7 @@ class Combat(_Strict):
     injury_chance_per_percent: int = Field(ge=0)
     last_breath_marks: int = Field(gt=0)
     final_reckoning: int = Field(gt=0)
+    traits: dict[str, Trait] = Field(default_factory=dict)
 
 
 class GameData(_Strict):

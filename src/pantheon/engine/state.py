@@ -63,6 +63,12 @@ class Foe(BaseModel):
 class Fight(BaseModel):
     foes: list[Foe]
     exchange: int = 1
+    ambush: bool = False  # The character struck first, unseen (Opening, D-043).
+    opened: bool = False  # The first attack has been made.
+    momentum: int = 0
+    cursed: str | None = None  # The foe a Malediction marks.
+    form: bool = False  # Beast Form is on.
+    trait_used: bool = False  # The class's once-per-fight trait.
 
     @property
     def standing(self) -> list[Foe]:
@@ -114,6 +120,7 @@ class GameState(BaseModel):
     last_breath: int = 0
     reckonings: int = 0
     dead: bool = False
+    attunement: str | None = None
 
     @property
     def mana(self) -> int:
@@ -229,7 +236,16 @@ def apply_event(state: GameState, type_: str, payload: dict[str, Any]) -> None:
             state.stats[payload["stat"]] -= payload["amount"]
             state.wounds = min(state.wounds, state.max_hp)
         case "fight_started":
-            state.fight = Fight(foes=[Foe(**f) for f in payload["foes"]])
+            state.fight = Fight(foes=[Foe(**f) for f in payload["foes"]], ambush=payload.get("ambush", False))
+        case "attuned":
+            state.attunement = payload["element"]
+        case "trait_used":
+            assert state.fight is not None
+            state.fight.trait_used = True
+            if payload["kind"] == "curse":
+                state.fight.cursed = payload["foe"]
+            else:
+                state.fight.form = True
         case "foe_hit":
             assert state.fight is not None
             next(f for f in state.fight.foes if f.id == payload["foe"]).hits_left -= payload["hits"]
@@ -248,6 +264,8 @@ def apply_event(state: GameState, type_: str, payload: dict[str, Any]) -> None:
             state.cooldowns = {k: v - 1 for k, v in state.cooldowns.items() if v > 1}
             if state.fight is not None:
                 state.fight.exchange += 1
+                state.fight.momentum = payload.get("momentum", state.fight.momentum)
+                state.fight.opened = state.fight.opened or payload.get("attacked", False)
                 for foe in state.fight.foes:
                     foe.intent = payload["intents"].get(foe.id, foe.intent)
         case "fight_ended":

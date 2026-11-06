@@ -27,6 +27,7 @@ from pantheon.engine.calendar import clock_value, date_of, format_date
 from pantheon.engine.commands import (
     CharacterChoices,
     allocate_point,
+    choose_attunement,
     choose_class,
     choose_profession,
     create_character,
@@ -37,6 +38,7 @@ from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
 from pantheon.engine.tools import ToolResult, apply_tool, attempt_trial, resolve_offer, tool_definition
+from pantheon.engine.traits import needs_attunement, trait_of
 from pantheon.narrator.assemble import _REMINDER, _due_material, assemble, state_view
 from pantheon.narrator.loop import (
     _NARRATE_OUTCOME,
@@ -326,6 +328,9 @@ class Session:
         due = []
         if state.needs_class:
             due.append("class: " + ", ".join(f"{c.id} ({c.primary}/{c.secondary})" for c in data.classes))
+        trait = trait_of(state, data)
+        if trait is not None and needs_attunement(state, data):
+            due.append(f"attunement ({trait.name}): " + ", ".join(trait.attunements))
         if state.needs_profession:
             due.append("profession: " + ", ".join(data.professions.all()))
         if state.free_points > 0:
@@ -358,6 +363,13 @@ class Session:
             )
             for option, cls in zip(groups[-1]["options"], data.classes, strict=True):
                 option["blurb"], option["trait"] = cls.blurb, cls.trait
+        trait = trait_of(state, data)
+        if trait is not None and needs_attunement(state, data):
+            group(
+                "attunement",
+                f"{trait.name}: your element",
+                [(e, e.capitalize(), "Spells of it cost less and land surer") for e in trait.attunements],
+            )
         if state.needs_profession:
             kinds = (
                 ("Gathering", data.professions.gathering),
@@ -452,6 +464,7 @@ class Session:
         sim = self.command_sim()
         handlers = {
             "class": choose_class,
+            "attunement": choose_attunement,
             "profession": choose_profession,
             "point": allocate_point,
             "skill": pick_skill,

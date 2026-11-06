@@ -22,6 +22,7 @@ from pantheon.engine.combat import intent_label
 from pantheon.engine.commands import (
     CharacterChoices,
     allocate_point,
+    choose_attunement,
     choose_class,
     choose_profession,
     create_character,
@@ -33,6 +34,7 @@ from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, Action, EventRecord, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
 from pantheon.engine.tools import attempt_trial, check_preview, resolve_offer
+from pantheon.engine.traits import needs_attunement, trait_of
 from pantheon.llm.anthropic_adapter import AnthropicClient
 from pantheon.llm.client import LLMClient
 from pantheon.narrator.assemble import history_window
@@ -204,6 +206,10 @@ def _sheet(state: GameState, world: World) -> Panel:
         "Oaths: " + (", ".join(oaths[o] for o in state.oaths) or "none"),
         "Standing: " + (", ".join(f"{e} {v:+d}" for e, v in state.standing.items()) or "none"),
     ]
+    trait = trait_of(state, world.data) if world.data else None
+    if trait is not None:
+        attuned = f" ({state.attunement.capitalize()})" if state.attunement else ""
+        lines.insert(2, f"Trait: {trait.name}{attuned}")
     if state.reckonings:
         lines.append(f"Reckonings: {state.reckonings}")
     if state.titles:
@@ -271,6 +277,13 @@ def ledger_lines(events: list[EventRecord]) -> list[str]:
                 lines.append(f"Petition {'granted' if p['granted'] else 'not granted'} ({p['reason']})")
             case "fight_started":
                 lines.append(f"[bold]A fight begins:[/bold] {', '.join(f['name'] for f in p['foes'])}")
+            case "attuned":
+                lines.append(f"[bold]Attuned:[/bold] {p['element'].capitalize()}")
+            case "trait_used":
+                target = f" on {p['foe']}" if p.get("foe") else ""
+                lines.append(f"[bold]{p['trait']}[/bold]{target}: once this fight")
+            case "skill_spent" if p["cost"]:
+                lines.append(f"{p['skill']}: -{p['cost']} {p['pool']}")
             case "foe_hit":
                 lines.append(f"{p['name']} takes {p['hits']} hit{'s' if p['hits'] > 1 else ''}")
             case "overspend_rolled":
@@ -299,6 +312,10 @@ def _player_choices(sim: Simulation, ask: Ask, console: Console) -> None:
         )
         classes = [(c.id, f"{c.name}: {c.primary} / {c.secondary}") for c in data.classes]
         choose_class(sim, _pick(ask, console, "Choose your class", classes))
+    trait = trait_of(sim.state, data)
+    if trait is not None and needs_attunement(sim.state, data):
+        elements = [(e, e.capitalize()) for e in trait.attunements]
+        choose_attunement(sim, _pick(ask, console, f"{trait.name}: choose your element", elements))
     if sim.state.needs_profession:
         professions = [(p, p) for p in data.professions.all()]
         choose_profession(sim, _pick(ask, console, "Choose your profession", professions))

@@ -36,6 +36,7 @@ from pantheon.engine.combat import injure, move_terms, resolve_exchange, start_f
 from pantheon.engine.progression import evolution_options, offer_skills
 from pantheon.engine.state import STATS, Action, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Simulation, change_standing
+from pantheon.engine.traits import bonuses, defence_stat, skill_cost, skill_data, trait_of
 from pantheon.world.schemas import GameData
 
 MAX_REJECTION_DETAIL = 3
@@ -174,6 +175,7 @@ class StartFight(_Args):
 
     foes: list[FoeArg]
     reason: str
+    ambush: bool = Field(default=False, description="True if the character strikes first, unseen.")
 
 
 class EndFight(_Args):
@@ -190,6 +192,8 @@ class FightMove(_Args):
     target: str | None = Field(default=None, description="For attack: the foe's id, such as f1.")
     skill: str | None = Field(default=None, description="A skill on the sheet that the move uses.")
     overspend: bool = Field(default=False, description="True if the player chose to spend below zero.")
+    trait: bool = Field(default=False, description="True to call on the class's once-per-fight trait now.")
+    pay_with_hp: bool = Field(default=False, description="Surge only: pay the skill's mana cost in HP.")
 
 
 class SuggestedAction(_Args):
@@ -215,7 +219,14 @@ class SuggestActions(_Args):
     actions: list[SuggestedAction]
 
 
-def _check_request(state: GameState, data: GameData, args: RequestCheck) -> CheckRequest:
+def _check_request(
+    state: GameState,
+    data: GameData,
+    args: RequestCheck,
+    move: str | None = None,
+    target: str | None = None,
+    activating: bool = False,
+) -> CheckRequest:
     overcome = None
     if args.overcome == "oath":
         if not state.oaths:
@@ -234,11 +245,17 @@ def _check_request(state: GameState, data: GameData, args: RequestCheck) -> Chec
         challenge_tier=args.challenge_tier,
         approach=args.approach,
         overcome=overcome,
+        bonus=sum(n for _, n in bonuses(state, data, args.stat, args.skill, move, target, activating)),
     )
 
 
 def check_preview(state: GameState, data: GameData, check: dict[str, Any]) -> CheckOdds:
     """The odds a stored action's check has right now, for the screen (D-036)."""
+    if "move" in check:
+        move = FightMove.model_validate(check)
+        request = _fight_terms(state, data, move)
+        activating = move.trait and state.fight is not None and not state.fight.trait_used
+        return check_odds(_check_request(state, data, request, move.move, move.target, activating))
     return check_odds(_check_request(state, data, RequestCheck.model_validate(check)))
 
 
@@ -248,9 +265,12 @@ def _request_check(sim: Simulation, args: RequestCheck) -> dict[str, Any]:
     return _roll_check(sim, args)
 
 
-def _roll_check(sim: Simulation, args: RequestCheck) -> dict[str, Any]:
+def _roll_check(
+    sim: Simulation, args: RequestCheck, move: str | None = None, target: str | None = None
+) -> dict[str, Any]:
     state = sim.state
-    request = _check_request(state, sim.rules.data, args)
+    request = _check_request(state, sim.rules.data, args, move, target)
+    found = bonuses(state, sim.rules.data, args.stat, args.skill, move, target)
     skill_rank = request.skill_rank
     result = resolve_check(sim.rng, request)
     check_id = f"c{state.checks_made + 1}"
@@ -273,6 +293,8 @@ def _roll_check(sim: Simulation, args: RequestCheck) -> dict[str, Any]:
         "automatic": result.automatic,
         "overcome_applied": result.overcome_applied,
     }
+    if found:
+        event["bonuses"] = [[name, amount] for name, amount in found]  # Shown on the Ledger line (D-043).
     sim.emit("check_resolved", event)
     return {
         "check_id": check_id,
@@ -535,7 +557,7 @@ def _add_hook(
 
 
 def _start_fight(sim: Simulation, args: StartFight) -> dict[str, Any]:
-    return start_fight(sim, [(f.name, f.tier, f.threat) for f in args.foes])
+    return start_fight(sim, [(f.name, f.tier, f.threat) for f in args.foes], args.ambush)
 
 
 def _end_fight(sim: Simulation, args: EndFight) -> dict[str, Any]:
@@ -547,18 +569,30 @@ def _end_fight(sim: Simulation, args: EndFight) -> dict[str, Any]:
     return {"fight_over": True}
 
 
-def _fight_request(sim: Simulation, args: FightMove) -> RequestCheck:
-    """Validate a move and work out its check. Raises Rejected before any spending or roll (D-022)."""
-    state = sim.state
-    if state.fight is None:
+def _fight_terms(state: GameState, data: GameData, args: FightMove) -> RequestCheck:
+    """Validate a move and work out its check, from state alone, so the odds and the roll agree (GAME-02)."""
+    fight = state.fight
+    if fight is None:
         raise Rejected("there is no fight")
     if state.downed:
         raise Rejected("the Downed cannot act")
-    difficulty, tier = move_terms(sim, args.move, args.target)
+    difficulty, tier = move_terms(state, data, args.move, args.target)
+    trait = trait_of(state, data)
+    if args.trait:
+        kind = trait.once_per_fight if trait else None
+        if kind is None:
+            raise Rejected("this class has no trait to call on in a fight")
+        if fight.trait_used:
+            raise Rejected(f"{trait.name if trait else 'the trait'} is spent for this fight")
+        if kind == "curse" and args.move != "attack":
+            raise Rejected("a curse lands with an attack on its target")
     if args.skill is not None:
-        _skill_cost(sim, args)
+        forming = args.trait and trait is not None and trait.once_per_fight == "form"
+        if trait is not None and trait.form_blocks_skills and (fight.form or forming):
+            raise Rejected(f"no skills while {trait.name} lasts")
+        _skill_cost(state, data, args)
     return RequestCheck(
-        stat=args.stat,
+        stat=defence_stat(state, data, args.stat, args.move),  # type: ignore[arg-type]
         difficulty=Difficulty(difficulty),
         challenge_tier=tier,
         approach=Approach.FORCE if args.move == "attack" else Approach.OTHER,
@@ -567,23 +601,33 @@ def _fight_request(sim: Simulation, args: FightMove) -> RequestCheck:
     )
 
 
-def _skill_cost(sim: Simulation, args: FightMove) -> tuple[str | None, int, int]:
-    """(pool, cost, overspent percent) of the move's skill, or Rejected if it cannot be used now."""
-    state, data = sim.state, sim.rules.data
+def _skill_cost(state: GameState, data: GameData, args: FightMove) -> tuple[str | None, int, int]:
+    """(pool, cost, overspent percent) of the move's skill, or Rejected if it cannot be used now.
+
+    The pool is "hp" when Surge pays a mana cost in HP (D-043).
+    """
     name = (args.skill or "").lower()
     if name not in state.skills:
         raise Rejected(f"{args.skill} is not on the sheet")
     if state.cooldowns.get(name):
         raise Rejected(f"{args.skill} is cooling down")
-    skill = next((s for s in data.skills if s.id == name), None)
+    skill = skill_data(data, name)
     if skill is None or skill.pool is None:
         return None, 0, 0  # A skill with no data, such as an origin's, costs nothing yet.
+    cost = skill_cost(state, data, skill)
+    if args.pay_with_hp:
+        trait = trait_of(state, data)
+        if trait is None or not trait.hp_for_mana or skill.pool != "mana":
+            raise Rejected("only a Surge can pay a mana cost in HP")
+        if state.hp <= cost:
+            raise Rejected(f"paying {cost} HP would drop the character")
+        return "hp", cost, 0
     current, maximum = (
         (state.mana, state.max_mana) if skill.pool == "mana" else (state.stamina, state.max_stamina)
     )
-    after = current - skill.cost
+    after = current - cost
     if after >= 0:
-        return skill.pool, skill.cost, 0
+        return skill.pool, cost, 0
     if not args.overspend:
         raise Rejected(
             f"{args.skill} costs more {skill.pool} than is left; the player must choose to overspend"
@@ -591,15 +635,18 @@ def _skill_cost(sim: Simulation, args: FightMove) -> tuple[str | None, int, int]
     percent = math.ceil(-after * 100 / maximum) if maximum else 100
     if percent > data.combat.overspend_limit_percent:
         raise Rejected(f"{args.skill} would overspend past the limit")
-    return skill.pool, skill.cost, percent
+    return skill.pool, cost, percent
 
 
 def _spend_skill(sim: Simulation, args: FightMove) -> None:
-    pool, cost, overspent = _skill_cost(sim, args)
+    pool, cost, overspent = _skill_cost(sim.state, sim.rules.data, args)
     name = (args.skill or "").lower()
-    skill = next((s for s in sim.rules.data.skills if s.id == name), None)
+    skill = skill_data(sim.rules.data, name)
     # A cooldown of N shuts out the next N exchanges, and this exchange's own end also ticks it.
     cooldown = skill.cooldown + 1 if skill and skill.cooldown else 0
+    if pool == "hp":
+        sim.emit("effect_applied", {"kind": "damage", "amount": cost, "source": "surge", "reason": name})
+        pool, cost = None, 0
     sim.emit("skill_spent", {"skill": name, "pool": pool, "cost": cost, "cooldown": cooldown})
     if overspent:
         chance = overspent * sim.rules.data.combat.injury_chance_per_percent
@@ -610,10 +657,17 @@ def _spend_skill(sim: Simulation, args: FightMove) -> None:
 
 
 def _fight_move(sim: Simulation, args: FightMove) -> dict[str, Any]:
-    request = _fight_request(sim, args)
+    state = sim.state
+    request = _fight_terms(state, sim.rules.data, args)
+    trait = trait_of(state, sim.rules.data)
+    if args.trait and trait is not None and state.fight is not None:
+        kind = trait.once_per_fight
+        sim.emit(
+            "trait_used", {"trait": trait.name, "kind": kind, "foe": args.target if kind == "curse" else None}
+        )
     if args.skill is not None:
         _spend_skill(sim, args)
-    checked = _roll_check(sim, request)
+    checked = _roll_check(sim, request, args.move, args.target)
     outcome = Outcome(checked["outcome"])
     return {
         "check_id": checked["check_id"],
@@ -624,8 +678,8 @@ def _fight_move(sim: Simulation, args: FightMove) -> dict[str, Any]:
 
 def _fight_check_dict(sim: Simulation, args: FightMove) -> dict[str, Any]:
     """What a suggested move stores: the check it will roll, for the odds, plus the move itself (D-036)."""
-    request = _fight_request(sim, args)
-    return {**request.model_dump(mode="json"), **args.model_dump(mode="json")}
+    request = _fight_terms(sim.state, sim.rules.data, args)
+    return {**args.model_dump(mode="json"), **request.model_dump(mode="json")}
 
 
 def _character_tags(sim: Simulation) -> set[str]:

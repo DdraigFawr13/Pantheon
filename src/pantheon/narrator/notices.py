@@ -18,7 +18,8 @@ def check_notice(payload: dict[str, Any]) -> str:
     stat = str(payload["stat"]).capitalize()
     if payload.get("automatic"):
         return f"***{stat} check: {outcome}, decided by the tier gap***"
-    return f"***{stat} check: {payload['chance']}% chance, rolled {payload['roll']}: {outcome}***"
+    extra = "".join(f", {name} {amount:+d}" for name, amount in payload.get("bonuses", []))
+    return f"***{stat} check{extra}: {payload['chance']}% chance, rolled {payload['roll']}: {outcome}***"
 
 
 def place_notices(text: str, events: list[EventRecord]) -> str:

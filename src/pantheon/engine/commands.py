@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from pantheon.engine.progression import offer_skills
 from pantheon.engine.state import STATS
 from pantheon.engine.timeline import Rejected, Simulation
+from pantheon.engine.traits import needs_attunement, trait_of
 
 
 class CharacterChoices(BaseModel):
@@ -104,6 +105,16 @@ def choose_profession(sim: Simulation, profession: str) -> None:
     if profession not in sim.rules.data.professions.all():
         raise Rejected(f"unknown profession: {profession}")
     sim.emit("profession_chosen", {"profession": profession})
+
+
+def choose_attunement(sim: Simulation, element: str) -> None:
+    """Attuned (D-043): the Elementalist picks the element its spells favour, once."""
+    trait = trait_of(sim.state, sim.rules.data)
+    if trait is None or not needs_attunement(sim.state, sim.rules.data):
+        raise Rejected("no attunement choice is due")
+    if element not in trait.attunements:
+        raise Rejected(f"attune to one of: {', '.join(trait.attunements)}")
+    sim.emit("attuned", {"element": element})
 
 
 def allocate_point(sim: Simulation, stat: str) -> None:

@@ -11,8 +11,9 @@ from collections.abc import Iterable
 from typing import Any
 
 from pantheon.engine.checks import Outcome
-from pantheon.engine.state import STATS, Fight, Foe
+from pantheon.engine.state import STATS, Fight, Foe, GameState
 from pantheon.engine.timeline import Rejected, Simulation
+from pantheon.engine.traits import next_momentum, trait_of
 from pantheon.world.schemas import GameData
 
 _INJURY_AMOUNT = 10
@@ -33,7 +34,9 @@ def intent_label(data: GameData, intent_id: str) -> str:
     return next(i.label for i in data.combat.intents if i.id == intent_id)
 
 
-def start_fight(sim: Simulation, foes: Iterable[tuple[str, int, str]]) -> dict[str, Any]:
+def start_fight(
+    sim: Simulation, foes: Iterable[tuple[str, int, str]], ambush: bool = False
+) -> dict[str, Any]:
     state, table = sim.state, sim.rules.data.combat
     listed = list(foes)
     if state.fight is not None:
@@ -56,7 +59,7 @@ def start_fight(sim: Simulation, foes: Iterable[tuple[str, int, str]]) -> dict[s
         }
         for number, (name, tier, threat) in enumerate(listed, 1)
     ]
-    sim.emit("fight_started", {"foes": drawn})
+    sim.emit("fight_started", {"foes": drawn, **({"ambush": True} if ambush else {})})
     return {"foes": len(drawn)}
 
 
@@ -67,9 +70,9 @@ def foe_of(fight: Fight, target: str | None) -> Foe:
     return foe
 
 
-def move_terms(sim: Simulation, move: str, target: str | None) -> tuple[str, int]:
+def move_terms(state: GameState, data: GameData, move: str, target: str | None) -> tuple[str, int]:
     """The difficulty and challenge tier of a move. The engine sets both, never the narrator (ENG-02)."""
-    fight, table = sim.state.fight, sim.rules.data.combat
+    fight, table = state.fight, data.combat
     if fight is None:
         raise Rejected("there is no fight")
     if move == "attack":
@@ -85,7 +88,12 @@ def _blow_percent(sim: Simulation, foe: Foe) -> int:
     if intent.damage_percent == 0:
         return 0
     gap = foe.tier - sim.state.tier
-    return max(table.tier_gap_damage_percent, intent.damage_percent + gap * table.tier_gap_damage_percent)
+    percent = max(table.tier_gap_damage_percent, intent.damage_percent + gap * table.tier_gap_damage_percent)
+    trait = trait_of(sim.state, sim.rules.data)
+    fight = sim.state.fight
+    if trait and fight and fight.cursed == foe.id:
+        percent = max(0, percent - trait.curse_damage_percent)  # Malediction: the cursed foe's blows weaken.
+    return percent
 
 
 def _hurt(sim: Simulation, percent: int, reason: str) -> int:
@@ -104,7 +112,7 @@ def _regen(spent: int, maximum: int, percent: int) -> int:
     return min(spent, math.ceil(maximum * percent / 100))
 
 
-def _end_exchange(sim: Simulation, ended: str | None) -> None:
+def _end_exchange(sim: Simulation, ended: str | None, momentum: int = 0, attacked: bool = False) -> None:
     state = sim.state
     table = sim.rules.data.combat
     assert state.fight is not None
@@ -116,6 +124,8 @@ def _end_exchange(sim: Simulation, ended: str | None) -> None:
             "mana_regen": _regen(state.mana_spent, state.max_mana, table.pool_regen_percent),
             "stamina_regen": _regen(state.stamina_spent, state.max_stamina, table.pool_regen_percent),
             "intents": intents,
+            "momentum": momentum,
+            "attacked": attacked,
         },
     )
     if result:
@@ -142,6 +152,9 @@ def resolve_exchange(sim: Simulation, move: str, target: str | None, outcome: Ou
     if move == "attack":
         foe = foe_of(state.fight, target)
         hits = table.attack_hits[outcome.value]
+        trait = trait_of(state, sim.rules.data)
+        if trait and state.fight.ambush and not state.fight.opened:
+            hits *= trait.ambush_hit_multiplier  # Opening: the unseen first strike (D-043).
         if next(i for i in table.intents if i.id == foe.intent).guards:
             hits = max(0, hits - 1)
         hits = min(hits, foe.hits_left)
@@ -166,7 +179,8 @@ def resolve_exchange(sim: Simulation, move: str, target: str | None, outcome: Ou
         words.append(f"Blows land for {damage} HP, leaving {state.hp}.")
     else:
         words.append("No blow lands.")
-    _end_exchange(sim, ended)
+    momentum = next_momentum(state, sim.rules.data, move == "attack", outcome not in _LANDED)
+    _end_exchange(sim, ended, momentum, move == "attack")
     if state.downed:
         words.append("The character falls Downed.")
     words.append(_next_intents(sim))
@@ -218,7 +232,7 @@ def downed_exchange(sim: Simulation) -> dict[str, Any]:
     marks = state.last_breath + 1
     sim.emit("last_breath", {"marks": marks})
     if marks < table.last_breath_marks:
-        _end_exchange(sim, None)
+        _end_exchange(sim, None, state.fight.momentum if state.fight else 0)
         return {
             "marks": marks,
             "summary": f"The character lies Downed as the foes press on: Last Breath {marks}. "

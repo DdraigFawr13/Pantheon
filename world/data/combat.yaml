@@ -20,3 +20,19 @@ overspend_limit_percent: 50
 injury_chance_per_percent: 2
 last_breath_marks: 3
 final_reckoning: 4
+# Class traits the engine runs in fights, keyed by class id (D-043). The numbers are the trait text in
+# classes.yaml; the other classes' traits are story text until their systems exist.
+traits:
+  sellsword: {name: Momentum, attack_bonus_per_success: 5, attack_bonus_cap: 15}
+  reaver: {name: Blood Up, low_hp_attack_bonus: 10, low_hp_defence_bonus: -10}
+  fistsworn: {name: Still Centre, defence_stats: [agility, resolve], pool_discount_percent: {stamina: 20}}
+  cutpurse: {name: Opening, ambush_attack_bonus: 10, ambush_hit_multiplier: 2}
+  inquisitor: {name: Studied Mark, studied_attack_bonus: 10, studied_from_exchange: 2}
+  elementalist:
+    name: Attuned
+    attunements: [flame, frost, storm, stone, wind, tide]
+    attuned_discount_percent: 20
+    attuned_bonus: 5
+  wildblood: {name: Surge, hp_for_mana: true}
+  hexer: {name: Malediction, curse_attack_bonus: 10, curse_damage_percent: 5}
+  skinchanger: {name: Beast Form, form_bonus: 10, form_stats: [vigor, agility], form_blocks_skills: true}

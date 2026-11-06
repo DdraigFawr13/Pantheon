@@ -9,6 +9,7 @@ from typing import Any
 from pantheon.engine.calendar import clock_value, date_of
 from pantheon.engine.combat import intent_label
 from pantheon.engine.state import GameState, xp_to_next
+from pantheon.engine.traits import trait_of
 from pantheon.world.loader import World
 
 _CANON_CORE = ("overview", "power_tiers", "pantheon")
@@ -53,6 +54,7 @@ def state_view(state: GameState) -> dict[str, Any]:
         "affinities": state.affinities,
         "skills": state.skills,
         "oaths": state.oaths,
+        **({"attunement": state.attunement} if state.attunement else {}),
         "standing": state.standing,
         "story_flags": {k: v for k, v in state.flags.items() if k.startswith("story.")},
     }
@@ -84,6 +86,11 @@ def _due_material(state: GameState, world: World) -> str:
             f"- {f.id}: {f.name}, Tier {f.tier}, {f.threat}, shows {intent_label(world.data, f.intent)}."
             for f in state.fight.standing
         ]
+        trait = trait_of(state, world.data)
+        if trait is not None:
+            spent = "spent" if state.fight.trait_used else "ready"
+            once = f"; its once-per-fight use (trait: true) is {spent}" if trait.once_per_fight else ""
+            lines.append(f"Class trait {trait.name} runs in the engine{once}. Never state its numbers.")
     open_hooks = [h for h in state.hooks if not h.resolved]
     lines += [
         f"- Hook {h.id} (turn {h.turn}): {h.description}. Due: {h.due_condition}."

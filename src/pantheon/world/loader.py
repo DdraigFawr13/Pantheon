@@ -216,5 +216,9 @@ def _check_references(data: GameData, folder: Path) -> None:
             for a in people.innate_affinity
             if a not in affinities and a not in special
         ]
+    for class_id, trait in data.combat.traits.items():
+        if class_id not in classes:
+            problems.append(f"trait {trait.name}: unknown class {class_id}")
+        problems += [f"trait {trait.name}: unknown affinity {a}" for a in trait.attunements if a not in affinities]
     if problems:
         raise CanonError(f"{folder}: " + "; ".join(problems))
