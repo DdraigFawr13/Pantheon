@@ -43,53 +43,31 @@ The central decision is how much of the story is authored versus improvised. Thr
 
 ## 3. Turn loop
 
-This is the API narrator's loop (`pantheon play`). In session play (D-041), a Claude Code session is the narrator and runs the same steps one command at a time (`pantheon session begin`, `tool`, `narrate`, `commit`), behind the play guard, with saves on the `saves` branch; D-041 and D-044 hold the details.
+Every turn runs the same three steps (D-031) on an uncommitted simulation of the state, so model calls never hold a database write lock. `pantheon play` runs them through the API (`narrator/loop.py` `take_turn`); in session play (D-041) the Claude Code session is the narrator and runs each step as a command (`pantheon session begin`, `tool`, `narrate`, `commit`) behind the play guard (D-044). One rule, `turn_tools`, says which tools count at each step for both paths; every call is sent the same tool list, so the model's cache survives (D-031).
 
 ```python
-def take_turn(timeline, player_input):
-    state = timeline.state()                                 # read-only view
-    sim = engine.Simulation(state, timeline.rng_state())     # uncommitted copy
-    due = sim.due_beats_and_hooks()                          # arc beats, hooks, clocks
-    system, messages = narrator.assemble(state, due, player_input)  # NAR-01, MEM-01
-    rejections = Counter()                                   # NAR-06, per tool call
-    reply = None
+def take_turn(state, rng_state, recent, player_input, chosen_check=None):
+    sim = Simulation(state, rng)                                  # uncommitted copy
+    system, messages = assemble(state, world, recent, player_input)  # NAR-01, section 4
     try:
-        for _ in range(MAX_TOOL_ROUNDS):
-            reply = llm.complete(system, messages, tools=TOOL_SCHEMAS)  # OPS-03 retries inside
-            if not reply.tool_calls:
-                problems = validators.prose(reply.text, sim.numbers_returned())  # NAR-04
-                if not problems:
-                    break
-                if rejections["prose"] >= MAX_RETRIES:
-                    reply = fallback.render(sim)             # NAR-07: never record invalid prose
-                    break
-                rejections["prose"] += 1
-                messages += [reply, rejection(problems)]
-                continue
-            results = []
-            for call in reply.tool_calls:
-                if rejections[call.key] >= MAX_RETRIES:
-                    results.append(dropped(call)); sim.log_failure(call)   # NAR-06
-                    continue
-                result = sim.apply(call)                     # ENG-02
-                if result.rejected:
-                    rejections[call.key] += 1
-                results.append(result)
-            messages += [reply, results]
-        else:
-            reply = llm.complete(system, messages, tools=None)  # force prose, no tools
-            if validators.prose(reply.text, sim.numbers_returned()):
-                reply = fallback.render(sim)                 # the forced round is checked too
+        if state.fight and state.downed:
+            downed_exchange(sim)                                  # the foes act by themselves (D-039)
+        elif chosen_check:
+            roll_chosen(sim, chosen_check)                        # the option's own check (D-036)
+        if turn_tools(state, player_input):                       # request_check, or fight_move in a fight
+            referee(sim, messages)                                # 1. roll first; prose must follow the dice
+        narration = narrate(messages)                             # 2. prose only, told the exact outcome;
+                                                                  #    NAR-04 checked, retried up to 2 times
+        if narration:
+            narration = place_notices(narration, sim.events)      # Ledger notices where the narrator marked (D-036)
+            scribe(sim, messages, turn_tools(..., narrated=True)) # 3. grant_xp, hooks, Standing, suggest_actions
     except LLMUnavailable:
-        reply = fallback.render(sim)                         # NAR-07, engine text only
-    with timeline.transaction() as tx:                       # short, atomic (OPS-03)
-        tx.append_events(sim.drain_events())                 # ENG-06
-        tx.record_turn(player_input, reply.text, fallback=reply.is_fallback)
-    memory.maybe_summarize(timeline)                         # MEM-02, own transaction
-    return reply.text, timeline.state().status_panel()
+        pass
+    text = narration or fallback.render(sim)                      # NAR-07: engine text only
+    return TurnOutcome(text, sim.events, rng.state())             # the caller commits in one transaction (OPS-03)
 ```
 
-In words: the orchestrator works on an uncommitted simulation of the state, so model calls never hold a database write lock. Each loop iteration sends the conversation to the model. Tool calls are applied to the simulation; each distinct call may be rejected at most twice before it is dropped and the failure is logged. Every reply that will be recorded is checked for unsupplied numbers (NAR-04): prose that fails after the retries, and a forced-prose reply that fails, are replaced by the engine's fallback text, so invalid prose never enters the chronicle. If the round cap is reached while the model is still calling tools, one last call without tools forces prose. If the model is unavailable after OPS-03 retries, the engine renders a plain fallback turn. Only then are the events and the turn written in one short transaction; a crash before it leaves the log untouched. Summaries are produced after the commit and stored; a failed summary is retried at the next boundary.
+In words: the referee step may only roll (`request_check`, or `fight_move` in a fight), before any prose exists. The narrator step writes prose with no tool calls, told the outcome in words; prose with unsupplied numbers, banned mechanical terms, no text or a repeat of an earlier turn is retried with the reason, and prose that keeps failing becomes the fallback text, so invalid prose never enters the chronicle. The scribe step records consequences after the prose; if it fails, the prose still stands. Each distinct tool may be rejected at most twice before further calls are dropped and a `tool_call_dropped` event is logged (NAR-06). If the model is unavailable, the engine renders the turn from what was already resolved. Only then are the events and the turn written in one short transaction; a crash before it leaves the log untouched.
 
 ## 4. Prompt layers (fixed order)
 
@@ -97,14 +75,14 @@ In words: the orchestrator works on an uncommitted simulation of the state, so m
 |---|---|---|---|---|---|
 | 1 | Narrator rules | `prompts/narrator.md` | Yes | system | 2,500 tokens |
 | 2 | Canon core | `world/00_overview.md`, `power_tiers.md`, `pantheon.md` | Yes | system | 9,000 tokens |
-| 3 | Character state | Engine snapshot (JSON) | No | system | 1,500 tokens |
+| 3 | Character state | Engine snapshot (JSON), sent in the latest message (D-031) | No | messages | 1,500 tokens |
 | 4 | Chronicle | Chapter summaries, then scene summaries | No | system | 3,000 tokens |
 | 5 | Retrieved lore and NPC dossiers | FTS5 by location, tags, names; released secrets | No | system | 4,000 tokens |
-| 6 | Due material | Beats, hooks, clock states | No | system | 1,000 tokens |
-| 7 | Recent turns | Last 6 turns verbatim | No | messages | 6,000 tokens |
+| 6 | Due material | Beats, hooks, clock states, sent in the latest message (D-031) | No | messages | 1,000 tokens |
+| 7 | Recent turns | N to 2N-1 turns verbatim, then back to N (N = `recent_turns_verbatim`, 6), so the cache survives most turns (D-031) | No | messages | 6,000 tokens |
 | 8 | Player input | Current turn | No | messages | 500 tokens |
 
-Layers 1 and 2 form the cache prefix; the cache breakpoint sits at the end of layer 2, so every instruction (including the output format) is above it. Layers 3 to 8 total approximately 16,000 tokens, within the MEM-04 target of 20,000. Measured 2026-10-30: the layer 1 and 2 files are 23,946 bytes on disk (estimate at 4 characters per token: about 6,000 tokens, under the 11,500-token ceiling); check it against the provider's minimum cacheable prefix when the adapter is built.
+The latest message holds layers 3, 6 and 8 together with the step's instructions, after the recent turns, so every call in a turn reuses the cache up to the steps (D-031; M3 revisits this when lore becomes dynamic). Layers 1 and 2 form the cache prefix; the cache breakpoint sits at the end of layer 2, so every instruction (including the output format) is above it. Layers 3 to 8 total approximately 16,000 tokens, within the MEM-04 target of 20,000. Measured 2026-10-30: the layer 1 and 2 files are 23,946 bytes on disk (estimate at 4 characters per token: about 6,000 tokens, under the 11,500-token ceiling); check it against the provider's minimum cacheable prefix when the adapter is built.
 
 ## 5. Data model (SQLite)
 
@@ -132,8 +110,8 @@ All arguments are validated by Pydantic. Unknown tools are rejected. Where the n
 | Tool | Arguments | Engine behavior |
 |---|---|---|
 | `request_check` | `stat`, `skill?`, `difficulty` (`routine`/`hard`/`severe`/`heroic`), `challenge_tier`, `approach` (`force`/`other`), `stakes`, `overcome?` | Rolls d100 per ENG-04/05; ENG-05 auto-fail applies only to `approach: force`; validates the `overcome` parts it can (Standing, Artifact tier, Ally tier); returns chance, roll, outcome, `check_id` |
-| `start_fight` | `foes` (`name`, `tier`, `threat`), `reason` | Begins a fight; draws each foe's intent (D-039) |
-| `fight_move` | `move` (`attack`/`guard`/`flee`), `stat`, `target?`, `skill?`, `overspend?` | The player's move in one exchange. The engine sets difficulty and tier, rolls, applies hits and blows, regenerates pools and draws new intents (D-039) |
+| `start_fight` | `foes` (`name`, `tier`, `threat`), `reason`, `ambush?` | Begins a fight; draws each foe's intent (D-039). `ambush: true` sets up Opening (D-045) |
+| `fight_move` | `move` (`attack`/`guard`/`flee`), `stat`, `target?`, `skill?`, `overspend?`, `trait?` | The player's move in one exchange. The engine sets difficulty and tier, rolls, applies hits and blows, regenerates pools and draws new intents (D-039). `trait: true` uses a once-per-fight trait (Malediction, Beast Form, D-045) |
 | `end_fight` | `reason` | Ends a fight for a story reason; refused for the Downed (D-039) |
 | `use_skill` (not built; `fight_move` covers fights, D-039) | `skill_id`, `target?`, `overspend?` | Checks the skill is known, unblanked and off cooldown, and that the pool can pay (overspend up to 50 % if allowed); deducts the cost; rolls for Injury after an overspend; may chain a `request_check` |
 | `grant_loot` | `source` (`cache:<what>`, `bounty:<who>`; later `rift_floor:<id>`, `rift_core:<id>`), `affinity?` | Built for caches and bounties after a check that did not fail, once a turn; fallen foes are searched by the engine when a fight is won (D-047). Rolls shards, fragments and items from the source's loot table; the narrator never picks shard rarity. `rift_core:<id>` is legal only after a successful check this turn at that rift's core tier; it emits `rift_closed` (which adds 1 to `flags.rifts_closed`) and grants the rift's title |
@@ -163,7 +141,7 @@ All arguments are validated by Pydantic. Unknown tools are rejected. Where the n
 
 ### Player commands (UI to engine, no narrator)
 
-Choices that belong to the player go straight from the UI to the engine and are logged as events like any other: `allocate_point(stat)`, `pick_skill(offer_id, choice)`, `absorb_shard(shard_id, target_skill?)`, `fuse_fragments(kind)`, `choose_evolution(option_id)`, `craft(recipe_id, inputs)`, `choose_class` and `choose_profession` at awakening. The narrator learns the result through the state snapshot.
+Choices that belong to the player go straight from the UI to the engine and are logged as events like any other: `allocate_point(stat)`, `pick_skill(offer_id, choice)`, `absorb_shard(shard_id, target_skill?)`, `fuse_fragments(kind)`, `choose_evolution(option_id)`, `craft(recipe_id, inputs)`, `choose_class` and `choose_profession` at awakening, and `choose_attunement(element)` once an Elementalist's class is chosen (D-045). The narrator learns the result through the state snapshot.
 
 ## 7. Reveal gates
 

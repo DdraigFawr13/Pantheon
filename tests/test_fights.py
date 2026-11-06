@@ -32,7 +32,7 @@ def fight_turn(*calls: ToolCall, check: ToolCall | None = None) -> list[LLMReply
     return [referee, narration()[1], LLMReply(tool_calls=(*calls, suggest))]
 
 
-def test_a_fight_shows_intents_and_an_attack_runs_one_exchange(tmp_path: Path, capsys: Any) -> None:
+def test_eng12_a_fight_shows_intents_and_an_attack_runs_one_exchange(tmp_path: Path, capsys: Any) -> None:
     script = opened(narration(START), fight_turn(check=ATTACK))
     _, state, tid = play(tmp_path, [*SWORN, "I draw on it", "I strike", "/quit"], script)
     out = capsys.readouterr().out
@@ -46,7 +46,7 @@ def test_a_fight_shows_intents_and_an_attack_runs_one_exchange(tmp_path: Path, c
     assert state.checks_made == 1
 
 
-def test_talk_in_a_fight_runs_no_exchange(tmp_path: Path) -> None:
+def test_eng12_talk_in_a_fight_runs_no_exchange(tmp_path: Path) -> None:
     script = opened(narration(START), fight_turn())
     _, state, tid = play(tmp_path, [*SWORN, "I draw on it", "Who sent you?", "/quit"], script)
     assert state.fight is not None
@@ -55,7 +55,7 @@ def test_talk_in_a_fight_runs_no_exchange(tmp_path: Path) -> None:
         assert "exchange_ended" not in [e["type"] for e in db.events(tid)]
 
 
-def test_picking_a_suggested_move_rolls_it_without_a_referee(tmp_path: Path, capsys: Any) -> None:
+def test_eng12_picking_a_suggested_move_rolls_it_without_a_referee(tmp_path: Path, capsys: Any) -> None:
     prose = LLMReply(text=f"{PROSE} The hound and the blade meet in the dust of the ford.")
     suggest = ToolCall("s", "suggest_actions", {"actions": FIGHT_ACTIONS})
     script = opened(fight_turn(START), [prose, LLMReply(tool_calls=(suggest,))])
@@ -82,7 +82,7 @@ def downed_turn() -> list[LLMReply | None]:
     return narration()[1:]
 
 
-def test_while_downed_any_input_runs_a_hostile_exchange_up_to_a_reckoning(
+def test_eng12_while_downed_any_input_runs_a_hostile_exchange_up_to_a_reckoning(
     tmp_path: Path, capsys: Any
 ) -> None:
     downed_in_a_fight(tmp_path)
@@ -97,7 +97,7 @@ def test_while_downed_any_input_runs_a_hostile_exchange_up_to_a_reckoning(
     assert state.fight is None
 
 
-def test_a_downed_characters_suggested_moves_become_plain_options(tmp_path: Path) -> None:
+def test_eng12_a_downed_characters_suggested_moves_become_plain_options(tmp_path: Path) -> None:
     downed_in_a_fight(tmp_path)
     prose = narration()[1]
     suggest = LLMReply(tool_calls=(ToolCall("s", "suggest_actions", {"actions": FIGHT_ACTIONS}),))
@@ -106,7 +106,7 @@ def test_a_downed_characters_suggested_moves_become_plain_options(tmp_path: Path
     assert all(a.check is None for a in state.suggested)
 
 
-def test_a_final_death_ends_the_session_and_the_narrator_records_nothing(tmp_path: Path, capsys: Any) -> None:
+def test_eng12_a_final_death_ends_the_session_and_records_nothing(tmp_path: Path, capsys: Any) -> None:
     (tmp_path / "none.toml").write_text("[gameplay]\npermadeath = true\n", encoding="utf-8")
     downed_in_a_fight(tmp_path)
     last = LLMReply(text=f"{PROSE} The light went out of the world and did not come back.")
@@ -122,7 +122,7 @@ def test_a_final_death_ends_the_session_and_the_narrator_records_nothing(tmp_pat
     assert "This character is dead" in capsys.readouterr().out
 
 
-def test_narrator_sees_pools_and_the_fight() -> None:
+def test_eng12_narrator_sees_pools_and_the_fight() -> None:
     state = GameState(mana_spent=3, stats={"intellect": 10})
     assert state_view(state)["mana"] == 17
     state.fight = None
@@ -158,12 +158,12 @@ def test_narrator_sees_pools_and_the_fight() -> None:
     assert "Gone" not in due
 
 
-def test_an_overspent_pool_draws_an_empty_bar() -> None:
+def test_eng12_an_overspent_pool_draws_an_empty_bar() -> None:
     assert _bar("Mana", -5, 20).count("█") == 0
     assert "-5/20" in _bar("Mana", -5, 20)
 
 
-def test_ledger_shows_the_fight() -> None:
+def test_eng12_ledger_shows_the_fight() -> None:
     lines = ledger_lines(
         [
             ("foe_hit", {"foe": "f1", "name": "Hound", "hits": 2}),

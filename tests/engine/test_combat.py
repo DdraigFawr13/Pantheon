@@ -69,7 +69,7 @@ def intent_damage(intent_id: str) -> int:
     return next(i.damage_percent for i in COMBAT.intents if i.id == intent_id)
 
 
-def test_combat_table_agrees_with_canon() -> None:
+def test_eng12_combat_table_agrees_with_canon() -> None:
     text = (WORLD_DIR / "power_tiers.md").read_text(encoding="utf-8")
     assert f"by {COMBAT.pool_regen_percent} % of their maximum each combat exchange" in text
     assert f"up to {COMBAT.overspend_limit_percent} % of a pool's maximum below zero" in text
@@ -78,7 +78,7 @@ def test_combat_table_agrees_with_canon() -> None:
     assert "The fourth death is final" in text and COMBAT.final_reckoning == 4
 
 
-def test_start_fight_sets_foes_and_shows_an_intent_for_each() -> None:
+def test_eng12_start_fight_sets_foes_and_shows_an_intent_for_each() -> None:
     sim = fighting(HOUND, RAT)
     fight = sim.state.fight
     assert fight is not None
@@ -113,7 +113,7 @@ def test_eng02_only_one_fight_at_a_time() -> None:
     assert not apply_tool(sim, "start_fight", {"foes": [RAT], "reason": "x"}).accepted
 
 
-def test_a_success_hits_and_stops_that_foes_blow() -> None:
+def test_eng12_a_success_hits_and_stops_that_foes_blow() -> None:
     sim = fighting()
     set_intents(sim, "strike")
     data = resolve_exchange(sim, "attack", "f1", Outcome.SUCCESS)
@@ -123,7 +123,7 @@ def test_a_success_hits_and_stops_that_foes_blow() -> None:
     assert data["damage"] == 0
 
 
-def test_a_triumph_lands_two_hits() -> None:
+def test_eng12_a_triumph_lands_two_hits() -> None:
     sim = fighting(HOUND)
     set_intents(sim, "strike")
     resolve_exchange(sim, "attack", "f1", Outcome.TRIUMPH)
@@ -131,7 +131,7 @@ def test_a_triumph_lands_two_hits() -> None:
     assert ("fight_ended", {"result": "victory"}) in sim.events
 
 
-def test_success_at_a_cost_hits_but_the_blow_lands() -> None:
+def test_eng12_success_at_a_cost_hits_but_the_blow_lands() -> None:
     sim = fighting()
     set_intents(sim, "heavy")
     resolve_exchange(sim, "attack", "f1", Outcome.SUCCESS_AT_COST)
@@ -140,7 +140,7 @@ def test_success_at_a_cost_hits_but_the_blow_lands() -> None:
     assert sim.state.wounds == percent_of_hp(sim, intent_damage("heavy"))
 
 
-def test_a_failure_misses_and_the_blow_lands() -> None:
+def test_eng12_a_failure_misses_and_the_blow_lands() -> None:
     sim = fighting()
     set_intents(sim, "strike")
     resolve_exchange(sim, "attack", "f1", Outcome.FAILURE)
@@ -149,14 +149,14 @@ def test_a_failure_misses_and_the_blow_lands() -> None:
     assert sim.state.wounds == percent_of_hp(sim, intent_damage("strike"))
 
 
-def test_every_other_foes_intent_still_lands() -> None:
+def test_eng12_every_other_foes_intent_still_lands() -> None:
     sim = fighting(HOUND, HOUND)
     set_intents(sim, "strike")
     resolve_exchange(sim, "attack", "f1", Outcome.SUCCESS)
     assert sim.state.wounds == percent_of_hp(sim, intent_damage("strike"))
 
 
-def test_a_guarding_foe_takes_one_hit_fewer_and_deals_nothing() -> None:
+def test_eng12_a_guarding_foe_takes_one_hit_fewer_and_deals_nothing() -> None:
     sim = fighting()
     set_intents(sim, "guard")
     resolve_exchange(sim, "attack", "f1", Outcome.SUCCESS_AT_COST)
@@ -169,7 +169,7 @@ def test_a_guarding_foe_takes_one_hit_fewer_and_deals_nothing() -> None:
     ("outcome", "block"),
     [(Outcome.TRIUMPH, 100), (Outcome.SUCCESS, 100), (Outcome.SUCCESS_AT_COST, 50), (Outcome.FAILURE, 0)],
 )
-def test_guarding_blocks_by_outcome(outcome: Outcome, block: int) -> None:
+def test_eng12_guarding_blocks_by_outcome(outcome: Outcome, block: int) -> None:
     sim = fighting(HOUND, HOUND)
     set_intents(sim, "heavy")
     resolve_exchange(sim, "guard", None, outcome)
@@ -187,7 +187,7 @@ def test_guarding_blocks_by_outcome(outcome: Outcome, block: int) -> None:
         (Outcome.FAILURE, False, True),
     ],
 )
-def test_fleeing_by_outcome(outcome: Outcome, escaped: bool, hurt: bool) -> None:
+def test_eng12_fleeing_by_outcome(outcome: Outcome, escaped: bool, hurt: bool) -> None:
     sim = fighting()
     set_intents(sim, "strike")
     resolve_exchange(sim, "flee", None, outcome)
@@ -195,7 +195,7 @@ def test_fleeing_by_outcome(outcome: Outcome, escaped: bool, hurt: bool) -> None
     assert (sim.state.wounds > 0) == hurt
 
 
-def test_stronger_foes_hit_harder_and_weaker_ones_softer() -> None:
+def test_eng12_stronger_foes_hit_harder_and_weaker_ones_softer() -> None:
     gap = COMBAT.tier_gap_damage_percent
     strike = intent_damage("strike")
     for tier, percent in ((2, strike + gap), (0, strike - gap)):
@@ -205,7 +205,7 @@ def test_stronger_foes_hit_harder_and_weaker_ones_softer() -> None:
         assert sim.state.wounds == percent_of_hp(sim, percent)
 
 
-def test_new_intents_are_drawn_each_exchange_from_the_combat_stream_only() -> None:
+def test_eng12_new_intents_are_drawn_each_exchange_from_the_combat_stream_only() -> None:
     sim = fighting(HOUND, HOUND)
     checks, world = sim.rng.state()["checks"], sim.rng.state()["world"]
     combat = sim.rng.state()["combat"]
@@ -217,7 +217,7 @@ def test_new_intents_are_drawn_each_exchange_from_the_combat_stream_only() -> No
     assert sim.rng.state()["combat"] != combat
 
 
-def test_fight_move_rolls_with_difficulty_and_tier_set_by_the_engine() -> None:
+def test_eng12_fight_move_rolls_with_difficulty_and_tier_set_by_the_engine() -> None:
     sim = fighting({**RAT, "tier": 2})
     args = {"move": "attack", "target": "f1", "stat": "agility", "difficulty": "heroic", "challenge_tier": 0}
     result = apply_tool(sim, "fight_move", args)
@@ -264,14 +264,14 @@ def test_eng02_during_a_fight_other_rolls_and_damage_are_refused() -> None:
     assert not apply_tool(sim, "apply_effect", rest).accepted
 
 
-def test_a_trial_cannot_start_in_a_fight() -> None:
+def test_eng12_a_trial_cannot_start_in_a_fight() -> None:
     sim = fighting()
     sim.state.level, sim.state.xp = 10, 99999
     with pytest.raises(ValueError, match="fight"):
         attempt_trial(sim)
 
 
-def test_end_fight_is_for_the_story_but_never_saves_the_downed() -> None:
+def test_eng12_end_fight_is_for_the_story_but_never_saves_the_downed() -> None:
     sim = fighting()
     assert apply_tool(sim, "end_fight", {"reason": "the hound bolts"}).accepted
     assert sim.state.fight is None
@@ -291,7 +291,7 @@ def with_skill(*foes: dict[str, Any]) -> Simulation:
     return sim
 
 
-def test_a_skill_costs_its_pool_and_then_cools_down() -> None:
+def test_eng12_a_skill_costs_its_pool_and_then_cools_down() -> None:
     sim = with_skill()
     mana = sim.state.mana
     args = {"move": "guard", "stat": "intellect", "skill": "fire_bolt"}
@@ -306,7 +306,7 @@ def test_a_skill_costs_its_pool_and_then_cools_down() -> None:
     assert apply_tool(sim, "fight_move", args).accepted
 
 
-def test_cooldowns_count_down_by_exchange() -> None:
+def test_eng12_cooldowns_count_down_by_exchange() -> None:
     sim = fighting()
     sim.emit("skill_spent", {"skill": "x", "pool": "mana", "cost": 0, "cooldown": 2})
     resolve_exchange(sim, "guard", None, Outcome.SUCCESS)
@@ -315,7 +315,7 @@ def test_cooldowns_count_down_by_exchange() -> None:
     assert sim.state.cooldowns == {}
 
 
-def test_regen_never_passes_the_pool_maximum() -> None:
+def test_eng12_regen_never_passes_the_pool_maximum() -> None:
     sim = fighting()
     resolve_exchange(sim, "guard", None, Outcome.SUCCESS)
     assert sim.state.mana == sim.state.max_mana
@@ -353,7 +353,7 @@ def test_d009_overspending_rolls_for_injury_at_two_percent_per_percent() -> None
     assert 90 <= injured <= 150  # About 58 % of 200, with room for the seeds used.
 
 
-def test_an_injury_never_leaves_more_wounds_than_hit_points() -> None:
+def test_eng12_an_injury_never_leaves_more_wounds_than_hit_points() -> None:
     sim = sworn()
     sim.emit(
         "effect_applied", {"kind": "damage", "amount": sim.state.max_hp - 1, "source": "x", "reason": "x"}
@@ -362,7 +362,7 @@ def test_an_injury_never_leaves_more_wounds_than_hit_points() -> None:
     assert 0 <= sim.state.hp <= sim.state.max_hp
 
 
-def test_rest_refills_the_pools() -> None:
+def test_eng12_rest_refills_the_pools() -> None:
     sim = sworn()
     sim.state.mana_spent, sim.state.stamina_spent = 5, 7
     assert apply_tool(sim, "advance_time", {"span": "rest", "reason": "slept"}).accepted
@@ -378,14 +378,14 @@ def downed(sim: Simulation) -> Simulation:
     return sim
 
 
-def test_zero_hp_is_downed_and_no_mark_comes_from_that_exchange() -> None:
+def test_eng12_zero_hp_is_downed_and_no_mark_comes_from_that_exchange() -> None:
     sim = downed(fighting())
     assert sim.state.hp == 0
     assert sim.state.last_breath == 0
     assert not apply_tool(sim, "fight_move", {"move": "guard", "stat": "vigor"}).accepted
 
 
-def test_each_hostile_exchange_while_downed_adds_a_mark() -> None:
+def test_eng12_each_hostile_exchange_while_downed_adds_a_mark() -> None:
     sim = downed(fighting())
     downed_exchange(sim)
     assert sim.state.last_breath == 1
@@ -394,7 +394,7 @@ def test_each_hostile_exchange_while_downed_adds_a_mark() -> None:
     assert sim.state.fight is not None
 
 
-def test_aid_lifts_a_downed_character_and_clears_the_marks() -> None:
+def test_eng12_aid_lifts_a_downed_character_and_clears_the_marks() -> None:
     sim = downed(fighting())
     downed_exchange(sim)
     heal = {"kind": "heal", "source": "aid:a stranger", "reason": "dragged clear"}
@@ -411,7 +411,7 @@ def die(sim: Simulation) -> Simulation:
     return sim
 
 
-def test_first_reckoning_costs_the_current_levels_xp_and_returns_the_character() -> None:
+def test_eng12_first_reckoning_costs_the_current_levels_xp_and_returns_the_character() -> None:
     sim = fighting()
     sim.emit("xp_gained", {"amount": 40, "kind": "minor", "reason": "x"})
     die(sim)
@@ -426,7 +426,7 @@ def test_first_reckoning_costs_the_current_levels_xp_and_returns_the_character()
     assert state.hp == state.max_hp
 
 
-def test_second_reckoning_is_also_xp_only_until_there_is_gear() -> None:
+def test_eng12_second_reckoning_is_also_xp_only_until_there_is_gear() -> None:
     sim = fighting()
     sim.state.reckonings = 1
     die(sim)
@@ -435,7 +435,7 @@ def test_second_reckoning_is_also_xp_only_until_there_is_gear() -> None:
     assert not sim.state.injuries
 
 
-def test_third_reckoning_also_costs_a_level_and_an_injury() -> None:
+def test_eng12_third_reckoning_also_costs_a_level_and_an_injury() -> None:
     sim = fighting()
     sim.state.reckonings = 2
     sim.state.level = 3
@@ -449,7 +449,7 @@ def test_third_reckoning_also_costs_a_level_and_an_injury() -> None:
     assert lost == gains.primary + gains.secondary + sim.state.injuries[0].amount
 
 
-def test_third_reckoning_never_goes_below_level_one() -> None:
+def test_eng12_third_reckoning_never_goes_below_level_one() -> None:
     sim = fighting()
     sim.state.reckonings = 2
     die(sim)
@@ -457,7 +457,7 @@ def test_third_reckoning_never_goes_below_level_one() -> None:
     assert len(sim.state.injuries) == 1
 
 
-def test_the_fourth_death_is_final() -> None:
+def test_eng12_the_fourth_death_is_final() -> None:
     sim = fighting()
     sim.state.reckonings = 3
     die(sim)
@@ -466,7 +466,7 @@ def test_the_fourth_death_is_final() -> None:
     assert sim.state.fight is None
 
 
-def test_permadeath_makes_the_first_death_final() -> None:
+def test_eng12_permadeath_makes_the_first_death_final() -> None:
     sim = die(fighting(rules=replace(RULES, permadeath=True)))
     assert sim.state.dead
     assert sim.state.reckonings == 0
@@ -478,7 +478,7 @@ def test_eng06_a_whole_fight_replays_to_the_same_state() -> None:
     assert sim.state.reckonings == 1
 
 
-def test_a_suggested_move_shows_real_odds_and_is_stored_to_roll_exactly_that() -> None:
+def test_eng12_a_suggested_move_shows_real_odds_and_is_stored_to_roll_exactly_that() -> None:
     sim = fighting(RAT)
     args = {
         "actions": [
@@ -500,7 +500,7 @@ def test_a_suggested_move_shows_real_odds_and_is_stored_to_roll_exactly_that() -
     assert apply_tool(sim, "fight_move", attack.check).accepted
 
 
-def test_a_suggested_move_with_a_bad_target_is_refused() -> None:
+def test_eng12_a_suggested_move_with_a_bad_target_is_refused() -> None:
     sim = fighting(RAT)
     args = {
         "actions": [
