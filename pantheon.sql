@@ -41,6 +41,8 @@ INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',18,3,'xp_gained','
 INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',19,3,'standing_changed','{"delta": 2, "entity": "tallyhouse", "reason": "a controlled first spark in front of the Registrar", "value": 7}');
 INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',20,3,'flag_set','{"key": "story.attuned_storm", "reason": "the Ledger filled in Attuned: Storm", "value": true}');
 INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',21,3,'actions_suggested','{"actions": [{"check": null, "cost": "registration fees and hard questions", "label": "Follow Dunmore to the Tallyhouse while he is pleased", "tag": null, "violent": false}, {"check": null, "cost": null, "label": "Cross the rubble and ask the Rifter what she wants", "tag": null, "violent": false}, {"check": {"approach": "other", "challenge_tier": 1, "difficulty": "hard", "overcome": null, "skill": null, "stakes": "a fall back into the rift", "stat": "agility"}, "cost": "the Stair is still settling", "label": "Go back down for the crew sack", "tag": "agility", "violent": false}, {"check": {"approach": "other", "challenge_tier": 1, "difficulty": "hard", "overcome": null, "skill": null, "stakes": "waking something below", "stat": "intellect"}, "cost": "mana, and whatever notices the light", "label": "Light the hole with a spark and look for survivors", "tag": "Elementalist", "violent": false}]}');
+INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',22,4,'hook_registered','{"description": "Senna Brask, Rifter crew leader who swore Last Rest to Maru-Ghen, offers to credit Ddraig with the sack if he helps bring up her four dead", "due_condition": "when Ddraig accepts, refuses, or leaves her to it", "id": 8, "source_choice": "", "turn": 4}');
+INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',23,4,'actions_suggested','{"actions": [{"check": null, "cost": "back into a collapsing rift", "label": "Agree to go down with Senna for her dead and the sack", "tag": null, "violent": false}, {"check": null, "cost": "Senna may not wait", "label": "Tell Senna to wait while you register with Dunmore", "tag": null, "violent": false}, {"check": null, "cost": null, "label": "Ask Senna what her dead are saying", "tag": "Turning Tide", "violent": false}, {"check": {"approach": "other", "challenge_tier": 1, "difficulty": "hard", "overcome": null, "skill": null, "stakes": "the Registrar thinks less of you", "stat": "presence"}, "cost": null, "label": "Talk Dunmore into sending help down with you", "tag": "presence", "violent": false}]}');
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT INTO "meta" VALUES('schema_version','2');
 CREATE TABLE rng_checkpoint (
@@ -205,4 +207,31 @@ Dunmore had watched the whole thing with his arms folded. "Controlled," he said.
 On her beam across the rubble, the dusty Rifter had stood up. She was not smiling. She was taking notes in her head; Ddraig knew the look, because he had worn it all morning.
 
 He could follow Dunmore while the Registrar was in a good mood. Or he could find out what the woman on the beam wanted before she decided for him.',0,0,0,0);
+INSERT INTO "turn" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',4,'Cross the rubble and ask the Rifter what she wants','The rubble was loose, and Ddraig took it slowly. The woman on the beam watched him come the whole way and did not get up to help.
+
+Up close she was older than he had thought, somewhere past thirty, with a Rifter''s forearms and a split lip that had already stopped bleeding. The dust on her was the same grey as the dust on him. That was not a coincidence.
+
+"You were down there," Ddraig said.
+
+"Third rope from the left. You fell past me." She said it like a fact on a form. "Senna Brask. I ran that crew."
+
+Ran. Past tense. Ddraig did the sum and did not like it.
+
+"I''m sorry," he said, and meant it.
+
+"Don''t be sorry. Be useful." Senna looked at his hand, the one that had held the spark. "The other voice, the one you turned down. He came to me after. Offered me what he offered you." She touched her chest, the way people do when something new is sitting there. "Last Rest. I can hear the dead now, if they''re fresh. My crew is still talking."
+
+*That''s a sentence nobody should have to say on a Seedtide morning.*
+
+"He asked me to pass something on," she went on. "He said he isn''t angry with you." She paused. "I''ve known him one hour and I already know that''s worse."
+
+Ddraig''s Resolve was 20. It was not built for this conversation. He kept his face still anyway, the way he did when a client brought him bad accounts.
+
+"What do you want?" he asked.
+
+"Four of mine are down there. The Oath says I see them buried properly. I can''t haul four bodies up a broken Stair alone." She nodded toward the hole. "Your crew''s sack is down there too. Dunmore wants it. I want my people. You light the way and help me carry, and I''ll tell the Tallyhouse you found the sack. Your name on the find, not mine."
+
+It was a good offer. It was also an offer to go back into a collapsing rift with someone who had just told him the dead were talking.
+
+Behind him, Dunmore cleared his throat, the way a man does when he has been patient for exactly as long as he intends to be.',0,0,0,0);
 COMMIT;
