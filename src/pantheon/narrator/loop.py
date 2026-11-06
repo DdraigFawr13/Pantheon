@@ -59,7 +59,10 @@ _SCRIBE_PROMPT = (
     "took real time, such as a journey or a sleep (rest also heals). send_petition if a sworn god asked a "
     "small thing; resolve_petition when one was done or refused. engage_clock if a tested deed touched a "
     "global clock's threads. start_fight when foes attack or the player attacks them, and end_fight only if "
-    "the story ends one early; the engine sets all fight damage. Always finish with "
+    "the story ends one early; the engine sets all fight damage, and searches won fights itself. grant_loot "
+    "when a passed check opened a stash (cache:<what>) or earned a bounty (bounty:<who>). adjust_inventory "
+    "and adjust_currency when items or coin change hands in the story, at the economy list's prices; "
+    "invent no item outside the item list. Always finish with "
     "suggest_actions: 3 to 4 actions that fit this exact moment, one non-violent, one with a cost or risk in "
     "its cost field, no digits. Each label is one brief plain line. Give an uncertain action a check (stat, "
     "difficulty, challenge_tier, stakes); talking, asking and looking have none. A line only this character "
@@ -76,6 +79,9 @@ _SCRIBE_TOOLS = (
     "send_petition",
     "resolve_petition",
     "engage_clock",
+    "grant_loot",
+    "adjust_inventory",
+    "adjust_currency",
     "start_fight",
     "end_fight",
     "suggest_actions",

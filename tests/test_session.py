@@ -399,3 +399,35 @@ def test_session_screen_shows_the_fight_and_its_intents(game: Game, tmp_path: Pa
     assert data["fight"]["exchange"] == 1
     assert data["fight"]["foes"][0]["name"] == "Ash Hound" and data["fight"]["foes"][0]["intent"]
     assert {"mana", "stamina", "trait", "attunement"} <= set(data)
+
+
+def test_session_gear_commands_and_the_gear_on_screen_D_045(game: Game, tmp_path: Path) -> None:
+    game.aftermath()
+    with Database.open(game.db) as db:
+        tid = db.latest_timeline()
+        assert tid is not None
+        db.commit_events(
+            tid,
+            db.last_turn(tid) + 1,
+            [("item_changed", {"item": "dagger", "quantity": 1, "reason": "found"})],
+            db.rng_state(tid),
+        )
+    code, out = game("equip", "dagger")
+    assert code == 0 and "Equipped: dagger" in out, out
+    code, out = game("use", "dagger")
+    assert code == 1 and "not something to use up" in out
+    page = tmp_path / "screen.json"
+    assert game("screen", str(page))[0] == 0
+    gear = json.loads(page.read_text(encoding="utf-8"))["gear"]
+    assert gear == [
+        {
+            "id": "dagger",
+            "name": "Dagger",
+            "kind": "weapon",
+            "count": 1,
+            "in_use": True,
+            "detail": "+5 on attacks, worth 3 sp",
+        }
+    ]
+    assert "Dagger (in use)" in game("sheet")[1]
+    assert game("unequip", "weapon")[0] == 0

@@ -11,6 +11,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from pantheon.engine.checks import Outcome
+from pantheon.engine.loot import foes_down_xp, victory_loot
 from pantheon.engine.state import STATS, Fight, Foe, GameState
 from pantheon.engine.timeline import Rejected, Simulation
 from pantheon.engine.traits import next_momentum, trait_of
@@ -93,6 +94,9 @@ def _blow_percent(sim: Simulation, foe: Foe) -> int:
     fight = sim.state.fight
     if trait and fight and fight.cursed == foe.id:
         percent = max(0, percent - trait.curse_damage_percent)  # Malediction: the cursed foe's blows weaken.
+    armour = sim.rules.data.item_of(sim.state.equipped.get("armour", ""))
+    if armour is not None:
+        percent = max(0, percent - armour.block_percent)  # Armour takes the edge off every blow (D-045).
     return percent
 
 
@@ -129,6 +133,9 @@ def _end_exchange(sim: Simulation, ended: str | None, momentum: int = 0, attacke
         },
     )
     if result:
+        foes_down_xp(sim)
+        if result == "victory":
+            victory_loot(sim)
         sim.emit("fight_ended", {"result": result})
 
 
@@ -141,7 +148,9 @@ def _next_intents(sim: Simulation) -> str:
     return f"{shown}. Show this at the end of the scene."
 
 
-def resolve_exchange(sim: Simulation, move: str, target: str | None, outcome: Outcome) -> dict[str, Any]:
+def resolve_exchange(
+    sim: Simulation, move: str, target: str | None, outcome: Outcome | None
+) -> dict[str, Any]:
     """Apply one exchange after its check has rolled: the player's move, then the foes' intents."""
     state, table = sim.state, sim.rules.data.combat
     assert state.fight is not None
@@ -150,6 +159,7 @@ def resolve_exchange(sim: Simulation, move: str, target: str | None, outcome: Ou
     block = 0
     ended = None
     if move == "attack":
+        assert outcome is not None  # An attack always rolls.
         foe = foe_of(state.fight, target)
         hits = table.attack_hits[outcome.value]
         trait = trait_of(state, sim.rules.data)
@@ -164,6 +174,8 @@ def resolve_exchange(sim: Simulation, move: str, target: str | None, outcome: Ou
         words.append(f"{foe.name} takes {hits} hit and has {left} left." if left else f"{foe.name} is down.")
         if outcome not in _LANDED:
             acting = [f for f in acting if f.id != foe.id]
+    elif move == "item" or outcome is None:
+        words.append("The character spends the exchange on it while the foes strike.")
     else:
         block = table.block_percent[outcome.value]
         if move == "flee" and outcome is not Outcome.FAILURE:
@@ -179,7 +191,9 @@ def resolve_exchange(sim: Simulation, move: str, target: str | None, outcome: Ou
         words.append(f"Blows land for {damage} HP, leaving {state.hp}.")
     else:
         words.append("No blow lands.")
-    momentum = next_momentum(state, sim.rules.data, move == "attack", outcome not in _LANDED)
+    momentum = next_momentum(
+        state, sim.rules.data, move == "attack", outcome is not None and outcome not in _LANDED
+    )
     _end_exchange(sim, ended, momentum, move == "attack")
     if state.downed:
         words.append("The character falls Downed.")
@@ -213,6 +227,13 @@ def _die(sim: Simulation) -> None:
         return
     if state.xp:
         sim.emit("xp_lost", {"amount": state.xp, "reason": f"Reckoning {count}"})
+    if count >= 2:
+        for item_id, held in list(state.inventory.items()):  # Carried gear is lost; what is worn stays.
+            keep = 1 if item_id in state.equipped.values() else 0
+            if held > keep:
+                sim.emit(
+                    "item_changed", {"item": item_id, "quantity": keep - held, "reason": f"Reckoning {count}"}
+                )
     if count >= 3:
         if state.level > 1:
             cls = sim.rules.data.class_of(state.class_id)

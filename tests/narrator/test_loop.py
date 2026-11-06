@@ -22,6 +22,7 @@ from pantheon.world.loader import load_world
 WORLD = load_world(Path(__file__).resolve().parents[2] / "world")
 assert WORLD.data is not None
 RULES = Rules(WORLD.data, {k: f.set_by for k, f in WORLD.flags.items()})
+MINOR_XP = WORLD.data.rewards.xp["minor"]
 PROSE = "You haul yourself up the broken steps, and the dark gives way to grey light."
 ACTIONS = [
     {"label": "Ask who else survived"},
@@ -167,7 +168,7 @@ def test_d031_the_scribe_records_consequences_with_the_turns_check() -> None:
         call("register_hook", description="The stones remember", due_condition="later"),
     )
     outcome, _ = run([CHECK, LLMReply(text=PROSE), effects, SUGGEST])
-    assert outcome.state.wounds > 0 and outcome.state.xp == 25 and outcome.state.suggested
+    assert outcome.state.wounds > 0 and outcome.state.xp == MINOR_XP and outcome.state.suggested
     assert outcome.state.hooks[-1].description == "The stones remember"
 
 
@@ -277,7 +278,7 @@ def test_d031_xp_counts_only_after_a_check() -> None:
     talking, _ = run([NONE, LLMReply(text=PROSE), tools(grant, *SUGGEST.tool_calls)])
     assert talking.state.xp == 0
     tested, _ = run([CHECK, LLMReply(text=PROSE), tools(grant, *SUGGEST.tool_calls)])
-    assert tested.state.xp == 25
+    assert tested.state.xp == MINOR_XP
 
 
 def test_d031_history_grows_then_resets() -> None:

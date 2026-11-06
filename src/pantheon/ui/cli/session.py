@@ -34,11 +34,21 @@ from pantheon.engine.commands import (
     create_character,
     innate_affinity_options,
 )
+from pantheon.engine.loot import format_cp
 from pantheon.engine.progression import choose_evolution, evolution_options, pick_skill
 from pantheon.engine.rng import RngStreams
 from pantheon.engine.state import STATS, GameState, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
-from pantheon.engine.tools import ToolResult, apply_tool, attempt_trial, resolve_offer, tool_definition
+from pantheon.engine.tools import (
+    ToolResult,
+    apply_tool,
+    attempt_trial,
+    equip_item,
+    resolve_offer,
+    tool_definition,
+    unequip_item,
+    use_item,
+)
 from pantheon.engine.traits import needs_attunement, trait_of
 from pantheon.narrator.assemble import _REMINDER, _due_material, assemble, state_view
 from pantheon.narrator.loop import (
@@ -68,6 +78,7 @@ from pantheon.ui.cli.app import (
     offer_terms,
 )
 from pantheon.world.loader import World, load_world
+from pantheon.world.schemas import Item
 
 PLAYING = ".playing"
 _RECENT_SHOWN = 2
@@ -522,6 +533,19 @@ class Session:
         if text:
             self.console.print(f'Next: `session begin "{text}"`')
 
+    def gear(self, verb: str, what: str) -> None:
+        """Player commands for gear: use a consumable, equip a weapon or armour, or take one off (D-045)."""
+        self.no_pending()
+        sim = self.command_sim()
+        handlers = {"use": use_item, "equip": equip_item, "unequip": unequip_item}
+        try:
+            handlers[verb](sim, what)
+        except Rejected as exc:
+            raise SessionError(str(exc)) from exc
+        self.commit_commands(sim)
+        for line in ledger_lines(sim.events):
+            self.console.print(f"  {line}")
+
     def trial(self) -> None:
         self.no_pending()
         sim = self.command_sim()
@@ -651,6 +675,19 @@ class Session:
             "trait": trait.name if trait else "",
             "attunement": (state.attunement or "").capitalize(),
             "fight": self.fight_data(state),
+            "purse": format_cp(state.purse_cp),
+            "gear": [
+                {
+                    "id": k,
+                    "name": item.name if item else k,
+                    "kind": item.kind if item else "",
+                    "count": n,
+                    "in_use": k in state.equipped.values(),
+                    "detail": _item_detail(item) if item else "",
+                }
+                for k, n in state.inventory.items()
+                for item in [data.item_of(k)]
+            ],
             "coin": state.coin,
             "stats": {s: state.stats[s] for s in STATS},
             "affinities": {a.capitalize(): r for a, r in state.affinities.items()},
@@ -791,6 +828,16 @@ class Session:
             self.console.print(escape(json.dumps(tool_definition(name))), soft_wrap=True)
 
 
+def _item_detail(item: Item) -> str:
+    parts = [
+        f"+{item.attack_bonus} on attacks" if item.attack_bonus else "",
+        f"blows {item.block_percent} points softer" if item.block_percent else "",
+        f"heals {item.heal_percent}% of max HP" if item.heal_percent else "",
+        f"worth {format_cp(item.value_cp)}",
+    ]
+    return ", ".join(p for p in parts if p)
+
+
 def export_db(db_path: Path, out: Path) -> None:
     """A text dump of the whole save, so git can store and diff it (D-041)."""
     conn = sqlite3.connect(db_path)
@@ -855,6 +902,13 @@ def add_parser(sub: Any) -> None:
     choose.add_argument("kind")
     choose.add_argument("choice")
     steps.add_parser("trial", help="face the Ascension Trial")
+    for verb, about in (
+        ("use", "use a consumable item"),
+        ("equip", "wield or wear an item"),
+        ("unequip", "take off a slot"),
+    ):
+        gear = steps.add_parser(verb, help=about)
+        gear.add_argument("what", help="an item id, or for unequip a slot (weapon, armour)")
     steps.add_parser("sheet", help="the character sheet")
     steps.add_parser("hooks", help="consequences that may come back")
     screen = steps.add_parser("screen", help="write the game page's data as JSON")
@@ -930,6 +984,8 @@ def _dispatch(session: Session, args: argparse.Namespace) -> None:
             session.choose(args.kind, args.choice)
         case "trial":
             session.trial()
+        case "use" | "equip" | "unequip":
+            session.gear(args.step, args.what)
         case "sheet":
             session.console.print(_sheet(session.state(), session.world))
         case "hooks":

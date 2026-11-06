@@ -174,6 +174,7 @@ _TABLES = (
     "rewards",
     "clocks",
     "combat",
+    "items",
 )
 _LATER_TABLES = ("skills", "titles", "evolutions")  # Canon batches in M3.5; the game runs without them.
 
@@ -216,6 +217,9 @@ def _check_references(data: GameData, folder: Path) -> None:
             for a in people.innate_affinity
             if a not in affinities and a not in special
         ]
+    items = {i.id for i in data.items}
+    for name, table in data.rewards.loot.items():
+        problems += [f"loot {name}: unknown item {e.item}" for e in table.entries if e.item and e.item not in items]
     for class_id, trait in data.combat.traits.items():
         if class_id not in classes:
             problems.append(f"trait {trait.name}: unknown class {class_id}")

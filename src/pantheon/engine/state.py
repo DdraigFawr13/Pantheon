@@ -100,7 +100,10 @@ class GameState(BaseModel):
     trial_recovery: bool = False
     oaths: list[str] = Field(default_factory=list)
     standing: dict[str, int] = Field(default_factory=dict)
-    coin: int = 0
+    coin: int = 0  # Whole silver.
+    coin_cp: int = 0  # Copper beyond the silver, 0 to 11 (12 cp = 1 sp).
+    inventory: dict[str, int] = Field(default_factory=dict)  # Item id to count.
+    equipped: dict[str, str] = Field(default_factory=dict)  # Slot (weapon, armour) to item id.
     wounds: int = 0
     downed: bool = False
     opening_gods: list[str] = Field(default_factory=list)
@@ -121,6 +124,10 @@ class GameState(BaseModel):
     reckonings: int = 0
     dead: bool = False
     attunement: str | None = None
+
+    @property
+    def purse_cp(self) -> int:
+        return self.coin * 12 + self.coin_cp
 
     @property
     def mana(self) -> int:
@@ -237,6 +244,21 @@ def apply_event(state: GameState, type_: str, payload: dict[str, Any]) -> None:
             state.wounds = min(state.wounds, state.max_hp)
         case "fight_started":
             state.fight = Fight(foes=[Foe(**f) for f in payload["foes"]], ambush=payload.get("ambush", False))
+        case "currency_changed":
+            state.coin, state.coin_cp = divmod(state.purse_cp + payload["delta_cp"], 12)
+        case "item_changed":
+            count = state.inventory.get(payload["item"], 0) + payload["quantity"]
+            if count > 0:
+                state.inventory[payload["item"]] = count
+            else:
+                state.inventory.pop(payload["item"], None)
+                state.equipped = {s: i for s, i in state.equipped.items() if i != payload["item"]}
+        case "item_equipped":
+            state.equipped[payload["slot"]] = payload["item"]
+        case "item_unequipped":
+            state.equipped.pop(payload["slot"], None)
+        case "loot_granted":
+            pass  # A heading for the Ledger; the coin, items and shards follow as their own events.
         case "attuned":
             state.attunement = payload["element"]
         case "trait_used":

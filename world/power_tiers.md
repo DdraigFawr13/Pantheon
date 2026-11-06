@@ -44,7 +44,7 @@ Levels run 1 to 70; each tier spans 10 levels: `tier = ceil(level / 10)`. Level 
 
 - `xp_to_next(level) = round(100 * level ** 1.5)`
 - At a level that is a multiple of 10, XP may fill, but the next level requires an **Ascension Trial**, which is also the class **evolution**.
-- XP rewards scale with the character's tier so that Tier 1 to Tier 2 takes about 8 hours of play and each later tier about 1.5 times the last.
+- XP rewards scale with the character's tier so that Tier 1 to Tier 2 takes about 7 hours of play and each later tier about 1.5 times the last.
 
 | Tier | Name | Levels | Approx. count | Stats (typical range) |
 |---|---|---|---|---|

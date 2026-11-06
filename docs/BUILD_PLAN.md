@@ -137,7 +137,7 @@ M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is t
 - Exchanges, enemy intents as data, skill costs and cooldowns, pool regeneration, overspend and Injury roll (D-009), Downed, Last Breath per hostile exchange, Reckoning escalation (fourth is final).
 
 **M1e Reward tables v0** (ENG-09, G-08)
-- `rewards.yaml`: XP per kind scaled by tier to hit D-014 pacing; Standing deltas; damage by outcome and rarity; Tier 1 loot tables. A small simulation script checks that the tables reach Tier 2 in about 8 hours of typical play (estimate inputs recorded in DECISIONS as Assumed).
+- `rewards.yaml`: XP per kind scaled by tier to hit D-014 pacing; Standing deltas; damage by outcome and rarity; Tier 1 loot tables. A small simulation script checks that the tables reach Tier 2 in about 7 hours of typical play (D-045; estimate inputs in `scripts/pacing_sim.py`).
 
 **M1f Dev CLI**
 - `pantheon roll`, `pantheon sheet`, `pantheon log`, no LLM. `pantheon fork N` came early, with M1c.
@@ -185,7 +185,7 @@ Canon batches for your approval (`canon:`), each a small PR:
 
 Then the engine wiring and a full playtest from a new timeline to Tier 2.
 
-**Acceptance:** roadmap M3.5. **You test:** play to Tier 2 (about 8 hours); your notes go into `docs/playtests/` and decide what "fun" means here (GAME-06).
+**Acceptance:** roadmap M3.5. **You test:** play to Tier 2 (about 7 hours); your notes go into `docs/playtests/` and decide what "fun" means here (GAME-06).
 
 ## Total and order
 

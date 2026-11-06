@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import secrets
@@ -13,11 +14,12 @@ from typing import Any
 
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.markup import escape
 from rich.panel import Panel
 
 from pantheon.config import Config, load_config
 from pantheon.engine.calendar import date_of, format_date
-from pantheon.engine.checks import Outcome
+from pantheon.engine.checks import Approach, CheckRequest, Difficulty, Outcome, check_odds, resolve_check
 from pantheon.engine.combat import intent_label
 from pantheon.engine.commands import (
     CharacterChoices,
@@ -28,6 +30,7 @@ from pantheon.engine.commands import (
     create_character,
     innate_affinity_options,
 )
+from pantheon.engine.loot import format_cp
 from pantheon.engine.opening import draw_opening_gods
 from pantheon.engine.progression import choose_evolution, evolution_options, pick_skill
 from pantheon.engine.rng import RngStreams
@@ -199,7 +202,7 @@ def _sheet(state: GameState, world: World) -> Panel:
         _bar("Mana", state.mana, state.max_mana),
         _bar("Stamina", state.stamina, state.max_stamina),
         *([_bar("XP", state.xp, xp_to_next(state.level))] if state.level else []),
-        f"Coin: {state.coin} silver",
+        f"Purse: {format_cp(state.purse_cp)}",
         " · ".join(f"{s.capitalize()} {state.stats[s]}" for s in STATS),
         "Affinities: " + (", ".join(f"{a} {r}" for a, r in state.affinities.items()) or "none"),
         "Skills: " + (", ".join(f"{s} {r}" for s, r in state.skills.items()) or "none"),
@@ -216,6 +219,16 @@ def _sheet(state: GameState, world: World) -> Panel:
         lines.append("Titles: " + ", ".join(state.titles))
     if state.injuries:
         lines.append("Injuries: " + ", ".join(f"{i.stat} -{i.amount}" for i in state.injuries))
+    if state.inventory:
+        names = {i.id: i.name for i in world.data.items}
+        worn = set(state.equipped.values())
+        lines.append(
+            "Gear: "
+            + ", ".join(
+                f"{names.get(k, k)}{' x' + str(n) if n > 1 else ''}{' (in use)' if k in worn else ''}"
+                for k, n in state.inventory.items()
+            )
+        )
     if state.shards:
         lines.append(
             "Shards: " + ", ".join(f"{s.target} {'fragment' if s.fragment else s.kind}" for s in state.shards)
@@ -277,6 +290,18 @@ def ledger_lines(events: list[EventRecord]) -> list[str]:
                 lines.append(f"Petition {'granted' if p['granted'] else 'not granted'} ({p['reason']})")
             case "fight_started":
                 lines.append(f"[bold]A fight begins:[/bold] {', '.join(f['name'] for f in p['foes'])}")
+            case "loot_granted":
+                lines.append(f"[bold]Loot[/bold] from {p['source']}:")
+            case "currency_changed":
+                sign = "+" if p["delta_cp"] > 0 else "-"
+                lines.append(f"{sign}{format_cp(abs(p['delta_cp']))} ({p['reason']})")
+            case "item_changed":
+                sign = "+" if p["quantity"] > 0 else ""
+                lines.append(f"{sign}{p['quantity']} {p['item'].replace('_', ' ')} ({p['reason']})")
+            case "item_equipped":
+                lines.append(f"Equipped: {p['item'].replace('_', ' ')} ({p['slot']})")
+            case "item_unequipped":
+                lines.append(f"Took off the {p['slot']}")
             case "attuned":
                 lines.append(f"[bold]Attuned:[/bold] {p['element'].capitalize()}")
             case "trait_used":
@@ -684,6 +709,75 @@ def _fork(args: argparse.Namespace, console: Console) -> int:
     return 0
 
 
+def _roll(args: argparse.Namespace, console: Console) -> int:
+    """`pantheon roll`: a d100 check by the engine's own rules, outside any game (M1f, no LLM)."""
+    rng = RngStreams.from_seed(args.seed)
+    request = CheckRequest(
+        difficulty=Difficulty(args.difficulty),
+        stat=args.stat,
+        skill_rank=args.skill,
+        actor_tier=args.tier,
+        challenge_tier=args.challenge,
+        approach=Approach(args.approach),
+        bonus=args.bonus,
+    )
+    try:
+        odds = check_odds(request)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        return 1
+    shown = "settled by the tier gap" if odds.shown is None else f"{odds.shown}% shown ({odds.chance} raw)"
+    console.print(f"Tier gap {odds.tier_gap:+d}, chance {shown}, seed {args.seed}")
+    for _ in range(args.count):
+        result = resolve_check(rng, request)
+        rolled = "no roll" if result.roll is None else f"rolled {result.roll:02d}"
+        extra = " + complication" if result.complication else ""
+        console.print(f"  {rolled}: {result.outcome.value.replace('_', ' ')}{extra}")
+    return 0
+
+
+def _timeline(db: Database, prefix: str | None, console: Console) -> str | None:
+    tid = db.find_timeline(prefix) if prefix else db.latest_timeline()
+    if tid is None:
+        console.print("[red]There is no timeline yet. Start one with `pantheon play`.[/red]")
+    return tid
+
+
+def _show_sheet(args: argparse.Namespace, console: Console) -> int:
+    """`pantheon sheet`: the character sheet of a timeline, read from the save (M1f)."""
+    config = load_config(Path(args.config) if args.config else None)
+    world = load_world(config.world_dir)
+    with Database.open(Path(args.db) if args.db else config.db_path) as db:
+        tid = _timeline(db, args.timeline, console)
+        if tid is None:
+            return 1
+        state = db.load_state(tid)
+    console.print(_sheet(state, world))
+    _show_fight(state, world, console)
+    return 0
+
+
+def _log(args: argparse.Namespace, console: Console) -> int:
+    """`pantheon log`: the recorded events, turn by turn, as the Ledger shows them (M1f, GAME-04)."""
+    config = load_config(Path(args.config) if args.config else None)
+    with Database.open(Path(args.db) if args.db else config.db_path) as db:
+        tid = _timeline(db, args.timeline, console)
+        if tid is None:
+            return 1
+        logged = db.events(tid)
+    if args.turn is not None:
+        logged = [e for e in logged if e["turn"] == args.turn]
+    if args.type:
+        logged = [e for e in logged if e["type"] == args.type]
+    shown = logged[-args.last :] if args.last else logged
+    console.print(f"[dim]Timeline {tid[:8]}: {len(shown)} of {len(logged)} events[/dim]")
+    for event in shown:
+        lines = ledger_lines([(event["type"], event["payload"])])
+        text = lines[0] if lines else escape(json.dumps(event["payload"], separators=(",", ":")))
+        console.print(f"[dim]t{event['turn']:<4}{event['type']:<22}[/dim] {text}")
+    return 0
+
+
 def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClient | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pantheon")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -691,12 +785,27 @@ def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClien
     play = sub.add_parser("play", help="play the latest timeline; a new game starts when there is none")
     fork = sub.add_parser("fork", help="branch a new timeline from the end of a turn")
     fork.add_argument("turn", type=int, help="the turn to branch from")
+    roll = sub.add_parser("roll", help="roll a check by the engine's rules, outside any game")
+    roll.add_argument("--stat", type=int, default=30, help="the stat's value")
+    roll.add_argument("--difficulty", choices=[d.value for d in Difficulty], default="routine")
+    roll.add_argument("--tier", type=int, default=1, help="the character's tier")
+    roll.add_argument("--challenge", type=int, default=1, help="the challenge's tier")
+    roll.add_argument("--skill", type=int, default=0, help="the skill's rank")
+    roll.add_argument("--approach", choices=[a.value for a in Approach], default="other")
+    roll.add_argument("--bonus", type=int, default=0, help="a trait or gear bonus")
+    roll.add_argument("--count", type=int, default=1, help="how many rolls")
+    roll.add_argument("--seed", type=int, default=1)
+    sheet = sub.add_parser("sheet", help="show a timeline's character sheet")
+    log = sub.add_parser("log", help="show a timeline's recorded events")
+    log.add_argument("--turn", type=int, help="only this turn")
+    log.add_argument("--type", help="only this event type, such as xp_gained")
+    log.add_argument("--last", type=int, help="only the last N events")
     for command in (new, play):
         command.add_argument("--seed", type=int, default=0, help="seed (0 = config or random)")
-    for command in (new, play, fork):
+    for command in (new, play, fork, sheet, log):
         command.add_argument("--db", help="database path (default: data/pantheon.db)")
         command.add_argument("--config", help="config file (default: config.toml)")
-    for command in (play, fork):
+    for command in (play, fork, sheet, log):
         command.add_argument("--timeline", help="the start of a timeline's id (default: the latest)")
     play.add_argument("--fresh", action="store_true", help="start a new timeline instead of resuming")
     from pantheon.ui.cli import session  # It builds on this module's screens, so it loads after them.
@@ -712,6 +821,12 @@ def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClien
             return _new(args, console)
         if args.command == "fork":
             return _fork(args, console)
+        if args.command == "roll":
+            return _roll(args, console)
+        if args.command == "sheet":
+            return _show_sheet(args, console)
+        if args.command == "log":
+            return _log(args, console)
         return _play(args, console, ask or console.input, client)
     except SaveError as exc:
         console.print(f"[red]{exc}[/red]")

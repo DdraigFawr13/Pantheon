@@ -45,8 +45,8 @@ def skill_cost(state: GameState, data: GameData, skill: Skill) -> int:
 def defence_stat(state: GameState, data: GameData, stat: str, move: str) -> str:
     """Still Centre: guard and flee roll the best of the trait's stats when that beats the one named."""
     trait = trait_of(state, data)
-    if move == _ATTACK or trait is None or not trait.defence_stats:
-        return stat
+    if move == _ATTACK or trait is None or not trait.defence_stats or "armour" in state.equipped:
+        return stat  # Still Centre needs the character unarmoured.
     return max((stat, *trait.defence_stats), key=lambda s: state.stats[s])
 
 
@@ -60,10 +60,13 @@ def bonuses(
     activating: bool = False,
 ) -> list[tuple[str, int]]:
     """Each trait bonus on this check, as (trait name, amount). `activating`: the move uses the trait now."""
+    found: list[tuple[str, int]] = []
+    weapon = data.item_of(state.equipped.get("weapon", ""))
+    if weapon is not None and weapon.attack_bonus and move == _ATTACK and state.fight is not None:
+        found.append((weapon.name, weapon.attack_bonus))
     trait = trait_of(state, data)
     if trait is None:
-        return []
-    found: list[tuple[str, int]] = []
+        return found
     used = skill_data(data, skill)
     if trait.attuned_bonus and used and used.affinity and used.affinity == state.attunement:
         found.append((trait.name, trait.attuned_bonus))

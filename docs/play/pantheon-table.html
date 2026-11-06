@@ -118,6 +118,8 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .kv dt { color: var(--muted); } .kv dd { margin: 0; min-width: 0; }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font: .86rem/1.45 var(--mono); }
 .list li { border-top: 1px dashed var(--line); padding-top: 6px; } .list li:first-child { border-top: 0; padding-top: 0; }
+.gear { display: grid; gap: 4px; }
+.gearbtn { justify-self: start; font: 600 .75rem var(--mono); color: var(--brass); background: none; border: 1px solid var(--brass); border-radius: 999px; padding: 2px 12px; cursor: pointer; }
 .pill { display: inline-block; font: 600 .7rem var(--mono); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; color: var(--muted); margin-left: 4px; }
 .clock { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font: .84rem var(--mono); }
 .clock .pips { grid-column: 1 / -1; display: flex; gap: 3px; flex-wrap: wrap; }
@@ -482,12 +484,27 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 
   function renderGear(s) {
     const box = $("tab-gear"); box.replaceChildren();
-    const purse = card("Purse");
-    purse.append(kv([["Coin", `${s.coin} silver`]]));
-    const shards = card("Shards", "Absorb a shard to grow a skill or affinity.");
+    const purse = card("Purse", "12 copper make a silver; 20 silver make a gold.");
+    purse.append(kv([["Coin", s.purse || `${s.coin} sp`]]));
+    const items = card("Carried", "Equip a weapon or armour between fights; a tonic heals at once, or as your move in a fight.");
+    items.append(list((s.gear || []).map((g) => {
+      const li = el("li", "gear");
+      const head = el("div");
+      head.append(el("strong", null, g.name + (g.count > 1 ? ` ×${g.count}` : "")));
+      if (g.in_use) head.append(el("span", "pill", "in use"));
+      li.append(head, el("div", "sub", g.detail));
+      const verb = g.kind === "consumable" ? "use" : (g.kind === "weapon" || g.kind === "armour") ? (g.in_use ? "unequip" : "equip") : null;
+      if (verb && !(screen && screen.fight)) {
+        const b = el("button", "gearbtn", verb === "use" ? "Use" : verb === "equip" ? "Equip" : "Take off"); b.type = "button";
+        b.disabled = busy() || sendState !== "available";
+        b.addEventListener("click", () => send(`Pantheon gear: ${verb} ${verb === "unequip" ? g.kind : g.id}`, b));
+        li.append(b);
+      }
+      return li;
+    }), "Nothing carried yet. Loot comes from won fights, caches and bounties."));
+    const shards = card("Shards", "Absorb a shard to grow a skill or affinity. Three fragments fuse into one.");
     shards.append(list(s.shards || [], "No shards yet."));
-    const items = card("Items", "The engine does not track items yet. Gear and loot arrive with milestone M1e; until then, belongings live in the story.");
-    box.append(purse, shards, items);
+    box.append(purse, items, shards);
   }
 
   function renderCreate(setup) {

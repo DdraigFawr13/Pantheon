@@ -11,7 +11,7 @@ Format: `- G-<n> · <gap> · <where it shows> · <status>`
 - G-05 · Character age, needed for the "years of life" Tithe · `world/power_tiers.md` · RESOLVED `3085d96`: age recorded, no mechanics; the Tithe of years is removed (D-014)
 - G-06 · Tier cap per region for `introduce_npc` · `world/geography.md`, `world/factions.md` · RESOLVED `3085d96`: Ford Reaches residents at most Tier 3
 - G-07 · Rate at which global clocks advance with elapsed time · `world/factions.md` Clocks · RESOLVED `3085d96`: one segment per season, plus one when neglected
-- G-08 · Reward tables: XP per kind, Standing delta per kind, damage per outcome and effect, coin and item bounds per tier (ENG-09) · `docs/architecture.md` section 6 · open: first guesses in `world/data/rewards.yaml` (D-030), tuned from playtests against D-014 pacing
+- G-08 · Reward tables: XP per kind, Standing delta per kind, damage per outcome and effect, coin and item bounds per tier (ENG-09) · `docs/architecture.md` section 6 · Tier 1 set by the owner in D-045 (XP, foe XP, loot, coin and item bounds); later tiers scale by rule; tune from playtests
 - G-09 · Calendar detail: month names and lengths, season boundaries, day length (ENG-11) · `world/00_overview.md` · RESOLVED `3085d96`: calendar drafted
 - G-10 · Do the Unwritten have a Ledger, and if not, how do they know their own affinities and skills? The UI status panel is drawn from state either way (NAR-04); the question is what the narrator may say · `world/00_overview.md` (the Ledger), `world/power_tiers.md` The Unwritten · open. The opening's last line now says "if an Oath was sworn" (PR #7)
 - G-11 · Nine Tier 6 Sovereigns and three Tier 7 Heirs exist in the tier table but no file names or places one. Are they known, hidden or unaligned, and may the narrator introduce one? · `world/power_tiers.md` tier table · open
@@ -31,4 +31,5 @@ Format: `- G-<n> · <gap> · <where it shows> · <status>`
 - G-25 · Origins' "starting gear" is named but no list exists · `world/protagonist_seed.md` Start state · open: the slice starts with no gear on the sheet
 - G-26 · A Riftborn character's birth rift affinity has no list of rifts to pick from · `world/peoples.md` · open: the slice offers any basic affinity
 - G-28 · No foe tables: which foes exist, their tiers, threat and intents · `world/power_tiers.md` Combat · open: the narrator names foes within engine bounds (D-039); M3.5's rift batch adds real ones
+- G-29 · Tier 1 items beyond the price list: foe drops (pelts, fangs), rift materials, lanterns and tools, and their prices, so loot can vary (ENG-09) · `world/economy.md`, `world/data/items.yaml` · open: only the five listed items exist (D-045)
 - G-27 · The owner wants training and travel to skip time in one turn with a summary, but canon does not say what training gives · `world/power_tiers.md` · open: M1c built time skips without training gains (D-033, D-038)

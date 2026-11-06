@@ -152,14 +152,57 @@ class PetitionTerms(_Strict):
     days: int = Field(gt=0)
 
 
+class LootEntry(_Strict):
+    """One way a loot roll can pay out: coin, an item, or a shard fragment (ENG-09)."""
+
+    weight: int = Field(gt=0)
+    coin_cp: tuple[int, int] | None = None  # An inclusive range in copper.
+    item: str | None = None
+    fragment: bool = False
+
+    @model_validator(mode="after")
+    def _pays_one_thing(self) -> LootEntry:
+        if sum((self.coin_cp is not None, self.item is not None, self.fragment)) != 1:
+            raise ValueError("a loot entry pays exactly one of coin_cp, item or fragment")
+        return self
+
+
+class LootTable(_Strict):
+    rolls: int = Field(ge=1)
+    entries: tuple[LootEntry, ...]
+
+
 class Rewards(_Strict):
     xp: dict[str, int]
     xp_per_turn_cap: int = Field(gt=0)
+    tier_time_growth: float = Field(default=1.5, gt=0)  # Each tier takes about this much longer (D-014).
+    foe_xp: dict[str, int] = Field(default_factory=dict)  # Per foe brought down, by threat.
+    foe_xp_above_percent: int = Field(default=50, ge=0)  # More per tier the foe stands above the character.
+    foe_xp_below_percent: int = Field(default=25, ge=0, le=100)  # Kept per tier below: very little.
+    coin_gain_cp_per_turn: int = Field(default=360, ge=0)  # At Tier 1; scaled like XP.
+    items_per_turn: int = Field(default=3, ge=0)
+    loot: dict[str, LootTable] = Field(default_factory=dict)  # foe:<threat>, cache, bounty.
     level_gains: LevelGains
     standing: dict[str, int]
     damage_percent: dict[str, int]
     heal_percent: dict[str, int]
     petition: PetitionTerms
+
+
+class Item(_Strict):
+    id: str = Field(pattern=_ID)
+    name: str
+    kind: Literal["weapon", "armour", "consumable", "gear", "material"]
+    rarity: Rarity = "common"
+    tier: int = Field(default=1, ge=0, le=8)
+    value_cp: int = Field(ge=0)
+    attack_bonus: int = Field(default=0, ge=0)  # Weapons: added to attack checks.
+    block_percent: int = Field(default=0, ge=0, le=100)  # Armour: percentage points off each blow.
+    heal_percent: int = Field(default=0, ge=0, le=100)  # Consumables: of maximum HP.
+
+    @property
+    def equippable(self) -> bool:
+        return self.kind in ("weapon", "armour")
 
 
 class Clock(_Strict):
@@ -256,11 +299,15 @@ class GameData(_Strict):
     clocks: tuple[Clock, ...]
     combat: Combat
     skills: tuple[Skill, ...] = ()
+    items: tuple[Item, ...] = ()
     titles: tuple[Title, ...] = ()
     evolutions: tuple[Evolution, ...] = ()
 
     def god_ids(self) -> tuple[str, ...]:
         return tuple(g.id for g in self.gods)
+
+    def item_of(self, item_id: str) -> Item | None:
+        return next((i for i in self.items if i.id == item_id), None)
 
     def class_of(self, class_id: str | None) -> BaseClass | Evolution | None:
         """A base class or an evolved one, by id. The engine treats both the same after evolving."""
