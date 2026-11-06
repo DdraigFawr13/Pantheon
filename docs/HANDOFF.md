@@ -14,7 +14,6 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 - 2026-11-06 Design audit of M1d to M1f (owner chose design only): `docs/audit/2026-11-06-design.md`, 28 findings (3 strongly recommended: M2 plan stale, architecture section 3 stale, tapped options undecided). PR #23. Owner: "Do as you recommend": all 28 accepted (D-049); 23 fixed in e9f2a6f. Re-run pacing sim: 9.9 h to the Tier 2 Trial against D-014's 7 h target, median fight 6 exchanges (estimates; owner's fight playtest decides any retune).
 
-- 2026-11-03 Master upgrade to v4.4.0 (D-040), PR #17 merged.
 - 2026-11-06 Master upgrade to v4.11.0 (D-043) and the repo and tests audits, PR #20 merged; audit fixes, PR #21 merged.
 - 2026-11-06 M1.7 (D-041): `pantheon session` runs each turn step as a command; `/play` skill; `play-guard` hook (rules: D-044 (1)); saves as a text dump on the `saves` branch; the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b) shows story, Character, Journal and Gear tabs from `session screen` JSON and sends taps to the session as comments.
 - 2026-11-06 D-042: 25 base classes with traits and blurbs (`world/data/classes.yaml`, power_tiers.md table, gods' favoured classes); `class-design` skill; roster page https://claude.ai/artifact/96Gk7pos2FRTar4ezcyRfS.
