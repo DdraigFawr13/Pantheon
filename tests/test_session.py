@@ -250,6 +250,9 @@ def test_play_guard_keeps_secret_and_sealed_canon_out_NAR_02(tmp_path: Path) -> 
     assert denied("Read", file_path=str(tmp_path / "world" / "secret" / "a.md"))
     assert denied("Read", file_path=str(tmp_path / "world" / "sealed" / "a.md"))
     assert not denied("Read", file_path=str(tmp_path / "world" / "pantheon.md"))
+    saved = "/root/.claude/projects/-home-user-Pantheon/abc/tool-results/b1.txt"
+    assert not denied("Read", file_path=saved)  # Long output of an allowed command.
+    assert denied("Read", file_path="/root/.claude/projects/x/abc/tool-results/../../../../etc/a.md")
     assert not denied("Bash", command='uv run -q pantheon session begin "I climb"')
     assert denied("Bash", command="uv run pantheon session narrate world/secret/a.md")
     assert denied("Bash", command="uv run pantheon session status; cat world/secret/a.md")

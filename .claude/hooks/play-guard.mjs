@@ -26,6 +26,8 @@ function verdict() {
     case "Bash":
       return BASH.test((input.command || "").trim()) && !/secret|sealed/i.test(input.command) ? null : "During play, Bash runs only `uv run pantheon session ...` and `scripts/saves.sh`.";
     case "Read": {
+      // Long output from an allowed command is saved by Claude Code under its own tool-results folder.
+      if (/[\\/]\.claude[\\/]projects[\\/][^\\/]+[\\/][^\\/]+[\\/]tool-results[\\/][^\\/]+\.txt$/.test(input.file_path || "")) return null;
       const rel = inside(input.file_path || "");
       return rel !== null && READABLE.some((r) => r.test(rel)) ? null : "During play, only public files may be read (prompts/, world/*.md, data/, the play skill).";
     }
