@@ -24,6 +24,7 @@ class Config:
     max_tool_rounds: int = 6
     max_tool_retries: int = 2
     violence: str = "moderate"
+    permadeath: bool = False
     raw: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -65,5 +66,6 @@ def load_config(path: Path | None = None) -> Config:
         max_tool_rounds=int(budget.get("max_tool_rounds", 6)),
         max_tool_retries=int(budget.get("max_tool_retries", 2)),
         violence=str(gameplay.get("violence", "moderate")),
+        permadeath=bool(gameplay.get("permadeath", False)),
         raw=raw,
     )
