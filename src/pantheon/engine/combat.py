@@ -171,7 +171,8 @@ def resolve_exchange(
         if hits:
             sim.emit("foe_hit", {"foe": foe.id, "name": foe.name, "hits": hits})
         left = foe.hits_left
-        words.append(f"{foe.name} takes {hits} hit and has {left} left." if left else f"{foe.name} is down.")
+        taken = "takes no hit" if not hits else f"takes {hits} hit{'s' if hits > 1 else ''}"
+        words.append(f"{foe.name} {taken} and has {left} left." if left else f"{foe.name} is down.")
         if outcome not in _LANDED:
             acting = [f for f in acting if f.id != foe.id]
     elif move == "item" or outcome is None:
