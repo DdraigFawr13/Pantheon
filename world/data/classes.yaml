@@ -1,51 +1,135 @@
-# world/power_tiers.md, Classes: the eight base classes. Traits copy the Classes table; blurbs are a one-line
-# feel for the class on the character page (owner's request, 2026-11-06).
-- id: blade_sworn
-  name: Blade-sworn
+# world/power_tiers.md, Classes: the base classes (D-042). Each has one signature trait and a one-line blurb for the
+# character page. New classes follow the class-design skill (.claude/skills/class-design/).
+- id: sellsword
+  name: Sellsword
   primary: vigor
   secondary: agility
   trait: "Momentum: each successful exchange in a fight adds +5 to the next attack, up to +15"
-  blurb: The front-line fighter. Hits hard, keeps hitting, and gets better the longer a fight runs.
+  blurb: "The trained fighter. Good with any weapon, best with one, and steadier the longer a fight runs."
+- id: reaver
+  name: Reaver
+  primary: vigor
+  secondary: resolve
+  trait: "Blood Up: below half HP, +10 on attacks and -10 on defence until the fight ends"
+  blurb: "Rage in armour. Gets more dangerous the more they bleed."
 - id: warden
   name: Warden
   primary: resolve
   secondary: vigor
   trait: "Bulwark: may take a blow aimed at an ally within reach"
-  blurb: The protector. Stands in front of others and takes the hit so they don't have to.
+  blurb: "The shield-bearer. Stands in front of others and takes the hit so they don't have to."
+- id: oathknight
+  name: Oathknight
+  primary: resolve
+  secondary: presence
+  trait: "Sworn Edge: +10 on checks that honour an Oath's Burden; may spend mana to heal an ally by touch"
+  blurb: "The holy warrior. Fights for a god's Oath and draws strength from keeping it."
+- id: fistsworn
+  name: Fistsworn
+  primary: agility
+  secondary: resolve
+  trait: "Still Centre: unarmoured, defends with Agility and Resolve; stamina skills cost 20 % less"
+  blurb: "Discipline instead of armour. Fast hands, a still mind, a body trained into a weapon."
+- id: spellblade
+  name: Spellblade
+  primary: vigor
+  secondary: intellect
+  trait: "Edgecasting: casts a spell through a weapon strike in the same exchange"
+  blurb: "Sword in one hand, spell in the other. Hits with both at once."
+- id: cutpurse
+  name: Cutpurse
+  primary: agility
+  secondary: intellect
+  trait: "Opening: +10 and double damage on the first strike against an unaware foe"
+  blurb: "The thief and knife. Locks, pockets, rooftops and the first strike nobody saw coming."
+- id: wayfinder
+  name: Wayfinder
+  primary: agility
+  secondary: resolve
+  trait: "Pathsense: never lost; acts before enemy intents resolve in the first exchange"
+  blurb: "The scout and hunter. Never lost, always first to move, deadly at range."
+- id: inquest
+  name: Inquest
+  primary: intellect
+  secondary: presence
+  trait: "Studied Mark: after one exchange or scene observing a target, +10 on all checks against it"
+  blurb: "The investigator. Reads people and scenes, and turns what they learn into an edge."
+- id: arcanist
+  name: Arcanist
+  primary: intellect
+  secondary: resolve
+  trait: "Spellbook: one extra skill offered at each skill pick"
+  blurb: "The scholar-mage. Learns spells from study and has more of them than anyone."
+- id: elementalist
+  name: Elementalist
+  primary: intellect
+  secondary: vigor
+  trait: "Attuned: choose Flame, Frost, Storm, Stone, Wind or Tide at awakening; spells of that element cost 20 % less mana and get +5"
+  blurb: "Fire, frost, lightning, stone, wind or water, thrown hard. The classic battle-mage."
+- id: wildblood
+  name: Wildblood
+  primary: presence
+  secondary: vigor
+  trait: "Surge: may spend HP instead of mana to cast"
+  blurb: "Magic in the blood, not the book. Raw, strong, and paid for in their own body."
 - id: cantor
   name: Cantor
   primary: presence
   secondary: intellect
   trait: "Carrying Voice: Song skills cost 20 % less mana and reach everyone who can hear"
-  blurb: The voice. Magic through song and speech that steadies friends, rattles enemies and talks a room round.
-- id: wayfinder
-  name: Wayfinder
-  primary: agility
+  blurb: "The voice. Song and speech that steady friends, rattle enemies and talk a room round."
+- id: votary
+  name: Votary
+  primary: resolve
+  secondary: presence
+  trait: "Channel: healing and warding skills cost 20 % less; Divine Favor opens at Standing 50, not 60"
+  blurb: "A god's priest. Heals, wards and calls on a sworn god's favour."
+- id: hexer
+  name: Hexer
+  primary: intellect
+  secondary: presence
+  trait: "Malediction: once per fight, curse one foe: -10 on all its checks"
+  blurb: "Curses, bargains and quiet spite. Makes enemies weaker instead of themselves stronger."
+- id: gravewalker
+  name: Gravewalker
+  primary: resolve
+  secondary: presence
+  trait: "Ancestral Voice: may question the spirits of the dead; Death and Spirit skills cost 20 % less"
+  blurb: "The speaker for the dead. Talks with spirits and works death and ancestor magic."
+- id: wildkin
+  name: Wildkin
+  primary: vigor
+  secondary: resolve
+  trait: "Bonded Beast: a beast companion that levels with the character"
+  blurb: "The beast-bonded. Fights beside an animal companion that grows as they do."
+- id: greenwarden
+  name: Greenwarden
+  primary: resolve
   secondary: intellect
-  trait: "Pathsense: never lost; acts before enemy intents resolve in the first exchange"
-  blurb: The scout and guide. Quick, clever, never lost, and always first to move.
+  trait: "Old Growth: +10 on checks in the wild; Growth and Life skills cost 20 % less"
+  blurb: "The druid. Plants, weather and healing, strongest far from walls."
+- id: skinchanger
+  name: Skinchanger
+  primary: vigor
+  secondary: agility
+  trait: "Beast Form: once per fight, take a beast shape: +10 on physical checks, no spells or speech until it ends"
+  blurb: "Takes a beast's shape when words run out. Teeth, claws, a nose that never lies."
 - id: hearthwright
   name: Hearthwright
   primary: intellect
   secondary: resolve
   fragments_to_fuse: 2
   trait: "Kitcraft: +10 on crafting checks; fuses shards from 2 fragments instead of 3"
-  blurb: The maker. Builds, brews and mends, and turns shards and scraps into something useful.
-- id: wager_bound
-  name: Wager-bound
-  primary: agility
-  secondary: presence
-  trait: "Double or Nothing: before a check, may stake it: success upgrades one step, failure downgrades one step"
-  blurb: The gambler. Lives on luck and nerve, and can bet a roll to make it better or worse.
-- id: gravewalker
-  name: Gravewalker
-  primary: resolve
-  secondary: presence
-  trait: "Ancestral Voice: may question the spirits of the dead; Death and Spirit skills cost 20 % less"
-  blurb: The speaker for the dead. Talks with spirits and works death and ancestor magic.
-- id: wildkin
-  name: Wildkin
+  blurb: "The maker. Brews, builds and mends, and turns shards and scraps into something useful."
+- id: runesmith
+  name: Runesmith
   primary: vigor
+  secondary: intellect
+  trait: "Rune-Etch: once a day, inscribe a rune on an item: +5 on checks that use it until the next rest"
+  blurb: "Forge and inscription. Makes weapons and armour, then writes power into them."
+- id: gearwright
+  name: Gearwright
+  primary: intellect
   secondary: agility
-  trait: "Bonded Beast: a beast companion that levels with the character"
-  blurb: The beast-bonded. Fights beside an animal companion that grows as they do.
+  trait: "Contraption: prepare one device per rest (trap, flare, lockbreaker, grapple); a placed device counts as a Terrain Overcome Condition"
+  blurb: "Traps, devices and clever machines. Wins by preparing the ground."
