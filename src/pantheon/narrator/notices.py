@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from pantheon.engine.checks import shown_chance
 from pantheon.engine.state import EventRecord
 
 CHECK_MARKER = "<<CHECK>>"
@@ -18,8 +19,9 @@ def check_notice(payload: dict[str, Any]) -> str:
     stat = str(payload["stat"]).capitalize()
     if payload.get("automatic"):
         return f"***{stat} check: {outcome}, decided by the tier gap***"
+    chance = shown_chance(int(payload["chance"]))
     extra = "".join(f", {name} {amount:+d}" for name, amount in payload.get("bonuses", []))
-    return f"***{stat} check{extra}: {payload['chance']}% chance, rolled {payload['roll']}: {outcome}***"
+    return f"***{stat} check{extra}: {chance}% chance, rolled {payload['roll']}: {outcome}***"
 
 
 def place_notices(text: str, events: list[EventRecord]) -> str:

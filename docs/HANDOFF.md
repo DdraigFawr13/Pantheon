@@ -4,27 +4,27 @@ Updated: 2026-11-06. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-**M1d, M1e and M1f are built on draft PR #19** (`claude/m1-build`), which merges #16 (D-039) onto main and supersedes it. M1 is complete there, pending the owner's approval to merge (GIT-07).
+M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are merged. PR #20 (master v4.11.0, D-043, two audits) and PR #21 (every audit finding fixed or recorded; the play guard denies by default, D-044) are merged. Still open from the audit: canon gaps G-28 to G-32 (the owner answers them); MEM-01 to MEM-04 have no tests until M3.
 
-In parallel: PR #20 merged master v4.11.0 (D-043) and two audits, `docs/audit/2026-11-06-repo.md` (42 findings) and `docs/audit/2026-11-06-tests.md` (28 findings); the owner accepted every recommendation. Another session fixes them on `ccr-2a3ebc70-8wd8jg` (play-guard holes F1 and F2 first). Whichever of #19 and the audit-fix PR merges second merges `main` in and re-runs the checks (GIT-04).
+**M1d, M1e and M1f are built on draft PR #19** (`claude/m1-build`), which merges #16 (D-039) and current `main`, and supersedes #16. M1 is complete there, pending the owner's approval to merge (GIT-07, GIT-08).
 
 ## Just done
 
 - 2026-11-03 Master upgrade to v4.4.0 (D-040), PR #17 merged.
-- 2026-11-06 Master upgrade to v4.11.0 (D-043) and the repo and tests audits, PR #20 merged.
+- 2026-11-06 Master upgrade to v4.11.0 (D-043) and the repo and tests audits, PR #20 merged; audit fixes, PR #21 merged.
 - 2026-11-06 M1.7 (D-041): `pantheon session` runs each turn step as a command; `/play` skill; `play-guard` hook (Bash only `uv run pantheon session` and `scripts/saves.sh`, public reads only); saves as a text dump on the `saves` branch; the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b) shows story, Character, Journal and Gear tabs from `session screen` JSON and sends taps to the session as comments.
 - 2026-11-06 D-042: 25 base classes with traits and blurbs (`world/data/classes.yaml`, power_tiers.md table, gods' favoured classes); `class-design` skill; roster page https://claude.ai/artifact/96Gk7pos2FRTar4ezcyRfS.
 - 2026-11-06 First session play, five turns: `docs/playtests/2026-11-06-session-play.md`. The owner: "the game works and the fundamentals are fun", the writing needs work and maybe shortening to move quicker ("we can get to that later"). Ddraig Fawr (he/him), Elementalist attuned to Storm, Enchanter, sworn to Ysmere; timeline `ddb27b36` on the `saves` branch.
-- 2026-11-06 M1d on PR #19: #16 merged in (only doc conflicts; its tests moved from the cut Wager-bound to Warden). The owner chose the nine solo fight traits (D-044): data in `world/data/combat.yaml` `traits`, read by `engine/traits.py`, a `bonus` on `CheckRequest` so odds and roll agree, `choose attunement <element>` for the Elementalist. Session play runs fights: a picked fight option rolls `fight_move` before the prose, a Downed turn runs the foes' exchange, `session tool --file`, a /play Fights section, and a fight panel on the game page (republished, version 8). Owner's direction: LitRPG pacing and tone (D-045).
-- 2026-11-06 M1e on PR #19 (D-046, owner-approved numbers, XP 15 % above the first draft): tier-scaled XP; foe XP and body loot when fights end; `grant_loot` (cache, bounty), `adjust_inventory`, `adjust_currency`; five canon items in `world/data/items.yaml`; weapons, armour, tonics; `session use/equip/unequip`; the second Reckoning takes carried gear. `scripts/pacing_sim.py` estimates 7.0 h to Tier 2, so D-014 and `world/power_tiers.md` now say about 7 hours. Game page Gear tab (version 9). M1f: `pantheon roll`, `sheet`, `log`. Scripted fight check: `docs/playtests/2026-11-06-m1-fight-check.md`. The owner's save loads; its first prompt is `choose attunement`.
+- 2026-11-06 M1d on PR #19: #16 merged in (its tests moved from the cut Wager-bound to Warden). Nine solo fight traits (D-045) as data in `world/data/combat.yaml` `traits`, read by `engine/traits.py`, through `CheckRequest.bonus`; `choose attunement <element>`. Session play runs fights (a picked fight option rolls first, a Downed turn runs by itself, `session tool --file`). LitRPG direction (D-046).
+- 2026-11-06 M1e on PR #19 (D-047, the owner's numbers, XP 15 % above the first draft): tier-scaled XP, foe XP and body loot, `grant_loot`, `adjust_inventory`, `adjust_currency`, five canon items, gear and tonics, `session use/equip/unequip`. `scripts/pacing_sim.py` estimates 7.0 h to Tier 2, so D-014 says about 7. M1f: `pantheon roll`, `sheet`, `log`. Game page: fight panel, Gear tab, Codex tab with sub-tabs and search. Scripted check: `docs/playtests/2026-11-06-m1-fight-check.md`.
 
 ## Next
 
-1. Owner reviews and approves PR #19; then merge it (GIT-07) and close #16 as superseded.
-2. Owner plays a session with a fight: pick `choose attunement storm` first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
+1. Owner reviews and approves PR #19; then finish it (GIT-08) and close #16 as superseded.
+2. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 3. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
-4. Offer an audit of M1 (VER-09). Next milestone in the plan: M2 (narrator loop), much of which M1.5 to M1.7 already built.
-5. Known gaps: Tier 1 items beyond the price list (G-29); the API path (`pantheon play`) has no gear commands; Attuned does not require the element's affinity.
+4. Offer an audit of M1 (VER-09). Next milestone in the plan: M2 (narrator loop), much of which M1.5 to M1.7 built.
+5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
 
 ## Open questions
 
@@ -49,4 +49,4 @@ In parallel: PR #20 merged master v4.11.0 (D-043) and two audits, `docs/audit/20
 
 ## Decisions since the last plan update
 
-- 2026-11-06 D-007 to D-046 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037 to D-039, D-044 Assumed).
+- 2026-11-06 D-007 to D-047 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037 to D-039, D-045 Assumed).

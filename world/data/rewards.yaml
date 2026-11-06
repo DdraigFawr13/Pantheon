@@ -1,4 +1,4 @@
-# Balance values (G-08). D-030's first guesses, then M1e's XP and loot (D-046). The owner's playtests tune them.
+# Balance values (G-08). D-030's first guesses, then M1e's XP and loot (D-047). The owner's playtests tune them.
 xp: {minor: 69, major: 161, milestone: 403}
 xp_per_turn_cap: 460
 level_gains: {primary: 2, secondary: 1, free_points: 1}
@@ -6,7 +6,7 @@ standing: {slight: 2, notable: 5, grave: 15}
 damage_percent: {failure: 25, success_at_cost: 10, hazard: 15}
 heal_percent: {aid: 25}
 petition: {granted: 5, ignored: 2, days: 7}
-# M1e, approved by the owner (D-046): XP scales with tier so each tier takes about tier_time_growth times
+# M1e, approved by the owner (D-047): XP scales with tier so each tier takes about tier_time_growth times
 # the last (D-014); foes give XP when brought down; loot tables pay coin, items and shard fragments.
 tier_time_growth: 1.5
 foe_xp: {minion: 127, standard: 311, elite: 748}

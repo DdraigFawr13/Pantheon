@@ -43,7 +43,7 @@ def sworn(rules: Rules = RULES, seed: int = 1) -> Simulation:
     sim.emit("opening_gods_drawn", {"gods": ["drovash", "veshra"]})
     create_character(sim, CHOICES)
     resolve_offer(sim, "drovash")
-    choose_class(sim, "warden")  # Bulwark needs allies, so no trait runs (D-044)
+    choose_class(sim, "warden")  # Bulwark needs allies, so no trait runs (D-045)
     choose_profession(sim, "merchant")
     return sim
 

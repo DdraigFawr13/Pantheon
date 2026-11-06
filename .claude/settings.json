@@ -22,7 +22,7 @@
         ]
       },
       {
-        "matcher": "Bash|Read|Write|Edit|Grep|Glob|Agent|NotebookEdit",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",

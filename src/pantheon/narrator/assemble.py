@@ -19,7 +19,7 @@ _OPENING_LORE = "protagonist_seed"
 _PROMPT = Path(__file__).resolve().parents[3] / "prompts" / "narrator.md"
 _MAX_HOOKS_SHOWN = 12
 # Small local models follow the end of the prompt best. Not stored with the turn (first live playtest).
-_REMINDER = (
+REMINDER = (
     "[Narrator: write the scene once: 200 to 400 words, third person, past tense, close on the character, in "
     "plain everyday prose. The character reasons on the page, using stats by name, with a dry italic thought "
     "now and then. Numbers only from the sheet or this turn's results; never state dice. Invent no "
@@ -64,7 +64,7 @@ def state_view(state: GameState) -> dict[str, Any]:
     }
 
 
-def _due_material(state: GameState, world: World) -> str:
+def due_material(state: GameState, world: World) -> str:
     assert world.data is not None
     lines = []
     if not state.offer_resolved:
@@ -112,6 +112,17 @@ def _due_material(state: GameState, world: World) -> str:
     return "\n".join(lines) or "(nothing due)"
 
 
+def prompt_lore_ids(state: GameState) -> tuple[str, ...]:
+    """The retrieved-lore entries this state puts in the prompt."""
+    return ((_OPENING_LORE,) if not state.offer_resolved else ()) + _LORE
+
+
+def _public_body(world: World, entry_id: str) -> str:
+    entry = world.by_id(entry_id)
+    assert entry.visibility == "public", f"{entry_id} is not public and cannot go in a prompt (NAR-02)"
+    return entry.body
+
+
 def history_window(last_turn: int, size: int) -> int:
     """How many past turns to send. It grows, then resets, so the model's cache survives most turns."""
     return size + last_turn % size
@@ -128,13 +139,12 @@ def assemble(
     template = _PROMPT.read_text(encoding="utf-8").split("\n---\n", 1)[1].strip()
     template = template.replace("`config.gameplay.violence`", f'the "{violence}" setting')
     prefix, rest = template.split("{{canon_core}}")
-    canon = "\n\n".join(world.by_id(entry).body for entry in _CANON_CORE)
-    lore_ids = ((_OPENING_LORE,) if not state.offer_resolved else ()) + _LORE
-    lore = "\n\n".join(world.by_id(entry).body for entry in lore_ids)
+    canon = "\n\n".join(_public_body(world, entry) for entry in _CANON_CORE)
+    lore = "\n\n".join(_public_body(world, entry) for entry in prompt_lore_ids(state))
     rest = rest.replace("{{chronicle}}", "(not kept in this build; recent turns follow as messages)").replace(
         "{{retrieved_lore}}", lore
     )
-    system = [
+    system: list[dict[str, Any]] = [
         {"type": "text", "text": prefix + canon, "cache_control": {"type": "ephemeral"}},
         {"type": "text", "text": rest.strip()},
     ]
@@ -143,7 +153,7 @@ def assemble(
         messages += [{"role": "user", "content": said}, {"role": "assistant", "content": narration}]
     # Sheet first and instructions last, so every call this turn reuses the model's cache up to the steps.
     sheet = json.dumps(state_view(state), separators=(",", ":"))
-    due = _due_material(state, world)
-    latest = f"[Character sheet: {sheet}]\n[Due: {due}]\n\nThe player: {player_input}\n\n{_REMINDER}"
+    due = due_material(state, world)
+    latest = f"[Character sheet: {sheet}]\n[Due: {due}]\n\nThe player: {player_input}\n\n{REMINDER}"
     messages.append({"role": "user", "content": latest})
     return system, messages

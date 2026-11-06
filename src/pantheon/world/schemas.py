@@ -236,7 +236,7 @@ class Intent(_Strict):
 
 
 class Trait(_Strict):
-    """A class trait the engine runs in fights, as plain effects a class can combine (D-044)."""
+    """A class trait the engine runs in fights, as plain effects a class can combine (D-045)."""
 
     name: str
     attack_bonus_per_success: int = Field(default=0, ge=0)
@@ -311,4 +311,5 @@ class GameData(_Strict):
 
     def class_of(self, class_id: str | None) -> BaseClass | Evolution | None:
         """A base class or an evolved one, by id. The engine treats both the same after evolving."""
-        return next((c for c in (*self.classes, *self.evolutions) if c.id == class_id), None)
+        known: tuple[BaseClass | Evolution, ...] = (*self.classes, *self.evolutions)
+        return next((c for c in known if c.id == class_id), None)

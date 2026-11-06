@@ -322,7 +322,7 @@ def _roll_check(
         "overcome_applied": result.overcome_applied,
     }
     if found:
-        event["bonuses"] = [[name, amount] for name, amount in found]  # Shown on the Ledger line (D-044).
+        event["bonuses"] = [[name, amount] for name, amount in found]  # Shown on the Ledger line (D-045).
     sim.emit("check_resolved", event)
     return {
         "check_id": check_id,
@@ -384,7 +384,7 @@ def _grant_xp(sim: Simulation, args: GrantXp) -> dict[str, Any]:
     table = sim.rules.data.rewards
     if state.level == 0:
         raise Rejected("the Unwritten have no level and gain no XP")
-    amount = scaled(table.xp[args.kind], state, sim.rules.data)  # Larger at higher tiers (D-014, D-046).
+    amount = scaled(table.xp[args.kind], state, sim.rules.data)  # Larger at higher tiers (D-014, D-047).
     if sim.xp_this_turn + amount > table.xp_per_turn_cap:
         raise Rejected("this turn has reached its XP limit")
     sim.xp_this_turn += amount
@@ -612,7 +612,7 @@ def _fight_terms(state: GameState, data: GameData, args: FightMove) -> RequestCh
 def _skill_cost(state: GameState, data: GameData, args: FightMove) -> tuple[str | None, int, int]:
     """(pool, cost, overspent percent) of the move's skill, or Rejected if it cannot be used now.
 
-    The pool is "hp" when Surge pays a mana cost in HP (D-044).
+    The pool is "hp" when Surge pays a mana cost in HP (D-045).
     """
     name = (args.skill or "").lower()
     if name not in state.skills:

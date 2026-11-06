@@ -1,4 +1,4 @@
-"""Class traits that run in fights (D-044): each bonus shows in the odds and is the one the roll uses."""
+"""Class traits that run in fights (D-045): each bonus shows in the odds and is the one the roll uses."""
 
 from dataclasses import replace
 from pathlib import Path

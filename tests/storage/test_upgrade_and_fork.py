@@ -128,23 +128,61 @@ def test_game05_save_with_no_upgrade_path_is_refused(tmp_path: Path, monkeypatch
         Database.open(path)
 
 
-def test_game05_unreadable_file_is_refused_and_untouched(tmp_path: Path) -> None:
+def test_game05_a_file_that_is_not_a_pantheon_save_is_refused_and_untouched(tmp_path: Path) -> None:
+    garbage = tmp_path / "garbage.db"
+    garbage.write_bytes(b"this is not a database, and it is long enough to be read as one" * 20)
+    foreign = tmp_path / "foreign.db"
+    conn = sqlite3.connect(foreign)
+    with conn:
+        conn.execute("CREATE TABLE recipes (name TEXT)")
+    conn.close()
+    for path in (garbage, foreign):
+        before = path.read_bytes()
+        with pytest.raises(SaveError):
+            Database.open(path)
+        assert path.read_bytes() == before
+
+
+class _FailingConn:
+    """A connection whose schema-version read fails like a locked or damaged save (F27)."""
+
+    def __init__(self, real: sqlite3.Connection, message: str) -> None:
+        self._real = real
+        self._message = message
+        self.row_factory = None
+
+    def execute(self, sql: str, *args: Any) -> Any:
+        if "schema_version" in sql:
+            raise sqlite3.DatabaseError(self._message)
+        return self._real.execute(sql, *args)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._real, name)
+
+
+def test_game05_other_database_errors_on_open_are_a_clear_save_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     path = tmp_path / "pantheon.db"
-    path.write_bytes(b"this is not a database, and it is long enough to be read as one" * 20)
+    Database.open(path).close()
     before = path.read_bytes()
-    with pytest.raises(SaveError):
+    real_connect = sqlite3.connect
+    monkeypatch.setattr(
+        db_module.sqlite3, "connect", lambda p: _FailingConn(real_connect(p), "database is locked")
+    )
+    with pytest.raises(SaveError, match=r"cannot be read as a Pantheon save.*database is locked"):
         Database.open(path)
     assert path.read_bytes() == before
 
 
-def test_game05_someone_elses_database_is_refused(tmp_path: Path) -> None:
-    path = tmp_path / "pantheon.db"
-    conn = sqlite3.connect(path)
-    with conn:
-        conn.execute("CREATE TABLE recipes (name TEXT)")
-    conn.close()
-    with pytest.raises(SaveError):
-        Database.open(path)
+def test_game05_read_version_reraises_errors_other_than_a_missing_table() -> None:
+    real = sqlite3.connect(":memory:")
+    try:
+        conn = _FailingConn(real, "database disk image is malformed")
+        with pytest.raises(sqlite3.DatabaseError, match="malformed"):
+            Database._read_version(conn)  # type: ignore[arg-type]
+    finally:
+        real.close()
 
 
 def test_game05_an_empty_file_is_a_new_save(tmp_path: Path) -> None:
@@ -285,6 +323,8 @@ def test_eng08_rng_records_only_the_streams_that_moved(tmp_path: Path) -> None:
 def test_eng10_fork_keeps_the_rules_version_of_its_parent(tmp_path: Path) -> None:
     with Database.open(tmp_path / "pantheon.db") as db:
         tid, _ = setup_timeline(db, 1)
+        with db.conn:
+            db.conn.execute("UPDATE timeline SET rules_version = '2025.01.0' WHERE id = ?", (tid,))
         fork = db.fork(tid, 1)
         row = db.conn.execute("SELECT rules_version FROM timeline WHERE id = ?", (fork,)).fetchone()
-        assert row[0] == RULES_VERSION
+        assert row[0] == "2025.01.0" != RULES_VERSION  # Copied from the parent, not re-stamped.

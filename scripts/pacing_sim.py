@@ -1,4 +1,4 @@
-"""Pacing check for the reward tables (M1e, D-014, D-046): how long Tier 1 takes in typical play.
+"""Pacing check for the reward tables (M1e, D-014, D-047): how long Tier 1 takes in typical play.
 
 Reads the real tables (`world/data/rewards.yaml`, the canon XP curve) and plays many simulated Tier 1 runs.
 The play pattern is an estimate, not a measurement; every input is a flag, so the owner's playtests can

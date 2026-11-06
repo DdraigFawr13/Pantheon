@@ -122,7 +122,7 @@ class Database:
         try:
             if existed:
                 cls._prepare_existing(conn, path)
-        except (SaveError, sqlite3.Error) as exc:
+        except (SaveError, sqlite3.Error, ValueError, KeyError) as exc:
             conn.close()
             if isinstance(exc, SaveError):
                 raise
@@ -175,7 +175,7 @@ class Database:
         try:
             step(conn)
             conn.execute("UPDATE meta SET value = ? WHERE key = 'schema_version'", (str(version + 1),))
-        except sqlite3.Error as exc:
+        except (sqlite3.Error, ValueError, KeyError) as exc:
             conn.rollback()
             raise SaveError(f"{path}: the upgrade from schema {version} failed: {exc}") from exc
         conn.commit()
@@ -196,7 +196,10 @@ class Database:
         assert version is not None
         return version
 
-    def create_timeline(self, seed: int, rng_state: dict[str, Any]) -> str:
+    def create_timeline(
+        self, seed: int, rng_state: dict[str, Any], events: Iterable[EventRecord] = ()
+    ) -> str:
+        """The timeline row, its RNG record and any first events (turn 0) in one transaction (OPS-03)."""
         tid = uuid.uuid4().hex
         with self.conn:
             self.conn.execute(
@@ -205,6 +208,11 @@ class Database:
                 (tid, seed, json.dumps(rng_state), RULES_VERSION, datetime.now(UTC).isoformat()),
             )
             self._record_rng(tid, 0, rng_state)
+            for seq, (type_, payload) in enumerate(events):
+                self.conn.execute(
+                    "INSERT INTO event (timeline_id, seq, turn, type, payload_json) VALUES (?, ?, 0, ?, ?)",
+                    (tid, seq, type_, json.dumps(payload, sort_keys=True)),
+                )
         return tid
 
     def _record_rng(self, timeline_id: str, turn: int, moved: dict[str, Any]) -> None:
@@ -215,11 +223,15 @@ class Database:
 
     def find_timeline(self, prefix: str) -> str:
         rows = self.conn.execute(
-            "SELECT id FROM timeline WHERE id LIKE ? ORDER BY rowid", (f"{prefix}%",)
+            "SELECT id FROM timeline WHERE substr(id, 1, length(?)) = ? ORDER BY rowid", (prefix, prefix)
         ).fetchall()
         if len(rows) != 1:
             raise ForkError(f"{len(rows)} timelines start with {prefix!r}; give one that names exactly one.")
         return str(rows[0][0])
+
+    def seed(self, timeline_id: str) -> int:
+        (seed,) = self.conn.execute("SELECT seed FROM timeline WHERE id = ?", (timeline_id,)).fetchone()
+        return int(seed)
 
     def rng_state_at(self, timeline_id: str, turn: int) -> dict[str, Any]:
         """Each stream as it stood at the end of a turn, or ForkError if this save did not record that far."""

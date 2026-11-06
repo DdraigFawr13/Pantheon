@@ -117,7 +117,7 @@ Twenty magic types: **15 basic** and **5 rare**.
 - **Basic:** Flame, Frost, Tide, Storm, Wind, Stone, Iron, Growth, Beast, Light, Shadow, Life, Death, Mind, Song.
 - **Rare:** Binding, Space, Blood, Spirit, and one rare affinity the Ledger does not name.
 
-Affinity rank runs 0 to 5. **A skill's rank can never exceed the rank of its affinity.** Affinity rank is capped at `tier + 1`. A character awakens with rank 1 in one or two affinities (from their people and their class). Ranks rise through affinity shards, evolutions, Oath blessings and rare deeds. Sub-affinities (for example Flame into Ash) come later.
+Affinity rank runs 0 to 5. **A skill's rank can never exceed the rank of its affinity.** Affinity rank is capped at `tier + 1` (the Unwritten: 3, see The Unwritten). A character awakens with rank 1 in one or two affinities (from their people and their class). Ranks rise through affinity shards, evolutions, Oath blessings and rare deeds. Sub-affinities (for example Flame into Ash) come later.
 
 ## Skills
 

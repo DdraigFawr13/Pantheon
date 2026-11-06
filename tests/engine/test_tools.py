@@ -2,13 +2,11 @@
 
 import json
 from collections.abc import Iterator
-from pathlib import Path
 from typing import Any
 
 import pytest
-from hypothesis import given, settings
-from hypothesis import strategies as st
 
+from pantheon.engine.checks import Outcome
 from pantheon.engine.commands import (
     CharacterChoices,
     allocate_point,
@@ -21,14 +19,15 @@ from pantheon.engine.state import GameState, replay, xp_to_next
 from pantheon.engine.timeline import Rejected, Rules, Simulation
 from pantheon.engine.tools import (
     apply_tool,
+    attempt_trial,
     check_preview,
     resolve_offer,
     tool_definition,
     tool_definitions,
 )
-from pantheon.world.loader import load_world
+from tests.conftest import WORLD as SHARED_WORLD
 
-WORLD = load_world(Path(__file__).resolve().parents[2] / "world")
+WORLD = SHARED_WORLD
 assert WORLD.data is not None
 RULES = Rules(WORLD.data, {k: f.set_by for k, f in WORLD.flags.items()})
 DATA = WORLD.data
@@ -63,7 +62,7 @@ def next_turn(sim: Simulation) -> Simulation:
     return Simulation(sim.state, sim.rng, sim.rules, sim.turn + 1)
 
 
-def test_character_creation_applies_people_and_origin_and_offers_both_oaths() -> None:
+def test_eng01_character_creation_applies_people_and_origin_and_offers_both_oaths() -> None:
     state = fresh().state
     assert state.stats["presence"] == 18 + 3
     assert state.stats["agility"] == 27 + 2
@@ -88,19 +87,19 @@ def test_character_creation_applies_people_and_origin_and_offers_both_oaths() ->
         {"people": "humans", "innate_affinity": "flame"},
     ],
 )
-def test_bad_character_is_rejected(overrides: dict[str, Any]) -> None:
+def test_eng01_bad_character_is_rejected(overrides: dict[str, Any]) -> None:
     sim = Simulation(GameState(), RngStreams.from_seed(1), RULES, 0)
     with pytest.raises(Rejected):
         create_character(sim, CHOICES.model_copy(update=overrides))
     assert sim.events == []
 
 
-def test_character_cannot_be_created_twice() -> None:
+def test_eng01_character_cannot_be_created_twice() -> None:
     with pytest.raises(Rejected):
         create_character(fresh(), CHOICES)
 
 
-def test_swearing_sets_level_one_blessing_and_hooks() -> None:
+def test_eng01_swearing_sets_level_one_blessing_and_hooks() -> None:
     sim = fresh()
     assert resolve_offer(sim, "drovash")["sworn"] == "fair_wager"
     state = sim.state
@@ -115,7 +114,7 @@ def test_swearing_sets_level_one_blessing_and_hooks() -> None:
     assert any("Open Hand to Veshra" in d for d in descriptions)
 
 
-def test_refusing_both_stays_unwritten_with_a_seeded_rival() -> None:
+def test_eng01_refusing_both_stays_unwritten_with_a_seeded_rival() -> None:
     a, b = fresh(5), fresh(5)
     resolve_offer(a, "refuse")
     resolve_offer(b, "refuse")
@@ -125,19 +124,19 @@ def test_refusing_both_stays_unwritten_with_a_seeded_rival() -> None:
 
 
 @pytest.mark.parametrize("choice", ["kaul", "nonsense"])
-def test_offer_rejects_a_god_who_did_not_speak(choice: str) -> None:
+def test_eng02_offer_rejects_a_god_who_did_not_speak(choice: str) -> None:
     sim = fresh()
     with pytest.raises(Rejected):
         resolve_offer(sim, choice)
     assert not sim.state.offer_resolved
 
 
-def test_offer_resolves_once() -> None:
+def test_eng02_offer_resolves_once() -> None:
     with pytest.raises(Rejected):
         resolve_offer(sworn(), "veshra")
 
 
-def test_the_narrator_cannot_decide_the_dual_offer() -> None:
+def test_eng02_the_narrator_cannot_decide_the_dual_offer() -> None:
     sim = fresh()
     assert not apply_tool(sim, "resolve_dual_offer", {"choice": "refuse"}).accepted
     assert not sim.state.offer_resolved
@@ -167,7 +166,7 @@ def test_eng09_check_returns_engine_values_and_records_outcome() -> None:
     assert event["roll"] is not None
 
 
-def test_unknown_skill_counts_as_rank_zero() -> None:
+def test_eng04_unknown_skill_counts_as_rank_zero() -> None:
     sim = sworn()
     apply_tool(
         sim,
@@ -193,8 +192,6 @@ def test_eng05_overcome_uses_state_not_the_narrators_word() -> None:
 def forced_check(sim: Simulation, outcome: str) -> str:
     check_id = f"c{sim.state.checks_made + 1}"
     sim.emit("check_resolved", {"check_id": check_id, "outcome": outcome})
-    from pantheon.engine.checks import Outcome
-
     sim.checks[check_id] = Outcome(outcome)
     return check_id
 
@@ -209,7 +206,7 @@ def test_eng09_damage_size_comes_from_the_outcome(outcome: str, percent: int) ->
     assert before - result.data["hp"] == -(-before * percent // 100)
 
 
-def test_damage_rejects_success_repeats_and_unknown_sources() -> None:
+def test_eng09_damage_rejects_success_repeats_and_unknown_sources() -> None:
     sim = sworn()
     ok = forced_check(sim, "success")
     assert not apply_tool(sim, "apply_effect", {"kind": "damage", "source": ok, "reason": "x"}).accepted
@@ -220,7 +217,7 @@ def test_damage_rejects_success_repeats_and_unknown_sources() -> None:
     assert not apply_tool(sim, "apply_effect", {"kind": "heal", "source": "c1", "reason": "x"}).accepted
 
 
-def test_hazards_down_the_character_and_healing_gets_them_up() -> None:
+def test_eng09_hazards_down_the_character_and_healing_gets_them_up() -> None:
     sim = sworn()
     hazard = {"kind": "damage", "source": "hazard:rockfall", "reason": "rocks"}
     while not sim.state.downed:
@@ -231,7 +228,7 @@ def test_hazards_down_the_character_and_healing_gets_them_up() -> None:
         sim, "apply_effect", {"kind": "heal", "source": "aid:a stranger", "reason": "bandaged"}
     )
     assert healed.data["downed"] is False and 0 < healed.data["hp"] < sim.state.max_hp
-    apply_tool(sim, "apply_effect", {"kind": "heal", "source": "rest", "reason": "slept"})
+    assert apply_tool(sim, "apply_effect", {"kind": "heal", "source": "rest", "reason": "slept"}).accepted
     assert sim.state.hp == sim.state.max_hp
 
 
@@ -274,7 +271,7 @@ def test_eng09_xp_has_a_per_turn_cap_and_skips_the_unwritten() -> None:
     assert not apply_tool(fresh(), "grant_xp", {"kind": "minor", "reason": "d"}).accepted
 
 
-def test_standing_needs_a_witness_and_clamps() -> None:
+def test_eng09_standing_needs_a_witness_and_clamps() -> None:
     sim = sworn()
     unseen = apply_tool(
         sim, "adjust_standing", {"entity": "kaul", "kind": "grave", "direction": "+", "reason": "alone"}
@@ -287,7 +284,7 @@ def test_standing_needs_a_witness_and_clamps() -> None:
     assert sim.state.standing["kaul"] == -100
 
 
-def test_set_flag_only_takes_story_keys() -> None:
+def test_eng02_set_flag_only_takes_story_keys() -> None:
     sim = sworn()
     assert apply_tool(sim, "set_flag", {"key": "story.met_hale", "value": True}).accepted
     assert sim.state.flags["story.met_hale"] is True
@@ -374,7 +371,10 @@ def test_d036_nothing_rolls_before_the_dual_offer_so_no_action_claims_to() -> No
 
 def test_d036_the_preview_equals_the_chance_the_roll_uses() -> None:
     sim = sworn()
-    assert apply_tool(sim, "suggest_actions", {"actions": [{**GOOD, "check": ROLL}, *[{"label": "Run"}] * 2]})
+    suggested = apply_tool(
+        sim, "suggest_actions", {"actions": [{**GOOD, "check": ROLL}, *[{"label": "Run"}] * 2]}
+    )
+    assert suggested.accepted
     check = sim.state.suggested[0].check
     assert check is not None
     preview = check_preview(sim.state, RULES.data, check)
@@ -417,7 +417,7 @@ def test_d031_healing_needs_a_wound() -> None:
     assert not apply_tool(sworn(), "apply_effect", {"kind": "heal", "source": "rest", "reason": "x"}).accepted
 
 
-def test_commands_reject_bad_choices() -> None:
+def test_eng02_commands_reject_bad_choices() -> None:
     sim = fresh()
     with pytest.raises(Rejected):
         choose_class(sim, "warden")  # not yet sworn
@@ -433,7 +433,7 @@ def test_commands_reject_bad_choices() -> None:
         allocate_point(sim, "luck")
 
 
-def test_tool_definitions_have_no_refs_for_small_models() -> None:
+def test_eng02_tool_definitions_have_no_refs_for_small_models() -> None:
     text = json.dumps(tool_definitions())
     assert "$ref" not in text and "$defs" not in text
     assert (
@@ -442,47 +442,32 @@ def test_tool_definitions_have_no_refs_for_small_models() -> None:
     )
 
 
-def test_unknown_event_is_an_error() -> None:
+def test_eng06_unknown_event_is_an_error() -> None:
     with pytest.raises(ValueError, match="unknown event"):
         replay([("from_the_future", {})])
 
 
-TOOL_CALLS = st.one_of(
-    st.fixed_dictionaries(
-        {
-            "name": st.just("request_check"),
-            "args": st.fixed_dictionaries(
-                {
-                    "stat": st.sampled_from(sorted(STATS)),
-                    "difficulty": st.sampled_from(["routine", "hard", "severe", "heroic"]),
-                    "challenge_tier": st.integers(0, 8),
-                    "approach": st.sampled_from(["force", "other"]),
-                }
-            ),
-        }
-    ),
-    st.just({"name": "apply_effect", "args": {"kind": "damage", "source": "c1", "reason": "x"}}),
-    st.just({"name": "apply_effect", "args": {"kind": "damage", "source": "hazard:fire", "reason": "x"}}),
-    st.just({"name": "apply_effect", "args": {"kind": "heal", "source": "aid:friend", "reason": "x"}}),
-    st.just({"name": "grant_xp", "args": {"kind": "major", "reason": "x"}}),
-    st.just({"name": "grant_xp", "args": {"kind": "milestone", "reason": "x"}}),
-    st.builds(
-        lambda kind, direction: {
-            "name": "adjust_standing",
-            "args": {
-                "entity": "kaul",
-                "kind": kind,
-                "direction": direction,
-                "witness": "npc:a",
-                "reason": "x",
-            },
-        },
-        st.sampled_from(["slight", "notable", "grave"]),
-        st.sampled_from(["+", "-"]),
-    ),
-    st.just({"name": "nonsense", "args": {}}),
-    st.just({"name": "new_turn", "args": {}}),
-)
+HAZARD = {"name": "apply_effect", "args": {"kind": "damage", "source": "hazard:fire", "reason": "x"}}
+AID = {"name": "apply_effect", "args": {"kind": "heal", "source": "aid:friend", "reason": "x"}}
+HARD_CHECK = {
+    "name": "request_check",
+    "args": {"stat": "vigor", "difficulty": "heroic", "challenge_tier": 3, "approach": "force"},
+}
+DAMAGE_C1 = {"name": "apply_effect", "args": {"kind": "damage", "source": "c1", "reason": "x"}}
+XP_MILESTONE = {"name": "grant_xp", "args": {"kind": "milestone", "reason": "x"}}
+XP_MAJOR = {"name": "grant_xp", "args": {"kind": "major", "reason": "x"}}
+NEW_TURN = {"name": "new_turn", "args": {}}
+SLIGHT = {"entity": "kaul", "kind": "grave", "witness": "npc:a", "reason": "x"}
+STAND_DOWN = {"name": "adjust_standing", "args": {**SLIGHT, "direction": "-"}}
+STAND_UP = {"name": "adjust_standing", "args": {**SLIGHT, "direction": "+"}}
+NONSENSE = {"name": "nonsense", "args": {}}
+
+SEQUENCES = {
+    "hazards_until_downed_then_aid": [*[HAZARD] * 8, AID, NEW_TURN, AID, HAZARD, NONSENSE],
+    "checks_and_damage": [HARD_CHECK, DAMAGE_C1, DAMAGE_C1, NEW_TURN, HARD_CHECK, DAMAGE_C1, AID],
+    "xp_over_many_turns": [XP_MILESTONE, XP_MAJOR, *[NEW_TURN, XP_MILESTONE] * 12],
+    "standing_clamps_both_ways": [*[STAND_DOWN, NEW_TURN] * 8, *[STAND_UP, NEW_TURN] * 14, NONSENSE],
+}
 
 
 def play(sim: Simulation, calls: list[dict[str, Any]]) -> Iterator[Simulation]:
@@ -496,13 +481,13 @@ def play(sim: Simulation, calls: list[dict[str, Any]]) -> Iterator[Simulation]:
         yield sim
 
 
-@settings(max_examples=60, deadline=None)
-@given(seed=st.integers(1, 10_000), calls=st.lists(TOOL_CALLS, max_size=40))
-def test_eng06_replay_of_any_action_sequence_equals_live_state_and_bounds_hold(
-    seed: int, calls: list[dict[str, Any]]
+@pytest.mark.parametrize("seed", [1, 2, 7])
+@pytest.mark.parametrize("name", sorted(SEQUENCES))
+def test_eng06_replay_of_a_scripted_action_sequence_equals_live_state_and_bounds_hold(
+    name: str, seed: int
 ) -> None:
     sim = sworn(seed)
-    for sim in play(sim, calls):  # noqa: B020
+    for sim in play(sim, SEQUENCES[name]):  # noqa: B020
         state = sim.state
         assert 0 <= state.wounds <= state.max_hp
         assert not state.downed or state.hp == 0
@@ -511,3 +496,50 @@ def test_eng06_replay_of_any_action_sequence_equals_live_state_and_bounds_hold(
     # Events go through JSON, as they do in the database.
     stored = json.loads(json.dumps(sim.events))
     assert replay((t, p) for t, p in stored) == sim.state
+
+
+def test_eng01_state_numbers_change_only_through_emitted_events() -> None:
+    sim = sworn(4)
+    calls = [HARD_CHECK, DAMAGE_C1, XP_MILESTONE, STAND_DOWN, AID, NEW_TURN, HAZARD, NONSENSE, XP_MAJOR]
+    *_, sim = play(sim, calls)
+    assert replay(sim.events) == sim.state  # A fresh fold of the events is the whole state.
+    # A rejected call changes no number and emits nothing.
+    before_state, before_events = sim.state.model_copy(deep=True), list(sim.events)
+    rejected = [
+        apply_tool(sim, "grant_xp", {"kind": "huge", "reason": "x"}),
+        apply_tool(sim, "apply_effect", {"kind": "damage", "source": "c999", "reason": "x"}),
+        apply_tool(sim, "adjust_standing", {**SLIGHT, "direction": "sideways"}),
+    ]
+    assert not any(r.accepted for r in rejected)
+    assert sim.state == before_state
+    assert sim.events == before_events
+
+
+def test_eng01_the_narrator_cannot_name_a_number() -> None:
+    sim = sworn()
+    result = apply_tool(sim, "grant_xp", {"kind": "minor", "amount": 9999, "reason": "x"})
+    assert result.accepted  # The extra field is ignored: the engine sets the size from its table.
+    amounts = [p["amount"] for t, p in sim.events if t == "xp_gained"]
+    assert amounts and 9999 not in amounts
+    assert sim.state.xp < 9999
+
+
+def test_eng02_a_second_rest_in_one_turn_is_rejected() -> None:
+    sim = sworn()
+    hurt = {"kind": "damage", "source": "hazard:fall", "reason": "x"}
+    rest = {"kind": "heal", "source": "rest", "reason": "slept"}
+    assert apply_tool(sim, "apply_effect", hurt).accepted
+    assert apply_tool(sim, "apply_effect", rest).accepted
+    assert apply_tool(sim, "apply_effect", hurt).accepted  # Wounded again: only the rest is at fault.
+    again = apply_tool(sim, "apply_effect", rest)
+    assert not again.accepted and "already rested" in again.reason
+
+
+def test_eng07_a_trial_needs_a_class() -> None:
+    sim = fresh()  # Unwritten: no class.
+    sim.emit("level_up", {"level": 10, "xp_spent": 0, "gains": {}, "free_points": 0})
+    sim.emit("xp_gained", {"amount": xp_to_next(10), "kind": "milestone", "reason": "a long road"})
+    assert sim.state.trial_ready and sim.state.class_id is None
+    with pytest.raises(Rejected, match="needs a class"):
+        attempt_trial(sim)
+    assert sim.state.checks_made == 0

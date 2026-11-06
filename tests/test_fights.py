@@ -5,7 +5,7 @@ from typing import Any
 
 from pantheon.engine.state import GameState
 from pantheon.llm.client import LLMReply, ToolCall
-from pantheon.narrator.assemble import _due_material, state_view
+from pantheon.narrator.assemble import due_material, state_view
 from pantheon.storage.db import Database
 from pantheon.ui.cli.app import _bar, ledger_lines
 from tests.test_play import NEW_GAME, PROSE, WORLD, narration, play, talk
@@ -126,7 +126,7 @@ def test_narrator_sees_pools_and_the_fight() -> None:
     state = GameState(mana_spent=3, stats={"intellect": 10})
     assert state_view(state)["mana"] == 17
     state.fight = None
-    assert "fight" not in _due_material(state, WORLD)
+    assert "fight" not in due_material(state, WORLD)
     state = GameState.model_validate(
         {
             "fight": {
@@ -152,7 +152,7 @@ def test_narrator_sees_pools_and_the_fight() -> None:
             }
         }
     )
-    due = _due_material(state, WORLD)
+    due = due_material(state, WORLD)
     assert "A fight is on, exchange 2" in due
     assert "f1: Ash Hound, Tier 1, minion, shows a heavy blow, plain to see" in due
     assert "Gone" not in due

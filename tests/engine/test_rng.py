@@ -1,5 +1,6 @@
 """ENG-03 and D-022: seeded, named RNG streams; D-017: the opening god draw."""
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -36,11 +37,8 @@ def test_roll_bounds() -> None:
 
 def test_unknown_stream_is_rejected() -> None:
     rng = RngStreams.from_seed(1)
-    try:
+    with pytest.raises(KeyError):
         rng.roll("nonsense", 6)
-    except KeyError:
-        return
-    raise AssertionError("unknown stream accepted")
 
 
 @given(st.integers(min_value=1, max_value=2**63 - 1))
@@ -62,17 +60,11 @@ def test_d017_fixed_pair_from_config() -> None:
 
 
 def test_roll_rejects_zero_sides() -> None:
-    try:
+    with pytest.raises(ValueError):
         RngStreams.from_seed(1).roll("checks", 0)
-    except ValueError:
-        return
-    raise AssertionError("zero sides accepted")
 
 
-def test_d017_fixed_pair_must_be_two_known_gods() -> None:
-    for bad in (("kaul", "kaul"), ("kaul", "nobody")):
-        try:
-            draw_opening_gods(RngStreams.from_seed(5), GODS, fixed=bad)
-        except ValueError:
-            continue
-        raise AssertionError(f"bad fixed pair accepted: {bad}")
+@pytest.mark.parametrize("bad", [("kaul", "kaul"), ("kaul", "nobody")])
+def test_d017_fixed_pair_must_be_two_known_gods(bad: tuple[str, str]) -> None:
+    with pytest.raises(ValueError):
+        draw_opening_gods(RngStreams.from_seed(5), GODS, fixed=bad)

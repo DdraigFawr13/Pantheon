@@ -63,7 +63,7 @@ class Foe(BaseModel):
 class Fight(BaseModel):
     foes: list[Foe]
     exchange: int = 1
-    ambush: bool = False  # The character struck first, unseen (Opening, D-044).
+    ambush: bool = False  # The character struck first, unseen (Opening, D-045).
     opened: bool = False  # The first attack has been made.
     momentum: int = 0
     cursed: str | None = None  # The foe a Malediction marks.
