@@ -10,7 +10,7 @@ PR #20 merged: master v4.11.0 (D-043) and two audits, `docs/audit/2026-11-06-rep
 
 **Now: the audit fix branch** (`ccr-2a3ebc70-8wd8jg`, re-cut from `main`): first the two high play-guard holes (repo F1, F2), then every other finding as its Fix says. Each code fix needs a test that fails before it (audit skill, "Closing findings"); name the fix commit in each report's Outcome.
 
-**After the audit fixes: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main`.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18.
+**After the audit fixes: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main`.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18; D-039 exists only on that branch until it merges.
 
 ## Just done
 

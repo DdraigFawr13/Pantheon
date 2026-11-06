@@ -99,5 +99,5 @@ uv run pantheon new      # create a timeline
 uv run pantheon play     # resume the active timeline
 uv run pantheon fork N   # fork from turn N
 uv run pytest
-uv run ruff check . && uv run mypy src/pantheon/engine
+uv run ruff check . && uv run mypy   # the full list: AGENTS.md "Local checks"
 ```

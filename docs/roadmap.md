@@ -16,6 +16,11 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 
 **Acceptance:** a 10-turn scripted playtest against `MockClient` with an outage produces no invariant violations, no lost events and no unsupplied numbers; a live transcript is saved; the owner plays it and reports whether it is fun.
 
+## M1.6 and M1.7: Real odds and session play
+
+- M1.6 (D-036): options show the real odds of their check, and mid-story Ledger notices land where the narrator marks them. Scope in `docs/BUILD_PLAN.md`.
+- M1.7 (D-041): play in a Claude Code session, with the session as the narrator, the play guard and saves on the `saves` branch. Scope in `docs/BUILD_PLAN.md`.
+
 ## M1: Engine core (ENG-01 to ENG-11, OPS-05)
 
 - Character model per `world/power_tiers.md`: people, class, profession, stats and free points, HP/mana/stamina, affinities, skills (rarity, rank, caps), shards, titles, Injuries.
@@ -57,7 +62,7 @@ Each milestone is playable or testable on its own. Do not begin a milestone unti
 ## M3.5: First content pass (first playable version)
 
 - The Sunken Stair as the first rift (data template: floors, tier, affinity, loot tables, core).
-- Tier 1 class skill lists and the Level 10 evolution options for the 8 base classes; profession recipes for the first-version professions.
+- Tier 1 class skill lists and the Level 10 evolution options for the 25 base classes (D-042); profession recipes for the first-version professions.
 - One rival (D-013), Tallyhouse bounty board, the Unwritten path, god petitions, witnessed deeds and rumours.
 - The sealed affinity's first trace (WLD-04).
 

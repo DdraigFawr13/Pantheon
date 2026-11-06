@@ -21,7 +21,6 @@ An open-ended, AI-narrated LitRPG. The player controls one life in a medieval fa
 | `docs/architecture.md` | Components, data model, turn loop, memory layers, tool contracts |
 | `docs/roadmap.md` | Milestones M0 to M6 with acceptance criteria |
 | `docs/BUILD_PLAN.md` | Ordered tasks from M0 to the first playable version (M3.5) |
-| `docs/KICKOFF_PROMPT.md` | First message to paste into Claude Code |
 | `prompts/narrator.md` | Runtime system prompt template for the in-game narrator |
 | `world/` | Canon: world bible (public lore) |
 | `world/secret/` | Canon: narrator-only lore, released through reveal gates |
@@ -30,7 +29,7 @@ An open-ended, AI-narrated LitRPG. The player controls one life in a medieval fa
 
 ## Status
 
-M1c is built. Play on the PC with `start.bat` (Claude Haiku through the API), or in a Claude Code session on this repo by saying "play": the session is the narrator, at no API cost (D-041). Next: M1d in `docs/BUILD_PLAN.md`.
+M1.7 is merged (M1a to M1c, M1.5 to M1.7). Play on the PC with `start.bat` (Claude Haiku through the API), or in a Claude Code session on this repo by saying "play": the session is the narrator, at no API cost (D-041). Next: M1d combat (draft PR #16) in `docs/BUILD_PLAN.md`; `docs/HANDOFF.md` has the current step.
 
 ## Configuration
 

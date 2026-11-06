@@ -10,7 +10,7 @@ Session estimates are estimates (REP-01), assuming 1 session is about 2 to 3 hou
 2. For every ENG requirement, write the failing test first; put the requirement ID in the test name and commit message.
 3. Spec'd modules go to the `implementer` agent (Sonnet) with a self-contained brief; long check runs to `test-runner`; large diffs to `reviewer`. Design and canon stay in the main session (DEL-01 to DEL-05).
 4. Canon changes (`world/`) go in their own `canon:` commits for the owner to approve. Sealed changes (`world/sealed/`) go through the reviewer agent instead (WLD-04).
-5. Local checks before every push: `node .claude/master/sync.mjs --check && uv run ruff check . && uv run mypy src/pantheon/engine && uv run pytest`.
+5. Local checks before every push: AGENTS.md "Local checks" (the one copy).
 6. The milestone closes with a report (requirements met, deferred, known defects), a playtest transcript in `docs/playtests/` when the narrator loop is touched, and HANDOFF and DECISIONS updated.
 
 ## Dependencies
@@ -36,7 +36,7 @@ world/
   data/                game tables, YAML, validated by Pydantic schemas
     affinities.yaml    20 affinities, gods' pairs
     peoples.yaml       5 peoples
-    classes.yaml       8 base classes, Tier 1 skill offers, Level 10 evolutions
+    classes.yaml       25 base classes (D-042), Tier 1 skill offers, Level 10 evolutions
     skills.yaml        skills: affinity, rarity, cost, cooldown, effect kind
     oaths.yaml         7 Oaths: affinity, perk, Burden
     professions.yaml   15 professions; recipes for the first-version ones
@@ -162,7 +162,7 @@ M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is t
 ## M2.5: Phone page (1 session)
 
 - FastAPI app on the owner's Windows PC (D-021): one page with the prose stream (SSE), a text box, suggested-action buttons, and the status panel (HTMX partial) rendered from state. No accounts; reachable on home Wi-Fi and through Tailscale only.
-- `start.bat` one-click launcher (starts Ollama with `OLLAMA_CONTEXT_LENGTH=32768` if configured (D-027), then the game) and a short setup guide: install uv, Ollama and Tailscale, allow the port in Windows Firewall.
+- `start.bat` one-click launcher for the game (it no longer starts Ollama, D-032) and a short setup guide: install uv and Tailscale (and Ollama only for a local model, started with `OLLAMA_CONTEXT_LENGTH=32768`, D-027), allow the port in Windows Firewall.
 
 **Acceptance:** roadmap M2.5. **You test:** play the opening on your phone, at home and once over Tailscale.
 
@@ -176,7 +176,7 @@ M1a is done. M1b onward come after the M1.5 fun check. Ordered so each step is t
 
 Canon batches for your approval (`canon:`), each a small PR:
 
-1. Tier 1 skill lists for the 8 base classes (about 8 to 10 skills each) and their Level 10 evolution options (2 to 4 each).
+1. Tier 1 skill lists for the 25 base classes (D-042; about 8 to 10 skills each) and their Level 10 evolution options (2 to 4 each), in batches of about 5 classes (D-044).
 2. Profession skills and recipes for the first-version professions; the Tier 1 shard and item catalogue.
 3. The Sunken Stair rift: floors 1 to 6, tier by depth, affinity, foes and intents, loot tables, core.
 4. Cinder Ford NPCs, the rival, bounty templates, god petition templates.
@@ -195,6 +195,6 @@ M0 1 session, M1 4 to 6, M2 3 to 4, M2.5 1, M3 2 to 3, M3.5 2 to 3: about 13 to 
 
 - **Balance:** the reward tables are guesses until M3.5 playtests. Mitigation: tables are data, and the M1e simulation checks pacing before any play.
 - **Narrator obedience:** the model may describe effects it never requested through tools. Mitigation: NAR-04 validator, tool-only state changes, the eval suite in M6.
-- **Content volume:** about 70 to 80 skills and 20 or more evolution options for Tier 1 alone (estimate). Mitigation: Claude drafts in batches; you approve each batch.
+- **Content volume:** about 200 to 250 skills and 50 to 100 evolution options for Tier 1 alone across 25 classes (estimate: 25 × 8 to 10 skills, 25 × 2 to 4 evolutions). Mitigation: Claude drafts in batches; you approve each batch.
 - **Sealed content drift:** nobody human reads it. Mitigation: reviewer agent on every change; reachability tests (WLD-04).
 - **Model cost:** live playtests cost money per turn. Mitigation: MockClient for all automated tests; estimates before any live run.
