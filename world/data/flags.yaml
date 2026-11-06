@@ -1,6 +1,6 @@
 # Flag registry (canon data, D-024).
 # Every flag that a reveal gate, an authored beat or a canon file names is listed here or in
-# world/sealed/data/flags.yaml. The engine rejects `set_flag` for a registered key unless its
+# a second registry the engine loads. The engine rejects `set_flag` for a registered key unless its
 # set_by is "narrator" and its accept rule holds. The narrator may also set unregistered keys
 # under "story." (true or false only); no reveal gate or beat may read those.
 # The M0 gate test checks that every path in a reveal_gate is a registered flag or a state field.
