@@ -8,7 +8,7 @@ M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are me
 
 PR #20 merged: master v4.11.0 (D-043) and two audits, `docs/audit/2026-11-06-repo.md` (42 findings) and `docs/audit/2026-11-06-tests.md` (28 findings). The owner accepted every recommendation ("Ok do what you recommend for all").
 
-**Now: the audit fix branch** (`ccr-2a3ebc70-8wd8jg`, re-cut from `main`): first the two high play-guard holes (repo F1, F2), then every other finding as its Fix says. Each code fix needs a test that fails before it (audit skill, "Closing findings"); name the fix commit in each report's Outcome.
+**Now: draft PR #21** (`ccr-2a3ebc70-8wd8jg`) fixes every audit finding and waits for the owner's approval to merge (GIT-07). The play guard denies by default (D-044); 539 tests in 15 s, 98.51 % coverage; mypy strict on all of `src/pantheon`. Each report's Outcome names the fix commits. Open from the audit: canon gaps G-28 to G-32 (the owner answers them); MEM-01 to MEM-04 have no tests because M3 is not built.
 
 **After the audit fixes: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main`.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18; D-039 exists only on that branch until it merges.
 
