@@ -22,7 +22,7 @@ from rich.markup import escape
 from rich.text import Text
 
 from pantheon.config import Config, load_config
-from pantheon.engine.calendar import date_of, format_date
+from pantheon.engine.calendar import clock_value, date_of, format_date
 from pantheon.engine.commands import (
     CharacterChoices,
     allocate_point,
@@ -433,7 +433,9 @@ class Session:
     def screen(self) -> dict[str, Any]:
         """Everything the game page shows, as plain data (D-041). The page renders it; it decides nothing."""
         assert self.world.data is not None
-        tid = self.timeline()
+        tid = self.db.latest_timeline()
+        if tid is None or not self.db.load_state(tid).created:
+            return {"created": False, "version": 0, "in_progress": False, "setup": self.setup_data()}
         state = self.db.load_state(tid)
         last = self.db.last_turn(tid)
         recent = self.db.recent_turns(tid, 1)
@@ -460,7 +462,49 @@ class Session:
             {"n": n, "id": cid, "label": label, "terms": terms[cid]}
             for n, (cid, label) in enumerate(offer_choices(state, self.world), len(state.suggested) + 1)
         ]
+        data = self.world.data
+        skills = {k.id: k for k in data.skills}
+        gods = {g.id: g.name for g in data.gods}
+        origin = next((o for o in data.origins.origins if o.id == state.origin), None)
+        people = next((p for p in data.peoples if p.id == state.people), None)
+        clocks = []
+        for clock in data.clocks:
+            value = clock_value(state, data, clock.id)
+            if value > clock.start:  # The same rule as the narrator's brief: only clocks that have moved.
+                clocks.append(
+                    {
+                        "name": clock.name,
+                        "value": value,
+                        "segments": clock.segments,
+                        "filled": clock.filled if value >= clock.segments else "",
+                    }
+                )
         return {
+            "created": True,
+            "people_name": people.name if people else state.people,
+            "origin_name": origin.name if origin else state.origin,
+            "flaw": state.flaw,
+            "debt": state.debt,
+            "class_stats": f"{current.primary} / {current.secondary}" if current else "",
+            "skill_list": [
+                {
+                    "name": skills[k].name if k in skills else k.replace("_", " ").capitalize(),
+                    "rank": rank,
+                    "rarity": state.skill_rarity.get(k, skills[k].rarity if k in skills else ""),
+                    "affinity": skills[k].affinity or "" if k in skills else "",
+                }
+                for k, rank in state.skills.items()
+            ],
+            "oath_list": [
+                {"name": o.name, "god": gods.get(o.god, o.god), "gift": o.perk, "burden": o.burden}
+                for o in data.oaths
+                if o.id in state.oaths
+            ],
+            "shards": [
+                f"{s.target} {'fragment' if s.fragment else s.kind} ({s.rarity})" for s in state.shards
+            ],
+            "rumours": list(state.rumours),
+            "clocks": clocks,
             "timeline": tid[:8],
             "turn": last,
             "version": len(logged),  # Grows with every saved change, so the page knows its move was taken.
@@ -495,6 +539,30 @@ class Session:
             "offers": offers,
             "choices_due": self.choices_due(state),
             "trial_ready": state.trial_ready,
+        }
+
+    def setup_data(self) -> dict[str, Any]:
+        """The choices for a new character, for the game page's creation form."""
+        assert self.world.data is not None
+        data = self.world.data
+        blank = Simulation(GameState(), RngStreams.from_seed(1), self.rules, 0)
+        return {
+            "peoples": [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "stat": p.stat,
+                    "affinities": list(innate_affinity_options(blank, p.id)),
+                }
+                for p in data.peoples
+            ],
+            "origins": [
+                {"id": o.id, "name": o.name, "text": f"{o.stat} +2, {o.skill} 1. {o.complication}."}
+                for o in data.origins.origins
+            ],
+            "stats": list(STATS),
+            "stat_array": list(data.origins.stat_array),
+            "flaws": list(data.origins.flaws),
         }
 
     # A new character.

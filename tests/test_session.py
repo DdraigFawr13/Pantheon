@@ -267,3 +267,18 @@ def test_session_screen_is_plain_data_for_the_game_page(game: Game, tmp_path: Pa
     assert [o["n"] for o in screen["options"]] == [1, 2, 3]
     assert [o["n"] for o in screen["offers"]] == [4, 5, 6]
     assert all("[" not in line for line in screen["ledger"])  # No terminal markup reaches the page.
+
+
+def test_session_screen_offers_creation_and_then_a_full_sheet(game: Game, tmp_path: Path) -> None:
+    out = tmp_path / "screen.json"
+    game("screen", str(out))
+    setup = json.loads(out.read_text(encoding="utf-8"))
+    assert setup["created"] is False
+    assert {p["id"] for p in setup["setup"]["peoples"]} >= {"saltborn", "humans"}
+    assert setup["setup"]["stat_array"] and setup["setup"]["origins"]
+    game.sworn()
+    game("screen", str(out))
+    screen = json.loads(out.read_text(encoding="utf-8"))
+    assert screen["created"] is True and screen["origin_name"] == "Toll-ferry orphan"
+    assert screen["oath_list"][0]["burden"] and screen["skill_list"][0]["name"] == "Streetwise"
+    assert screen["class_stats"]

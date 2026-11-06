@@ -17,6 +17,7 @@
   --bg: #0f121a; --page: #161a24; --ink: #e3e1da; --muted: #9298a6; --line: #2a3040;
   --brass: #d4ad5c; --brass-soft: #2a2416; --blood: #e0605d; --mana: #7aa7e6; --stam: #7cc28b; color-scheme: dark }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { background: var(--bg); color: var(--ink); font: 17px/1.6 var(--prose); margin: 0; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--page); }
 .wrap { max-width: 680px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -70,6 +71,28 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .stat .track { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .stat .fill { height: 100%; background: var(--brass); }
 .sheet .close { justify-self: end; }
+.panel { display: grid; gap: 14px; }
+.tabs { display: flex; gap: 4px; overflow-x: auto; }
+.tabs button { font: 700 .82rem var(--display); letter-spacing: .06em; color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px 5px; cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--brass); }
+.card { border: 1px solid var(--line); border-radius: 8px; background: var(--page); padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.card h3 { font: 700 1.05rem var(--display); margin: 0; letter-spacing: .03em; }
+.card .sub { font: .78rem/1.45 var(--mono); color: var(--muted); }
+.kv { display: grid; grid-template-columns: 7.5em 1fr; gap: 4px 10px; font: .84rem/1.45 var(--mono); }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; min-width: 0; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font: .86rem/1.45 var(--mono); }
+.list li { border-top: 1px dashed var(--line); padding-top: 6px; } .list li:first-child { border-top: 0; padding-top: 0; }
+.pill { display: inline-block; font: 600 .7rem var(--mono); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; color: var(--muted); margin-left: 4px; }
+.clock { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font: .84rem var(--mono); }
+.clock .pips { grid-column: 1 / -1; display: flex; gap: 3px; flex-wrap: wrap; }
+.clock .pip { width: 12px; height: 12px; border: 1px solid var(--brass); border-radius: 2px; }
+.clock .pip.on { background: var(--brass); }
+.create { display: grid; gap: 12px; }
+.create label { display: grid; gap: 4px; font: .8rem var(--mono); color: var(--muted); }
+.create input, .create select { font: 1rem var(--prose); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--page); color: var(--ink); min-width: 0; width: 100%; }
+.create .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.create .hint { font: .78rem/1.45 var(--mono); color: var(--muted); margin: 0; }
+.create .err { color: var(--blood); font: .82rem var(--mono); margin: 0; }
 @media (max-width: 420px) { .bars { grid-template-columns: 1fr; } }
 </style>
 
@@ -77,9 +100,20 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   <div class="who"><h1 id="name">Pantheon</h1><button id="sheetBtn" type="button" disabled>Sheet</button></div>
   <div class="meta" id="meta">Waiting for the Ledger…</div>
   <div class="bars" id="bars"></div>
+  <nav class="tabs" role="tablist" id="tabs" hidden>
+    <button role="tab" data-tab="story" aria-selected="true">Story</button>
+    <button role="tab" data-tab="character" aria-selected="false">Character</button>
+    <button role="tab" data-tab="journal" aria-selected="false">Journal</button>
+    <button role="tab" data-tab="gear" aria-selected="false">Gear</button>
+  </nav>
 </div></header>
 
 <main class="wrap">
+  <section class="create card" id="create" hidden></section>
+  <div id="tab-character" class="panel" hidden></div>
+  <div id="tab-journal" class="panel" hidden></div>
+  <div id="tab-gear" class="panel" hidden></div>
+  <div id="tab-story" class="panel" style="display:grid;gap:18px">
   <section class="story" id="story" aria-live="polite"><p class="empty">The story appears here once the narrator writes the first scene. Open this page beside the Claude Code session that runs the game.</p></section>
   <ul class="ledger" id="ledger" hidden></ul>
   <section class="due" id="due" hidden></section>
@@ -91,10 +125,9 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     <input id="ownText" maxlength="300" placeholder="Or write your own action" aria-label="Your own action">
     <button type="submit" id="ownBtn">Do it</button>
   </form>
+  </div>
   <p class="state" id="state">Connecting…</p>
 </main>
-
-<dialog id="sheet"><div class="sheet" id="sheetBody"></div></dialog>
 
 <script>
 (() => {
@@ -128,6 +161,16 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   function render() {
     const s = screen;
     if (!s) return;
+    if (!s.created) {
+      $("tabs").hidden = true; $("tab-story").style.display = "none"; $("sheetBtn").disabled = true;
+      $("meta").textContent = "A new life";
+      renderCreate(s.setup || { peoples: [], origins: [], stats: [], stat_array: [], flaws: [] });
+      if (sentAt !== null && s.version !== sentAt) sentAt = null;
+      status();
+      return;
+    }
+    $("create").hidden = true; $("tabs").hidden = false;
+    renderCharacter(s); renderJournal(s); renderGear(s); showTab(tab);
     $("name").textContent = s.name || "Pantheon";
     const progress = s.level ? `Tier ${s.tier} · Level ${s.level}` : "Unwritten";
     $("meta").textContent = [s.date, s.class || null, progress, `Turn ${s.turn}`].filter(Boolean).join(" · ");
@@ -217,7 +260,8 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
         catch (e) { if (e && e.code === "not_found") threadId = null; else throw e; }
       }
       if (!result) {
-        const anchor = await comments.anchorFor($("actions").hidden ? $("own") : $("actions"));
+        const target = [$("create"), $("actions"), $("own")].find((n) => n.offsetParent !== null) || $("name");
+        const anchor = await comments.anchorFor(target);
         result = await comments.sendToClaude({ anchor, text: message });
       }
       threadId = result.threadId;
@@ -239,38 +283,165 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     send(`Pantheon move: ${text}`, null).then(() => { if (sentAt !== null) $("ownText").value = ""; });
   });
 
-  $("sheetBtn").addEventListener("click", () => {
-    const s = screen; if (!s) return;
-    const body = $("sheetBody"); body.replaceChildren();
-    body.append(el("h3", null, `${s.name}, ${s.age}, ${s.people}`));
-    body.append(el("div", null, `Class: ${s.class || "none"} · Profession: ${s.profession || "none"} · Coin: ${s.coin} silver`));
-    const bars = el("div", "bars");
-    bars.append(meter("HP", s.hp, s.max_hp, "var(--blood)"), meter("Mana", s.max_mana, s.max_mana, "var(--mana)"), meter("Stam", s.max_stamina, s.max_stamina, "var(--stam)"));
-    if (s.level) bars.append(meter("XP", s.xp, s.xp_next, "var(--brass)"));
-    body.append(bars);
+  let tab = "story";
+  try { tab = localStorage.getItem("pantheon-tab") || "story"; } catch {}
+  function showTab(name) {
+    tab = name;
+    try { localStorage.setItem("pantheon-tab", name); } catch {}
+    document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+    ["story", "character", "journal", "gear"].forEach((t) => {
+      const panel = $("tab-" + t);
+      if (t === "story") panel.style.display = name === "story" ? "grid" : "none";
+      else panel.hidden = name !== t;
+    });
+  }
+  document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  $("sheetBtn").addEventListener("click", () => showTab(tab === "character" ? "story" : "character"));
+
+  function card(title, sub) {
+    const c = el("section", "card");
+    c.append(el("h3", null, title));
+    if (sub) c.append(el("div", "sub", sub));
+    return c;
+  }
+  function kv(pairs) {
+    const dl = el("dl", "kv");
+    pairs.filter(([, v]) => v !== "" && v != null).forEach(([k, v]) => dl.append(el("dt", null, k), el("dd", null, String(v))));
+    return dl;
+  }
+  function list(items, empty) {
+    const ul = el("ul", "list");
+    if (!items.length) ul.append(el("li", "empty", empty));
+    items.forEach((it) => ul.append(typeof it === "string" ? el("li", null, it) : it));
+    return ul;
+  }
+  const words = (o) => Object.entries(o || {});
+
+  function renderCharacter(s) {
+    const box = $("tab-character"); box.replaceChildren();
+    const who = card(`${s.name}, ${s.age}`, `${s.people_name} · ${s.origin_name}`);
+    who.append(kv([["Class", s.class ? `${s.class} (${s.class_stats})` : "none yet"], ["Profession", s.profession || "none yet"],
+      ["Tier", s.tier], ["Level", s.level || "Unwritten"], ["Flaw", s.flaw], ["Debt", s.debt]]));
+    const pools = el("div", "bars");
+    pools.append(meter("HP", s.hp, s.max_hp, "var(--blood)"), meter("Mana", s.max_mana, s.max_mana, "var(--mana)"), meter("Stam", s.max_stamina, s.max_stamina, "var(--stam)"));
+    if (s.level) pools.append(meter("XP", s.xp, s.xp_next, "var(--brass)"));
+    who.append(pools);
+    const stats = card("Stats");
     const top = Math.max(40, ...Object.values(s.stats || {}));
-    const stats = el("div");
-    Object.entries(s.stats || {}).forEach(([k, v]) => {
+    words(s.stats).forEach(([k, v]) => {
       const r = el("div", "stat"); const t = el("div", "track"), f = el("div", "fill");
       f.style.width = (100 * v) / top + "%"; t.append(f);
       r.append(el("span", null, k[0].toUpperCase() + k.slice(1)), t, el("span", null, String(v))); stats.append(r);
     });
-    body.append(stats);
-    const dl = el("dl");
-    const add = (k, v) => { if (v) { dl.append(el("dt", null, k), el("dd", null, v)); } };
-    add("Affinities", Object.entries(s.affinities || {}).map(([a, r]) => `${a} ${r}`).join(", ") || "none");
-    add("Skills", Object.entries(s.skills || {}).map(([a, r]) => `${a} ${r}`).join(", ") || "none");
-    add("Oaths", (s.oaths || []).join(", ") || "none");
-    add("Standing", Object.entries(s.standing || {}).map(([e, v]) => `${e} ${v > 0 ? "+" : ""}${v}`).join(", ") || "none");
-    add("Titles", (s.titles || []).join(", "));
-    add("Injuries", (s.injuries || []).join(", "));
-    add("What may come back", (s.hooks || []).join(" · "));
-    body.append(dl);
-    const close = el("button", "primary close", "Close"); close.type = "button"; close.style.padding = "8px 16px";
-    close.addEventListener("click", () => $("sheet").close());
-    body.append(close);
-    $("sheet").showModal();
-  });
+    if ((s.injuries || []).length) stats.append(el("div", "sub", "Injuries: " + s.injuries.join(", ")));
+    const skills = card("Skills and spells", "Ranks from the Ledger. Spells are skills tied to an affinity.");
+    skills.append(list((s.skill_list || []).map((k) => {
+      const li = el("li", null, `${k.name} · rank ${k.rank}`);
+      if (k.rarity) li.append(el("span", "pill", k.rarity));
+      if (k.affinity) li.append(el("span", "pill", k.affinity));
+      return li;
+    }), "No skills yet."));
+    const aff = card("Affinities");
+    aff.append(list(words(s.affinities).map(([a, r]) => `${a[0].toUpperCase() + a.slice(1)} · rank ${r}`), "None yet."));
+    const titles = card("Titles");
+    titles.append(list(s.titles || [], "No titles yet."));
+    box.append(who, stats, skills, aff, titles);
+  }
+
+  function renderJournal(s) {
+    const box = $("tab-journal"); box.replaceChildren();
+    const oaths = card("Oaths", "What you swore, and what it costs you.");
+    oaths.append(list((s.oath_list || []).map((o) => {
+      const li = el("li");
+      li.append(el("strong", null, `${o.name} · ${o.god}`), el("div", null, `Gift: ${o.gift}`), el("div", null, `Burden: ${o.burden}`));
+      return li;
+    }), "No Oath sworn."));
+    const hooks = card("Threads", "Debts, promises and people who may come back.");
+    hooks.append(list(s.hooks || [], "Nothing owed yet."));
+    const standing = card("Standing");
+    standing.append(list(words(s.standing).map(([e, v]) => `${e[0].toUpperCase() + e.slice(1)} ${v > 0 ? "+" : ""}${v}`), "No one knows your name yet."));
+    const rumours = card("Rumours");
+    rumours.append(list(s.rumours || [], "No rumours heard."));
+    box.append(oaths, hooks, standing, rumours);
+    if ((s.clocks || []).length) {
+      const clocks = card("What is moving in the world");
+      (s.clocks || []).forEach((c) => {
+        const row = el("div", "clock");
+        row.append(el("span", null, c.name), el("span", "sub", `${c.value} of ${c.segments}`));
+        const pips = el("div", "pips");
+        for (let i = 0; i < c.segments; i++) pips.append(el("span", "pip" + (i < c.value ? " on" : "")));
+        row.append(pips);
+        if (c.filled) row.append(el("div", "sub", c.filled));
+        clocks.append(row);
+      });
+      box.append(clocks);
+    }
+  }
+
+  function renderGear(s) {
+    const box = $("tab-gear"); box.replaceChildren();
+    const purse = card("Purse");
+    purse.append(kv([["Coin", `${s.coin} silver`]]));
+    const shards = card("Shards", "Absorb a shard to grow a skill or affinity.");
+    shards.append(list(s.shards || [], "No shards yet."));
+    const items = card("Items", "The engine does not track items yet. Gear and loot arrive with milestone M1e; until then, belongings live in the story.");
+    box.append(purse, shards, items);
+  }
+
+  function renderCreate(setup) {
+    const box = $("create"); box.hidden = false;
+    if (box.dataset.ready) return;
+    box.dataset.ready = "1";
+    box.append(el("h3", null, "Who were you, before the fall?"), el("p", "hint", "Your choices go to the narrator, who creates the character and plays the opening."));
+    const field = (label, input) => { const l = el("label", null, label); l.append(input); return l; };
+    const select = (id, options) => { const sel = el("select"); sel.id = id; options.forEach(([v, t]) => { const o = el("option", null, t); o.value = v; sel.append(o); }); return sel; };
+    const name = el("input"); name.id = "c-name"; name.maxLength = 40; name.placeholder = "A name";
+    const age = el("input"); age.id = "c-age"; age.type = "number"; age.min = "16"; age.max = "30"; age.value = "22";
+    const people = select("c-people", setup.peoples.map((p) => [p.id, `${p.name} (${p.stat === "any" ? "+3 to any stat" : p.stat})`]));
+    const peopleStat = select("c-pstat", setup.stats.map((x) => [x, x]));
+    const pstatField = field("Your people's +3 goes to", peopleStat);
+    const affinity = el("select"); affinity.id = "c-aff";
+    const affField = field("Innate affinity", affinity);
+    const origin = select("c-origin", setup.origins.map((o) => [o.id, o.name]));
+    const originText = el("p", "hint");
+    const statsBox = el("div", "stats");
+    const order = setup.stat_array.map((v, i) => {
+      const sel = select("c-stat" + i, setup.stats.map((x) => [x, x])); sel.value = setup.stats[i];
+      statsBox.append(field(`${i === 0 ? "Strongest" : i === setup.stat_array.length - 1 ? "Weakest" : "Next"} (${v})`, sel));
+      return sel;
+    });
+    const flaw = select("c-flaw", [...setup.flaws.map((f) => [f, f]), ["", "My own…"]]);
+    const ownFlaw = el("input"); ownFlaw.id = "c-ownflaw"; ownFlaw.placeholder = "Your own flaw"; ownFlaw.hidden = true;
+    const debt = el("input"); debt.id = "c-debt"; debt.placeholder = "A sum, a favour or a name owed, and to whom";
+    const err = el("p", "err");
+    const go = el("button", "primary go", "Begin"); go.type = "button"; go.style.padding = "10px 16px";
+    function sync() {
+      const p = setup.peoples.find((x) => x.id === people.value);
+      pstatField.hidden = p.stat !== "any";
+      affinity.replaceChildren(...p.affinities.map((a) => { const o = el("option", null, a); o.value = a; return o; }));
+      affField.hidden = p.affinities.length < 2;
+      originText.textContent = setup.origins.find((o) => o.id === origin.value).text;
+    }
+    people.addEventListener("change", sync); origin.addEventListener("change", sync);
+    flaw.addEventListener("change", () => { ownFlaw.hidden = flaw.value !== ""; });
+    sync();
+    go.addEventListener("click", () => {
+      const picked = order.map((o) => o.value);
+      if (!name.value.trim()) { err.textContent = "Give your character a name."; return; }
+      if (new Set(picked).size !== picked.length) { err.textContent = "Use each stat once."; return; }
+      err.textContent = "";
+      const p = setup.peoples.find((x) => x.id === people.value);
+      const parts = [`name=${name.value.trim()}`, `age=${age.value}`, `people=${people.value}`,
+        ...(p.stat === "any" ? [`people_stat=${peopleStat.value}`] : []),
+        ...(p.affinities.length > 1 ? [`affinity=${affinity.value}`] : []),
+        `origin=${origin.value}`, `stats=${picked.join(" ")}`,
+        `flaw=${(flaw.value || ownFlaw.value).trim()}`, `debt=${debt.value.trim()}`];
+      send("Pantheon create: " + parts.join(" | "), go);
+    });
+    box.append(field("Name", name), field("Age, 16 to 30", age), field("People", people), pstatField, affField,
+      field("Origin", origin), originText, el("p", "hint", "Stats, strongest first:"), statsBox,
+      field("Flaw", flaw), ownFlaw, field("Debt", debt), err, go);
+  }
 
   async function start() {
     const claude = window.claude;
