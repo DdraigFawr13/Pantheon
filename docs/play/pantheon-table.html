@@ -4,21 +4,24 @@
 <style>
 /* Layout: one reading column under a sticky status bar; the story first, the Ledger's voice in mono, choices as wide buttons at the thumb. */
 :root {
-  --bg: #e9ecef; --page: #f7f8f9; --ink: #1b2130; --muted: #5b6475; --line: #cfd5de;
-  --brass: #8a6416; --brass-soft: #f1e6cb; --blood: #a3282a; --mana: #2d5d9f; --stam: #3d7a4a;
+  --bg: #e8e4ec; --page: #f8f6fa; --ink: #211b27; --muted: #6a6072; --line: #d6cfdc;
+  --brass: #8a5a12; --brass-soft: #f3e7d2; --blood: #b0302c; --mana: #3559a6; --stam: #2f7a4a;
+  --glow: rgb(214 160 70 / .22); --ember: #b0302c;
   --display: "Alegreya SC", "Palatino Linotype", Georgia, serif;
   --prose: "Spectral", Georgia, "Times New Roman", serif;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0f121a; --page: #161a24; --ink: #e3e1da; --muted: #9298a6; --line: #2a3040;
-  --brass: #d4ad5c; --brass-soft: #2a2416; --blood: #e0605d; --mana: #7aa7e6; --stam: #7cc28b; color-scheme: dark } }
+  --bg: #16111a; --page: #211a26; --ink: #efe6dc; --muted: #ab9db0; --line: #3b2f42;
+  --brass: #e3b562; --brass-soft: #34281b; --blood: #ea6a5f; --mana: #93b2f2; --stam: #8bcf9e;
+  --glow: rgb(227 181 98 / .13); --ember: #ea6a5f; color-scheme: dark } }
 :root[data-theme="dark"] {
-  --bg: #0f121a; --page: #161a24; --ink: #e3e1da; --muted: #9298a6; --line: #2a3040;
-  --brass: #d4ad5c; --brass-soft: #2a2416; --blood: #e0605d; --mana: #7aa7e6; --stam: #7cc28b; color-scheme: dark }
+  --bg: #16111a; --page: #211a26; --ink: #efe6dc; --muted: #ab9db0; --line: #3b2f42;
+  --brass: #e3b562; --brass-soft: #34281b; --blood: #ea6a5f; --mana: #93b2f2; --stam: #8bcf9e;
+  --glow: rgb(227 181 98 / .13); --ember: #ea6a5f; color-scheme: dark }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { background: var(--bg); color: var(--ink); font: 17px/1.6 var(--prose); margin: 0; }
+body { background: radial-gradient(120% 60% at 50% 0%, var(--glow), transparent 70%) fixed, var(--bg); color: var(--ink); font: 17px/1.6 var(--prose); margin: 0; min-height: 100%; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--page); }
 .wrap { max-width: 680px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 header.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--page); border-bottom: 1px solid var(--line); }
@@ -95,6 +98,18 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .create .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
 .create .hint { font: .78rem/1.45 var(--mono); color: var(--muted); margin: 0; }
 .create .err { color: var(--blood); font: .82rem var(--mono); margin: 0; }
+.who h1::before { content: "◆"; color: var(--brass); font-size: .7em; margin-right: 8px; vertical-align: .15em; }
+.story { position: relative; }
+.story > p:first-of-type::first-letter { font: 700 3.1em/.8 var(--display); color: var(--brass); float: left; margin: .08em .1em 0 0; }
+.story::after { content: "✦ ✦ ✦"; display: block; text-align: center; color: var(--brass); letter-spacing: .6em; font-size: .7rem; opacity: .7; margin-top: 6px; }
+.notice { position: relative; padding-top: 20px !important; box-shadow: 0 0 18px var(--glow); }
+.notice::before { content: "The Ledger"; position: absolute; top: 4px; left: 10px; font: 700 .62rem var(--display); letter-spacing: .14em; text-transform: uppercase; opacity: .75; }
+.choice { transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.choice:hover { transform: translateY(-1px); border-color: var(--brass); box-shadow: 0 4px 14px var(--glow); }
+.choice.oath { background: linear-gradient(90deg, var(--brass-soft), var(--page) 60%); }
+.card { box-shadow: 0 1px 0 var(--line); }
+.card h3::after { content: ""; display: block; height: 1px; margin-top: 6px; background: linear-gradient(90deg, var(--brass), transparent); opacity: .6; }
+@media (prefers-reduced-motion: reduce) { .choice { transition: none; } .choice:hover { transform: none; } }
 @media (max-width: 420px) { .bars { grid-template-columns: 1fr; } }
 </style>
 
