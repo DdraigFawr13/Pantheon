@@ -15,6 +15,10 @@ INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',8,2,'flag_set','{"
 INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',9,2,'hook_registered','{"description": "Maru-Ghen''s response to being refused", "due_condition": "within the next few days, through a Vessel or an omen", "id": 3, "source_choice": "Dual Offer: ysmere", "turn": 2}');
 INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',10,2,'hook_registered','{"description": "Ysmere''s answer to the Oath", "due_condition": "within the next few days, through a Vessel or an omen", "id": 4, "source_choice": "Dual Offer: ysmere", "turn": 2}');
 INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',11,2,'hook_registered','{"description": "A rival who survived the fall swore Last Rest to Maru-Ghen", "due_condition": "when the player next deals with Rifters or that god''s people", "id": 5, "source_choice": "Dual Offer: ysmere", "turn": 2}');
+INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',12,2,'class_chosen','{"class_id": "cantor"}');
+INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',13,2,'profession_chosen','{"profession": "enchanter"}');
+INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',14,2,'hook_registered','{"description": "The Rifter crew sack that fell into the Stair with Ddraig, which the Tallyhouse wants found", "due_condition": "when Ddraig returns to the Stair or the Tallyhouse asks again", "id": 6, "source_choice": "", "turn": 2}');
+INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',15,2,'actions_suggested','{"actions": [{"check": null, "cost": "registration costs silver you barely have", "label": "Go with Dunmore and register at the Tallyhouse", "tag": null, "violent": false}, {"check": {"approach": "other", "challenge_tier": 1, "difficulty": "hard", "overcome": null, "skill": null, "stakes": "a fall back into the rift", "stat": "agility"}, "cost": "the Stair is still settling", "label": "Climb back down the hole for the crew sack", "tag": "agility", "violent": false}, {"check": null, "cost": null, "label": "Walk over and talk to the dusty Rifter", "tag": null, "violent": false}, {"check": {"approach": "other", "challenge_tier": 1, "difficulty": "routine", "overcome": null, "skill": null, "stakes": "embarrassing yourself in front of the whole town", "stat": "presence"}, "cost": null, "label": "Sing the crowd calm so Dunmore can work", "tag": "Cantor", "violent": false}]}');
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT INTO "meta" VALUES('schema_version','2');
 CREATE TABLE rng_checkpoint (
@@ -67,4 +71,31 @@ The two voices did not like sharing the dark. Ddraig could feel it, a pressure f
 There was time, just, to ask them something. Ask what each one actually wanted in return. Ask why a clerk was worth the trouble. Or try a bargain, which the clerk''s apprentice in Ddraig suspected neither god would take kindly.
 
 Both voices waited, and the air got thinner.',0,0,0,0);
+INSERT INTO "turn" VALUES('83daee68adab426b89abc2c28256ccb9',2,'[I swear the Turning Tide Oath to Ysmere. The Ledger opens. Narrate the aftermath.]','"Yes," Ddraig said. "The Tide. I''ll take the Tide."
+
+"Good choice. Obviously." Ysmere sounded delighted, the way a very large person is delighted to win at cards. "The gravedigger will sulk for a century. Let him. Now hold still, this part tickles."
+
+It did not tickle. It felt like being picked up and put down a little to the left of where he had been. Then a page opened behind his eyes, written in his own handwriting.
+
+**Ddraig Fawr. Human. Tier 1, Level 1. Cantor. Enchanter.**
+**HP 70/70. Mana 63/63. Stamina 59/59.**
+**Affinities: Storm 1, Tide 1. Oath: Turning Tide.**
+
+Ddraig read it twice, because he was a clerk and you always check the sum. His HP had gone up from what it had been a minute ago. So had his mana. He had a class he had not picked consciously and a profession he had once watched a man do badly at the Tallyhouse for a commission.
+
+*Cantor. A singer. I hum when I''m counting. That''s apparently enough.*
+
+"You''ll know the weather before it knows itself," Ysmere went on. "Rain tomorrow, by the way. And you''ll keep moving, darling. You don''t get to put down roots with me. Roots are how people end up under mills."
+
+The stone above him shifted. Light came through, grey and dusty, and then a hand, and then a broad face with a Registrar''s chain around the neck.
+
+"Got a live one!" the face shouted. "Clerk! Can you climb?"
+
+Ddraig could. Vigor 30 was finally useful for something. He came up into the ruins of the mill to find half of Cinder Ford standing around the hole. Registrar Hale Dunmore, who signed his wages, was looking at him with the narrow expression of a man several tiers up who could tell when somebody''s tier had just changed.
+
+Across the rubble, a Rifter he did not know was sitting on a broken beam, covered in grey dust, very still. She was looking at Ddraig too. She did not look surprised.
+
+Dunmore lowered his voice. "You came out of that with a Ledger. You''ll want to register before anyone else decides what you are. And the crew''s sack went down with you. The Tallyhouse will want to know where it is."
+
+Ddraig thought about that. Registering meant fees and questions. Looking for the sack meant going back toward the hole.',0,0,0,0);
 COMMIT;
