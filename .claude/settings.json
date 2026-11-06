@@ -20,6 +20,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Bash|Read|Write|Edit|Grep|Glob|Agent|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/play-guard.mjs\"",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "Stop": [

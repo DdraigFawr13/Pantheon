@@ -635,9 +635,15 @@ def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClien
     for command in (play, fork):
         command.add_argument("--timeline", help="the start of a timeline's id (default: the latest)")
     play.add_argument("--fresh", action="store_true", help="start a new timeline instead of resuming")
+    from pantheon.ui.cli import session  # It builds on this module's screens, so it loads after them.
+
+    session.add_parser(sub)
     args = parser.parse_args(argv)
     console = Console()
     try:
+        if args.command == "session":
+            # Claude Code reads this output, so lines are not wrapped to a terminal's width.
+            return session.run(args, Console(soft_wrap=True, highlight=False))
         if args.command == "new":
             return _new(args, console)
         if args.command == "fork":

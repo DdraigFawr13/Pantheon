@@ -30,7 +30,7 @@ An open-ended, AI-narrated LitRPG. The player controls one life in a medieval fa
 
 ## Status
 
-M0 (scaffold) built. Try it: `uv run pantheon new`. Next milestone: M1 in `docs/BUILD_PLAN.md`.
+M1c is built. Play on the PC with `start.bat` (Claude Haiku through the API), or in a Claude Code session on this repo by saying "play": the session is the narrator, at no API cost (D-041). Next: M1d in `docs/BUILD_PLAN.md`.
 
 ## Configuration
 
