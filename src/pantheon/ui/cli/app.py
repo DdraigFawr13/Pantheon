@@ -824,6 +824,27 @@ def _log(args: argparse.Namespace, console: Console) -> int:
     return 0
 
 
+def _chronicle(args: argparse.Namespace, console: Console) -> int:
+    """`pantheon chronicle`: the story so far as Markdown or a phone page, read from the save."""
+    from pantheon.ui import chronicle  # It builds on this module's sheet and Ledger, so it loads after them.
+
+    config = load_config(Path(args.config) if args.config else None)
+    world = load_world(config.world_dir)
+    with Database.open(Path(args.db) if args.db else config.db_path) as db:
+        tid = _timeline(db, args.timeline, console)
+        if tid is None:
+            return 1
+        built = chronicle.build(db, world, tid)
+    text = chronicle.render_html(built) if args.format == "html" else chronicle.render_markdown(built)
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(text, encoding="utf-8")
+        console.print(f"Wrote {args.out}: {len(built.entries)} turns of {built.name}.")
+    else:
+        print(text)
+    return 0
+
+
 def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClient | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pantheon")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -843,15 +864,18 @@ def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClien
     roll.add_argument("--seed", type=int, default=1)
     sheet = sub.add_parser("sheet", help="show a timeline's character sheet")
     log = sub.add_parser("log", help="show a timeline's recorded events")
+    chronicle = sub.add_parser("chronicle", help="the story so far, as Markdown or a page")
+    chronicle.add_argument("--format", choices=["md", "html"], default="md")
+    chronicle.add_argument("--out", help="write here instead of printing")
     log.add_argument("--turn", type=int, help="only this turn")
     log.add_argument("--type", help="only this event type, such as xp_gained")
     log.add_argument("--last", type=int, help="only the last N events")
     for command in (new, play):
         command.add_argument("--seed", type=int, default=0, help="seed (0 = config or random)")
-    for command in (new, play, fork, sheet, log):
+    for command in (new, play, fork, sheet, log, chronicle):
         command.add_argument("--db", help="database path (default: data/pantheon.db)")
         command.add_argument("--config", help="config file (default: config.toml)")
-    for command in (play, fork, sheet, log):
+    for command in (play, fork, sheet, log, chronicle):
         command.add_argument("--timeline", help="the start of a timeline's id (default: the latest)")
     play.add_argument("--fresh", action="store_true", help="start a new timeline instead of resuming")
     from pantheon.ui.cli import session  # It builds on this module's screens, so it loads after them.
@@ -873,6 +897,8 @@ def main(argv: list[str] | None = None, ask: Ask | None = None, client: LLMClien
             return _show_sheet(args, console)
         if args.command == "log":
             return _log(args, console)
+        if args.command == "chronicle":
+            return _chronicle(args, console)
         return _play(args, console, ask or console.input, client)
     except SaveError as exc:
         console.print(f"[red]{exc}[/red]")
