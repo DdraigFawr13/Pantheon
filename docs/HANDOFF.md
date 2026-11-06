@@ -12,6 +12,8 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 ## Just done
 
+- 2026-11-06 Design audit of M1d to M1f (owner chose design only): `docs/audit/2026-11-06-design.md`, 28 findings (3 strongly recommended: M2 plan stale, architecture section 3 stale, tapped options undecided). PR #23. Owner: "Do as you recommend": all 28 accepted, recommendations taken (Outcome in the report).
+
 - 2026-11-03 Master upgrade to v4.4.0 (D-040), PR #17 merged.
 - 2026-11-06 Master upgrade to v4.11.0 (D-043) and the repo and tests audits, PR #20 merged; audit fixes, PR #21 merged.
 - 2026-11-06 M1.7 (D-041): `pantheon session` runs each turn step as a command; `/play` skill; `play-guard` hook (Bash only `uv run pantheon session` and `scripts/saves.sh`, public reads only); saves as a text dump on the `saves` branch; the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b) shows story, Character, Journal and Gear tabs from `session screen` JSON and sends taps to the session as comments.
@@ -22,10 +24,10 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 ## Next
 
-1. New branch from `main` for the next unit of work (GIT-01). Offer the owner an M1 audit (VER-09) before M2. Then read BUILD_PLAN "M2: Narrator loop" and mark what M1.5 to M1.7 already built.
-2. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
-3. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
-4. Offer an audit of M1 (VER-09). Next milestone in the plan: M2 (narrator loop), much of which M1.5 to M1.7 built.
+1. Audit fixes on a new branch from `main` (after PR #23 merges): the doc, DECISIONS, canon-gap (G-36 Attuned, shard sale, Unwritten tier path, prices by tier), sim and test findings in `docs/audit/2026-11-06-design.md` Outcome. F1, F3 and F4 belong to M2 planning; F7 and F19 wait for the owner's fight playtest.
+2. Then plan M2 with the `planning-interview` skill (WS-03): only what M2 still needs (about 10 narrator tools unbuilt, the bounty board data, NAR-06/07 on session play; Ollama side-by-side and streaming look moot by D-032 and D-029). Options vs odds (F3, D-049) and prose length (D-033) come first.
+3. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
+4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
 
 ## Open questions
