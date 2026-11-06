@@ -30,11 +30,12 @@ Requirement IDs are stable. Reference them in commits and tests.
 
 - **NAR-01** The narrator prompt shall be assembled from layers in a fixed order (section 4 of `docs/architecture.md`) to keep the canon prefix cache-stable. Recent turns shall be sent as a window that grows from N to 2N-1 turns and then resets, and the turn's state and due material shall come in the latest message (D-031).
 - **NAR-02** The narrator shall receive secret lore only when the engine evaluates the entry's `reveal_gate` as satisfied. Secret entries not yet released shall not appear in the prompt. Every path in a `reveal_gate` shall be a flag in the flag registry (`world/data/flags.yaml`, `world/sealed/data/flags.yaml`) or a state field, so that every gate can open.
-- **NAR-03** Each turn shall offer 3 to 4 suggested actions through the `suggest_actions` tool and shall accept free text. The engine shall reject a set without at least one non-violent suggestion and at least one with a visible cost or risk.
+- **NAR-03** Each turn shall offer 3 to 4 suggested actions through the `suggest_actions` tool and shall accept free text. The engine shall reject a set without at least one non-violent suggestion and at least one with a visible cost or risk. In session play outside a fight they are not shown as a menu: the closing thought names the approaches with their odds (D-050).
 - **NAR-04** Narrator prose shall not contain numeric outcomes (damage, XP, chances, rolls) except values returned by the engine in the same turn. A runtime validator shall reject prose that breaks this; the rejection counts toward NAR-06. The status panel shall be rendered by the UI from state, not written by the narrator.
 - **NAR-05** Every significant choice shall register at least one downstream hook in the consequence ledger (`register_hook`). The engine shall surface due hooks to the narrator as prompt material.
 - **NAR-06** On an invalid tool call, the engine shall return the rejection reason to the narrator and permit at most 2 retries before the turn proceeds without the rejected change and logs the failure.
 - **NAR-07** If the model is unavailable after retries, the turn shall complete with engine-rendered text (the check result in plain words and the previous suggested actions), marked as a fallback turn.
+- **NAR-08** An action whose check is Hard or harder shall show its odds before it rolls and wait for the player to go ahead or back off. The odds shall come from the calculation the roll uses, and nothing shall roll before the player goes ahead. Within a turn, a stat's first preview shall fix that stat's difficulty and tier. Routine checks shall roll at once and show their chance and roll (D-050, D-051).
 
 ### 2.3 Memory (MEM)
 

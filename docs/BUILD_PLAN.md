@@ -146,20 +146,31 @@ M1a to M1f are merged (M1d to M1f in PR #19). Ordered so each step is testable a
 
 **Acceptance:** roadmap M1; engine coverage at least 90 %. **You test:** read the scripted fight and level-up transcript (`docs/playtests/2026-11-06-m1-fight-check.md`); optional: run the CLI. Shard absorption and evolution evidence moves to M3.5, since their content waits for canon.
 
-## M2: Narrator loop (3 to 4 sessions)
+## M2: Narrator loop (4 to 6 sessions, estimate; D-051, D-052)
 
-1. `llm/`: `LLMClient` protocol, `MockClient` replaying recorded transcripts, Anthropic adapter with timeouts, backoff and jitter (OPS-01, OPS-03), prompt caching on layers 1 and 2 (OPS-04), per-turn token logging (MEM-04). Provider switch (D-020): the same adapter talks to a local Ollama server through its Anthropic-compatible API (`base_url` in `config.toml`); Ollama lacks prompt caching, `count_tokens` and `tool_choice`, so the budgeter estimates tokens itself and the loop never forces a tool. Ollama's context is set on the server, not per request (D-027); the adapter raises an error when Ollama reports far fewer input tokens than the budgeter sent, so a truncated prompt never narrates.
-2. `engine/tools.py`: every tool in `docs/architecture.md` section 6 as a Pydantic schema with engine validation; unknown tools rejected (ENG-02).
-3. `narrator/assemble.py`: layers 1 to 3 and 8 in fixed order; recent turns as messages (NAR-01). Layer 3 is a curated view of state (no raw roll logs, no off-scene NPCs, nothing gated), not a full dump (D-022).
-4. `narrator/loop.py`: the turn loop in architecture section 3: per-call retry cap, forced-prose round, fallback turn, short commit transaction (NAR-06, NAR-07, OPS-03).
-5. `narrator/validators.py`: prose number check with known-name allowlist (NAR-04), plus a list of banned mechanical terms (dice notation, stat abbreviations, "rolled", "chance"); `suggest_actions` rules (NAR-03). The fallback path never raises (NAR-07).
-6. Character creation from `world/protagonist_seed.md` and `world/peoples.md`; the opening scene with the two drawn gods (D-017); the rival set up from the refused Oath (D-013).
-7. Tallyhouse bounty board as data (hooks and beats) with witnessed Standing and rumours.
-8. CLI play with streaming prose and a status panel rendered from state.
-9. Before any live-model playtest: an estimate of its cost from your configured model's prices, for your approval (SAFE-01). Ollama runs cost nothing per turn.
-10. Side-by-side check: the same 10-turn scripted scenario on Claude and on your chosen Ollama model, scored for tool-call compliance and the NAR-03 and NAR-04 validators, so the default narrator is picked on evidence (D-020).
+Already built in M1.5 to M1.7: the `llm/` layer with `MockClient` and the Anthropic adapter, prompt assembly, the API turn loop with retry cap and fallback, the validators, character creation, CLI play and session play, odds without a menu (PR #25, D-050), and 17 engine tools (`src/pantheon/engine/tools.py`). M2 is the remaining work, in four parts; the owner plays after M2a.
 
-**Acceptance:** roadmap M2 (10-turn scripted playtest against `MockClient`; rejections retried at most twice; no unsupplied numbers; outage gives a fallback turn). **You test:** play the opening in the terminal, or wait for M2.5.
+**M2a The feel** (NAR-03, NAR-08; 1 session)
+- PR #25 built odds without a menu (D-050): closing-thought odds, a preview with `session go` or `session abandon`, and the Go and Back off card on the Table page.
+- Only Hard checks or harder stop at the preview; Routine checks roll at once and show their chance and roll (D-051).
+- Scenes of 150 to 250 words, longer for big moments, with the number in one home (now in `prompts/narrator.md` and `narrator/assemble.py`).
+- **You test:** play a session with a fight in Claude Code. Does choosing read like a book or like optimizing? If the closing thought still pulls you toward its listed approaches, D-051 (4) has the next steps.
+
+**M2b Reliability** (NAR-06, NAR-07; 1 session)
+- Session play counts rejections in the pending turn, allows 2 retries, records a dropped-call event at commit and has a fallback turn that commits without new suggestions (D-049 (1)).
+- `pantheon play` gets D-050's design (closing-thought odds and the preview) through the same engine function.
+- A scripted 10-turn run on both paths: `MockClient` for `pantheon play`, a scripted command run for session play.
+
+**M2c Story tools** (ENG-02; 1 to 2 sessions)
+- `introduce_npc`, `introduce_location`, `offer_oath` (the player accepts by command, D-029), `test_burden`.
+- `advance_clock`, with each clock's allowed causes added to `world/data/clocks.yaml` as a `canon:` change for your approval.
+
+**M2d Bounty board** (NAR-05; 1 session, plus a canon round)
+- 3 to 5 Tallyhouse bounties as data (hooks, beats, witnessed Standing, rumours), as a `canon:` change for your approval, and `record_beat` for their beats with a minimal schema that M4 may extend.
+
+**Cut or moved (D-052):** the Ollama side-by-side (D-032), streaming prose (D-029), gear commands on `pantheon play`, the cost-estimate step (SAFE-01 still applies before any paid Haiku playtest), and `begin_trial` and `resolve_trial` (`session trial`, D-037). `grant_title` moves to M3.5 with titles data; `resolve_oath_conflict` becomes a player command once canon defines Oath conflicts.
+
+**Acceptance:** roadmap M2. **You test:** a session with a fight after M2a and again at the end; your call is the measure (GAME-06).
 
 ## M2.5: Phone page (1 session)
 
@@ -192,7 +203,7 @@ Then the engine wiring and a full playtest from a new timeline to Tier 2, includ
 
 ## Total and order
 
-M0 1 session, M1 4 to 6, M2 3 to 4, M2.5 1, M3 2 to 3, M3.5 2 to 3: about 13 to 18 sessions of agent work to the first playable version (estimate), plus your canon reviews and playtests.
+M0 1 session, M1 4 to 6, M2 4 to 6, M2.5 1, M3 2 to 3, M3.5 2 to 3: about 14 to 20 sessions of agent work to the first playable version (estimate), plus your canon reviews and playtests.
 
 ## Risks
 
