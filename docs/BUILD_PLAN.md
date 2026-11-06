@@ -113,7 +113,7 @@ Odds without an option menu (D-050): the closing thought carries each approach's
 
 ## M1: Engine core (4 to 6 sessions)
 
-M1a to M1c are merged; M1d to M1f are built on PR #19 (`claude/m1-build`). Ordered so each step is testable alone.
+M1a to M1f are merged (M1d to M1f in PR #19). Ordered so each step is testable alone.
 
 **M1a Dice and checks** (ENG-03, ENG-04, ENG-05)
 - Seeded RNG per timeline, split into named streams (checks, loot, opening draw, rival, world) so rolls in one system never shift another; stream state serialisable for forks (D-022).
@@ -139,12 +139,12 @@ M1a to M1c are merged; M1d to M1f are built on PR #19 (`claude/m1-build`). Order
 - Exchanges, enemy intents as data, skill costs and cooldowns, pool regeneration, overspend and Injury roll (D-009), Downed, Last Breath per hostile exchange, Reckoning escalation (fourth is final).
 
 **M1e Reward tables v0** (ENG-09, G-08). Built on PR #19 with the owner's numbers (D-047): tier-scaled XP, foe XP, loot, coin, five canon items and gear.
-- `rewards.yaml`: XP per kind scaled by tier to hit D-014 pacing; Standing deltas; damage by outcome and rarity; Tier 1 loot tables. A small simulation script checks that the tables reach Tier 2 in about 7 hours of typical play (D-047; estimate inputs in `scripts/pacing_sim.py`).
+- `rewards.yaml`: XP per kind scaled by tier to hit D-014 pacing; Standing deltas; damage by outcome; Tier 1 loot tables. Damage is sized by outcome only; damage by rarity waits for skill content (M3.5). Numbers live in `rewards.yaml`; the pace target is D-014. `scripts/pacing_sim.py` estimates the time to the Tier 2 Trial (its result and inputs: D-047 (8)).
 
 **M1f Dev CLI**. Built on PR #19.
 - `pantheon roll`, `pantheon sheet`, `pantheon log`, no LLM. `pantheon fork N` came early, with M1c.
 
-**Acceptance:** roadmap M1; engine coverage at least 90 %. **You test:** read a transcript of a level-up, a shard absorption and an evolution; optional: run the CLI.
+**Acceptance:** roadmap M1; engine coverage at least 90 %. **You test:** read the scripted fight and level-up transcript (`docs/playtests/2026-11-06-m1-fight-check.md`); optional: run the CLI. Shard absorption and evolution evidence moves to M3.5, since their content waits for canon.
 
 ## M2: Narrator loop (3 to 4 sessions)
 
@@ -182,12 +182,13 @@ Canon batches for your approval (`canon:`), each a small PR:
 2. Profession skills and recipes for the first-version professions; the Tier 1 shard and item catalogue.
 3. The Sunken Stair rift: floors 1 to 6, tier by depth, affinity, foes and intents, loot tables, core.
 4. Cinder Ford NPCs, the rival, bounty templates, god petition templates.
-5. The Unwritten path's first steps.
-6. Sealed: the trace beat and its data (reviewer agent, not you). No player command takes the sealed affinity in the first version (D-012); the engine lock is a missing command, not the reveal gate, and a data test checks that no first-version loot table or shard source grants it.
+5. The Unwritten path's first steps (G-38).
+6. The skill-rank form of Injury and the Injury cure, once G-18 is answered (D-009, D-039 (12)).
+7. Sealed: the trace beat and its data (reviewer agent, not you). No player command takes the sealed affinity in the first version (D-012); the engine lock is a missing command, not the reveal gate, and a data test checks that no first-version loot table or shard source grants it.
 
-Then the engine wiring and a full playtest from a new timeline to Tier 2.
+Then the engine wiring and a full playtest from a new timeline to Tier 2, including a shard absorption and a Level 10 evolution (moved from M1's acceptance).
 
-**Acceptance:** roadmap M3.5. **You test:** play to Tier 2 (about 7 hours); your notes go into `docs/playtests/` and decide what "fun" means here (GAME-06).
+**Acceptance:** roadmap M3.5. **You test:** play to Tier 2 (D-014's target); your notes go into `docs/playtests/` and decide what "fun" means here (GAME-06).
 
 ## Total and order
 

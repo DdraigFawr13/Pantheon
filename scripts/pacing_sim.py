@@ -2,7 +2,9 @@
 
 Reads the real tables (`world/data/rewards.yaml`, the canon XP curve) and plays many simulated Tier 1 runs.
 The play pattern is an estimate, not a measurement; every input is a flag, so the owner's playtests can
-replace it. Run: `uv run python scripts/pacing_sim.py`.
+replace it. It stops when XP fills at Level 10, so its hours run to the Tier 2 Trial and leave out
+Trial retries (a Setback loses the level's XP, D-037). Later tiers are not simulated; their 1.5x growth comes
+from the reward formula alone. Run: `uv run python scripts/pacing_sim.py`.
 """
 
 from __future__ import annotations
@@ -10,14 +12,17 @@ from __future__ import annotations
 import argparse
 import random
 import statistics
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from pantheon.engine.loot import LEVELS_PER_TIER
 from pantheon.engine.state import xp_to_next
 from pantheon.world.loader import load_data
 from pantheon.world.schemas import GameData
 
-TIER_ONE_LEVELS = 10
+TIER_ONE_LEVELS = LEVELS_PER_TIER
+FIGHT_CAP = 12  # A fight this long ends in flight.
 
 
 @dataclass
@@ -26,7 +31,8 @@ class Run:
     level_turns: list[int] = field(default_factory=list)
     coin_cp: int = 0
     items: int = 0
-    fragments: int = 0
+    fragments: Counter[str] = field(default_factory=Counter)
+    fight_turns: list[int] = field(default_factory=list)
     first_shard_turn: int | None = None
 
 
@@ -39,7 +45,9 @@ def play(data: GameData, args: argparse.Namespace, rng: random.Random) -> Run:
         gained = 0
         if rng.random() < args.fight_start:
             foes = [rng.choices(threats, mix)[0] for _ in range(rng.randint(1, args.max_foes))]
-            turn += args.exchanges - 1  # One exchange per turn (D-039).
+            exchanges = _fight_length(data, foes, args, rng)
+            run.fight_turns.append(exchanges)
+            turn += exchanges - 1  # One exchange per turn (D-039).
             if rng.random() < args.win:
                 gained += sum(data.rewards.foe_xp[t] for t in foes)
                 for threat in foes:
@@ -74,9 +82,29 @@ def _loot(data: GameData, name: str, run: Run, rng: random.Random, turn: int) ->
         elif entry.item:
             run.items += 1
         else:
-            run.fragments += 1
-            if run.fragments == 3 and run.first_shard_turn is None:
+            # Loot draws a fragment's affinity from the basic fifteen unless the narrator names the place's;
+            # fusing needs three of one affinity (design audit 2026-11-06 F8).
+            affinity = rng.choice(data.affinities.basic)
+            run.fragments[affinity] += 1
+            if run.fragments[affinity] == 3 and run.first_shard_turn is None:
                 run.first_shard_turn = turn
+
+
+def _fight_length(data: GameData, foes: list[str], args: argparse.Namespace, rng: random.Random) -> int:
+    """Exchanges until every foe has taken its hits, from the check odds and the guard intent (F9)."""
+    combat = data.combat
+    guard_share = sum(i.weight for i in combat.intents if i.guards) / sum(i.weight for i in combat.intents)
+    hits_left = [combat.threats[f].hits for f in foes]
+    exchanges = 0
+    while hits_left and exchanges < FIGHT_CAP:
+        exchanges += 1
+        roll = rng.random()
+        outcome = "triumph" if roll < args.triumph else "success" if roll < args.check_chance else "failure"
+        hits = combat.attack_hits[outcome] - (1 if rng.random() < guard_share else 0)
+        hits_left[0] -= max(hits, 0)
+        if hits_left[0] <= 0:
+            hits_left.pop(0)
+    return exchanges
 
 
 def main() -> None:
@@ -86,7 +114,10 @@ def main() -> None:
     parser.add_argument("--turns-per-hour", type=float, default=20, help="estimate: about 3 minutes a turn")
     parser.add_argument("--session-minutes", type=float, default=30)
     parser.add_argument("--fight-start", type=float, default=0.15, help="free turns that start a fight")
-    parser.add_argument("--exchanges", type=int, default=3, help="turns a fight lasts")
+    parser.add_argument(
+        "--check-chance", type=float, default=0.57, help="attack success or better (the M1 fight check)"
+    )
+    parser.add_argument("--triumph", type=float, default=0.1, help="share of attacks that triumph")
     parser.add_argument("--max-foes", type=int, default=3)
     parser.add_argument("--minion", type=float, default=0.4)
     parser.add_argument("--standard", type=float, default=0.45)
@@ -109,7 +140,8 @@ def main() -> None:
 
     pace = f"{args.turns_per_hour:g} turns an hour"
     print(f"Simulated {args.runs} Tier 1 runs; the play pattern and {pace} are estimates.")
-    print(f"Hours to the Tier 2 Trial: median {at(0.5):.1f}, middle half {at(0.25):.1f} to {at(0.75):.1f}.")
+    spread = f"middle half {at(0.25):.1f} to {at(0.75):.1f}"
+    print(f"Hours to the Tier 2 Trial, excluding Trial retries: median {at(0.5):.1f}, {spread}.")
     for level in range(2, TIER_ONE_LEVELS + 1):
         turns = statistics.median(r.level_turns[level - 2] for r in runs)
         print(f"  Level {level}: median turn {turns:.0f} (session {turns / per_session + 1:.1f})")
@@ -118,9 +150,16 @@ def main() -> None:
     items = statistics.median(r.items for r in runs) / sessions
     session = f"{args.session_minutes:g}-minute session"
     print(f"Per {session}: about {coin / 12:.0f} sp of loot coin, {items:.1f} items.")
+    fights = [n for r in runs for n in r.fight_turns]
+    print(f"Fight length: median {statistics.median(fights):.0f} exchanges, {_share(fights, 4):.0%} over 4.")
     firsts = [r.first_shard_turn for r in runs if r.first_shard_turn]
     if firsts:
-        print(f"First shard (3 fragments): median session {statistics.median(firsts) / per_session + 1:.1f}.")
+        first = statistics.median(firsts) / per_session + 1
+        print(f"First fusable shard (3 fragments of one affinity): median session {first:.1f}.")
+
+
+def _share(values: list[int], above: int) -> float:
+    return sum(v > above for v in values) / len(values)
 
 
 if __name__ == "__main__":
