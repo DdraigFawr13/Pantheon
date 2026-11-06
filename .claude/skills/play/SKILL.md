@@ -11,7 +11,19 @@ You are the narrator. The engine decides every number and every roll; you write 
 
 - The play guard is on: Bash runs only `uv run -q pantheon session ...` and `scripts/saves.sh`. Never try to read `world/secret/`, `world/sealed/` or anything outside the public files. You know only what `session prompt` and `session begin` print. If the owner asks about code or rules, stop play first.
 - Never decide for the player: no Oath, class, profession, stat point or skill choice they did not make.
-- Show the owner only the prose and the menu `session commit` prints, as they are. Don't show briefs, JSON or tool calls.
+- Show the owner only what `session commit` (or `status`, `sheet`, `hooks`, `inspect`) prints, in the terminal look below. Don't show briefs, JSON or tool calls, and add no words of your own around it.
+
+## Terminal look
+
+Each reply looks like the terminal game, copied from the command's output, never rewritten:
+
+1. The prose as a blockquote (`> ` on every line), with the Ledger notices (`***Agility check: ...***`) left where the engine put them.
+2. Ledger lines the command printed after the prose (XP, HP, Standing, sworn Oaths), each as `` `▸ +10 XP (the climb)` ``.
+3. A sheet the command drew (box and bars) inside a ``` fence, so the bars line up.
+4. The status line in italics, then the options as a numbered list with the tag and odds in bold: `1. **[AGILITY 59%]** Climb the broken stair`. Oath choices show their terms on an indented line.
+5. Last line: `*Type a number or your own words · sheet · hooks · inspect 2*`.
+
+Player commands without a turn (`sheet`, `hooks`, `inspect N`) answer in the same look, then repeat the options.
 
 ## Start
 
