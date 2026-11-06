@@ -32,4 +32,5 @@ Format: `- G-<n> · <gap> · <where it shows> · <status>`
 - G-26 · A Riftborn character's birth rift affinity has no list of rifts to pick from · `world/peoples.md` · open: the slice offers any basic affinity
 - G-28 · No foe tables: which foes exist, their tiers, threat and intents · `world/power_tiers.md` Combat · open: the narrator names foes within engine bounds (D-039); M3.5's rift batch adds real ones
 - G-29 · Tier 1 items beyond the price list: foe drops (pelts, fangs), rift materials, lanterns and tools, and their prices, so loot can vary (ENG-09) · `world/economy.md`, `world/data/items.yaml` · open: only the five listed items exist (D-046)
+- G-30 · Short public descriptions of each people, god and foe kind as data, for the game page's Codex tab, which shows only their mechanics now · `world/peoples.md`, `world/pantheon.md` · open: no foe list exists yet either (foes are named by the narrator)
 - G-27 · The owner wants training and travel to skip time in one turn with a summary, but canon does not say what training gives · `world/power_tiers.md` · open: M1c built time skips without training gains (D-033, D-038)

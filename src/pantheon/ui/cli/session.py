@@ -675,6 +675,7 @@ class Session:
             "trait": trait.name if trait else "",
             "attunement": (state.attunement or "").capitalize(),
             "fight": self.fight_data(state),
+            "codex": self.codex(state, logged),
             "purse": format_cp(state.purse_cp),
             "gear": [
                 {
@@ -704,6 +705,79 @@ class Session:
             "choices_due": self.choices_due(state),
             "choice_groups": self.choice_groups(state),
             "trial_ready": state.trial_ready,
+        }
+
+    def codex(self, state: GameState, logged: list[dict[str, Any]]) -> dict[str, Any]:
+        """Game knowledge for the page's Codex tab: public data only, and foes the character has met."""
+        assert self.world.data is not None
+        data = self.world.data
+        cap = str.capitalize
+        oaths = {o.id: o for o in data.oaths}
+        classes = {c.id: c.name for c in data.classes}
+        bestiary: dict[str, dict[str, Any]] = {}
+        hits: dict[str, list[Any]] = {}  # This fight's foe id to [name, hits left].
+        for event in logged:
+            payload = event["payload"]
+            if event["type"] == "fight_started":
+                hits = {f["id"]: [f["name"], f["hits_left"]] for f in payload["foes"]}
+                for foe in payload["foes"]:
+                    entry = bestiary.setdefault(
+                        foe["name"],
+                        {
+                            "name": foe["name"],
+                            "tier": foe["tier"],
+                            "threat": foe["threat"],
+                            "met": 0,
+                            "down": 0,
+                        },
+                    )
+                    entry["met"] += 1
+            elif event["type"] == "foe_hit" and payload["foe"] in hits:
+                hits[payload["foe"]][1] -= payload["hits"]
+                if hits[payload["foe"]][1] <= 0:
+                    bestiary[hits[payload["foe"]][0]]["down"] += 1
+        return {
+            "classes": [
+                {
+                    "name": c.name,
+                    "stats": f"{cap(c.primary)} / {cap(c.secondary)}",
+                    "blurb": c.blurb,
+                    "trait": c.trait,
+                    "current": c.id == state.class_id,
+                }
+                for c in data.classes
+            ],
+            "peoples": [
+                {
+                    "name": p.name,
+                    "stat": "+3 to any stat" if p.stat == "any" else f"+3 {cap(p.stat)}",
+                    "affinity": ", ".join(
+                        "any basic affinity"
+                        if a == "any_basic"
+                        else "one from their birth rift"
+                        if a == "birth_rift"
+                        else cap(a)
+                        for a in p.innate_affinity
+                    ),
+                    "current": p.id == state.people,
+                }
+                for p in data.peoples
+            ],
+            "gods": [
+                {
+                    "name": g.name,
+                    "affinities": " and ".join(cap(a) for a in g.affinities),
+                    "favours": ", ".join(classes.get(c, c) for c in g.favoured_classes),
+                    "oaths": [
+                        {"name": o.name, "gift": o.perk, "burden": o.burden}
+                        for o in data.oaths
+                        if o.god == g.id
+                    ],
+                    "sworn": any(oaths[o].god == g.id for o in state.oaths if o in oaths),
+                }
+                for g in data.gods
+            ],
+            "bestiary": list(bestiary.values()),
         }
 
     def fight_data(self, state: GameState) -> dict[str, Any] | None:

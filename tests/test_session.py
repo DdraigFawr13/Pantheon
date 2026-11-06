@@ -431,3 +431,15 @@ def test_session_gear_commands_and_the_gear_on_screen_D_045(game: Game, tmp_path
     ]
     assert "Dagger (in use)" in game("sheet")[1]
     assert game("unequip", "weapon")[0] == 0
+
+
+def test_session_screen_codex_lists_knowledge_and_foes_met(game: Game, tmp_path: Path) -> None:
+    _start_a_fight(game, tmp_path)
+    page = tmp_path / "screen.json"
+    assert game("screen", str(page))[0] == 0
+    codex = json.loads(page.read_text(encoding="utf-8"))["codex"]
+    assert len(codex["classes"]) == 25 and sum(c["current"] for c in codex["classes"]) == 1
+    assert {p["name"] for p in codex["peoples"]} >= {"Humans", "Saltborn"}
+    assert len(codex["gods"]) == 7 and sum(g["sworn"] for g in codex["gods"]) == 1
+    assert all(g["oaths"] for g in codex["gods"])
+    assert codex["bestiary"] == [{"name": "Ash Hound", "tier": 0, "threat": "standard", "met": 1, "down": 0}]

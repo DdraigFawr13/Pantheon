@@ -155,6 +155,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     <button role="tab" data-tab="character" aria-selected="false">Character</button>
     <button role="tab" data-tab="journal" aria-selected="false">Journal</button>
     <button role="tab" data-tab="gear" aria-selected="false">Gear</button>
+    <button role="tab" data-tab="codex" aria-selected="false">Codex</button>
   </nav>
 </div></header>
 
@@ -164,6 +165,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   <div id="tab-character" class="panel" hidden></div>
   <div id="tab-journal" class="panel" hidden></div>
   <div id="tab-gear" class="panel" hidden></div>
+  <div id="tab-codex" class="panel" hidden></div>
   <div id="tab-story" class="panel" style="display:grid;gap:18px">
   <section class="story" id="story" aria-live="polite"><p class="empty">The story appears here once the narrator writes the first scene. Open this page beside the Claude Code session that runs the game.</p></section>
   <section class="fight" id="fight" hidden aria-live="polite"></section>
@@ -226,7 +228,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
       return;
     }
     $("create").hidden = true; $("tabs").hidden = false;
-    renderCharacter(s); renderJournal(s); renderGear(s); showTab(tab);
+    renderCharacter(s); renderJournal(s); renderGear(s); renderCodex(s); showTab(tab);
     $("name").textContent = s.name || "Pantheon";
     const meta = $("meta"); meta.replaceChildren();
     if (s.class) meta.append(el("span", "chip", s.class));
@@ -365,7 +367,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     tab = name;
     try { localStorage.setItem("pantheon-tab", name); } catch {}
     document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
-    ["story", "character", "journal", "gear"].forEach((t) => {
+    ["story", "character", "journal", "gear", "codex"].forEach((t) => {
       const panel = $("tab-" + t);
       if (t === "story") panel.style.display = name === "story" ? "grid" : "none";
       else panel.hidden = name !== t;
@@ -437,19 +439,9 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     }), "No skills yet."));
     const aff = card("Affinities");
     aff.append(list(words(s.affinities).map(([a, r]) => `${a[0].toUpperCase() + a.slice(1)} · rank ${r}`), "None yet."));
-    const classes = card("Classes", "How each base class plays. Yours is marked.");
-    const cl = el("div", "classlist");
-    (s.class_catalogue || []).forEach((c) => {
-      const row = el("div", "cls" + (c.current ? " current" : ""));
-      const head = el("div"); head.append(el("span", "cname", c.name), el("span", "pill", c.stats));
-      if (c.current) head.append(el("span", "pill", "Yours"));
-      row.append(head, el("span", "pblurb", c.blurb), el("span", "ptrait", c.trait));
-      cl.append(row);
-    });
-    classes.append(cl);
     const titles = card("Titles");
     titles.append(list(s.titles || [], "No titles yet."));
-    box.append(who, stats, skills, aff, titles, classes);
+    box.append(who, stats, skills, aff, titles);
   }
 
   function renderJournal(s) {
@@ -505,6 +497,45 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     const shards = card("Shards", "Absorb a shard to grow a skill or affinity. Three fragments fuse into one.");
     shards.append(list(s.shards || [], "No shards yet."));
     box.append(purse, items, shards);
+  }
+
+  function renderCodex(s) {
+    // Game knowledge from the engine's public data; the bestiary lists only foes this character has met.
+    const box = $("tab-codex"); box.replaceChildren();
+    const c = s.codex || {};
+    const entries = (items, make) => { const cl = el("div", "classlist"); items.forEach((it) => cl.append(make(it))); return cl; };
+    const head = (name, pills, current) => {
+      const h = el("div"); h.append(el("span", "cname", name));
+      pills.filter(Boolean).forEach((p) => h.append(el("span", "pill", p)));
+      if (current) h.append(el("span", "pill", current));
+      return h;
+    };
+    const beasts = card("Bestiary", "Foes you have faced. More fills in as you fight.");
+    beasts.append((c.bestiary || []).length ? entries(c.bestiary, (b) => {
+      const row = el("div", "cls");
+      row.append(head(b.name, [`Tier ${b.tier}`, b.threat]), el("span", "sub", `Met ${b.met} · brought down ${b.down}`));
+      return row;
+    }) : list([], "No foes met yet."));
+    const classes = card("Classes", "How each base class plays. Yours is marked.");
+    classes.append(entries(c.classes || s.class_catalogue || [], (k) => {
+      const row = el("div", "cls" + (k.current ? " current" : ""));
+      row.append(head(k.name, [k.stats], k.current && "Yours"), el("span", "pblurb", k.blurb), el("span", "ptrait", k.trait));
+      return row;
+    }));
+    const peoples = card("Peoples", "What each people is born with.");
+    peoples.append(entries(c.peoples || [], (p) => {
+      const row = el("div", "cls" + (p.current ? " current" : ""));
+      row.append(head(p.name, [p.stat], p.current && "Yours"), el("span", "sub", `Innate affinity: ${p.affinity}`));
+      return row;
+    }));
+    const gods = card("The Hands", "The seven gods, what they favour, and the Oaths they offer.");
+    gods.append(entries(c.gods || [], (g) => {
+      const row = el("div", "cls" + (g.sworn ? " current" : ""));
+      row.append(head(g.name, [g.affinities], g.sworn && "Sworn"), el("span", "sub", `Favours: ${g.favours}`));
+      (g.oaths || []).forEach((o) => row.append(el("span", "ptrait", `${o.name}: ${o.gift}`), el("span", "sub", `Burden: ${o.burden}`)));
+      return row;
+    }));
+    box.append(beasts, classes, peoples, gods);
   }
 
   function renderCreate(setup) {
