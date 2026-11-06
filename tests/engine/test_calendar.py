@@ -42,7 +42,7 @@ def sworn() -> Simulation:
     sim.emit("opening_gods_drawn", {"gods": ["drovash", "veshra"]})
     create_character(sim, CHOICES)
     resolve_offer(sim, "drovash")
-    choose_class(sim, "wager_bound")
+    choose_class(sim, "cutpurse")
     choose_profession(sim, "merchant")
     return sim
 

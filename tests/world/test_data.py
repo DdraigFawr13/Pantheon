@@ -20,7 +20,7 @@ def test_data_tables_load() -> None:
     assert len(data.gods) == 7
     assert len(data.affinities.basic) == 15
     assert len(data.affinities.rare) + data.affinities.sealed_rare_slots == 5
-    assert len(data.classes) == 8
+    assert len(data.classes) == 22  # D-042
     assert len(data.peoples) == 5
     assert len(data.professions.all()) == 15
 

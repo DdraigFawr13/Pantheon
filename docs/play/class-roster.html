@@ -1,0 +1,144 @@
+<title>Caldrenne Class Roster</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column of role groups; each class a compact row: name and stats, the feel, the trait, who it echoes. */
+:root {
+  --bg: #e8e4ec; --page: #f8f6fa; --ink: #211b27; --muted: #6a6072; --line: #d6cfdc; --brass: #8a5a12; --soft: #f3e7d2; --new: #2f7a4a;
+  --display: "Alegreya SC", "Palatino Linotype", Georgia, serif; --prose: "Spectral", Georgia, serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #16111a; --page: #211a26; --ink: #efe6dc; --muted: #ab9db0; --line: #3b2f42; --brass: #e3b562; --soft: #34281b; --new: #8bcf9e; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #16111a; --page: #211a26; --ink: #efe6dc; --muted: #ab9db0; --line: #3b2f42; --brass: #e3b562; --soft: #34281b; --new: #8bcf9e; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--prose); margin: 0; }
+.wrap { max-width: 720px; margin: 0 auto; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+h1 { font: 700 1.9rem/1.1 var(--display); margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); margin: 6px 0 0; max-width: 62ch; }
+h2 { font: 700 1.05rem var(--display); letter-spacing: .1em; color: var(--brass); margin: 0 0 8px; }
+.group { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.cls { display: grid; gap: 2px; padding: 10px 0; border-top: 1px dashed var(--line); }
+.cls:first-of-type { border-top: 0; padding-top: 2px; }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.name { font: 700 1.1rem var(--display); letter-spacing: .03em; }
+.stats, .echo { font: .74rem var(--mono); color: var(--muted); }
+.tag { font: 600 .66rem var(--mono); border-radius: 999px; padding: 0 7px; border: 1px solid currentColor; }
+.tag.new { color: var(--new); } .tag.kept { color: var(--muted); }
+.feel { margin: 0; }
+.trait { font: .8rem/1.45 var(--mono); color: var(--brass); margin: 0; }
+.notes { font: .9rem/1.55 var(--prose); }
+.notes li { margin: 4px 0; max-width: 66ch; }
+.gods { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font: .82rem/1.4 var(--mono); }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Caldrenne class roster</h1>
+    <p class="lede">Revised with your changes: Wager-bound cut; an Elementalist, two wilderness and two craft classes added. Twenty-two base classes, halfway between the current eight and the familiar fantasy roles. Each keeps one signature trait and a primary and secondary stat. The "echoes" line says which classic role it borrows from; the names and traits are Caldrenne's own.</p>
+  </header>
+
+  <section class="group"><h2>Front line</h2>
+    <div class="cls"><div class="head"><span class="name">Sellsword</span><span class="stats">Vigor / Agility</span><span class="tag kept">was Blade-sworn</span></div>
+      <p class="feel">The trained fighter. Good with any weapon, best with one, and steadier the longer a fight runs.</p>
+      <p class="trait">Momentum: each successful exchange adds +5 to the next attack, up to +15.</p><p class="echo">Echoes: fighter</p></div>
+    <div class="cls"><div class="head"><span class="name">Reaver</span><span class="stats">Vigor / Resolve</span><span class="tag new">new</span></div>
+      <p class="feel">Rage in armour. Gets more dangerous the more they bleed.</p>
+      <p class="trait">Blood Up: below half HP, +10 on attacks and −10 on defence until the fight ends.</p><p class="echo">Echoes: barbarian</p></div>
+    <div class="cls"><div class="head"><span class="name">Warden</span><span class="stats">Resolve / Vigor</span><span class="tag kept">kept</span></div>
+      <p class="feel">The shield-bearer. Stands in front of others and takes the hit so they don't have to.</p>
+      <p class="trait">Bulwark: may take a blow aimed at an ally within reach.</p><p class="echo">Echoes: fighter (defender)</p></div>
+    <div class="cls"><div class="head"><span class="name">Oathknight</span><span class="stats">Resolve / Presence</span><span class="tag new">new</span></div>
+      <p class="feel">The holy warrior. Fights for a god's Oath and draws strength from keeping it.</p>
+      <p class="trait">Sworn Edge: +10 on checks that honour an Oath's Burden; may spend mana to heal an ally by touch.</p><p class="echo">Echoes: paladin</p></div>
+    <div class="cls"><div class="head"><span class="name">Fistsworn</span><span class="stats">Agility / Resolve</span><span class="tag new">new</span></div>
+      <p class="feel">Discipline instead of armour. Fast hands, a still mind, a body trained into a weapon.</p>
+      <p class="trait">Still Centre: unarmoured, defends with Agility and Resolve; stamina skills cost 20 % less.</p><p class="echo">Echoes: monk</p></div>
+    <div class="cls"><div class="head"><span class="name">Spellblade</span><span class="stats">Vigor / Intellect</span><span class="tag new">new</span></div>
+      <p class="feel">Sword in one hand, spell in the other. Hits with both at once.</p>
+      <p class="trait">Edgecasting: casts a spell through a weapon strike in the same exchange.</p><p class="echo">Echoes: magus</p></div>
+  </section>
+
+  <section class="group"><h2>Skill and shadow</h2>
+    <div class="cls"><div class="head"><span class="name">Cutpurse</span><span class="stats">Agility / Intellect</span><span class="tag new">new</span></div>
+      <p class="feel">The thief and knife. Locks, pockets, rooftops and the first strike nobody saw coming.</p>
+      <p class="trait">Opening: +10 and double damage on the first strike against an unaware foe.</p><p class="echo">Echoes: rogue</p></div>
+    <div class="cls"><div class="head"><span class="name">Wayfinder</span><span class="stats">Agility / Resolve</span><span class="tag kept">kept, stats changed</span></div>
+      <p class="feel">The scout and hunter. Never lost, always first to move, deadly at range.</p>
+      <p class="trait">Pathsense: never lost; acts before enemy intents resolve in the first exchange.</p><p class="echo">Echoes: ranger</p></div>
+    <div class="cls"><div class="head"><span class="name">Inquest</span><span class="stats">Intellect / Presence</span><span class="tag new">new</span></div>
+      <p class="feel">The investigator. Reads people and scenes, and turns what they learn into an edge.</p>
+      <p class="trait">Studied Mark: after one exchange or scene observing a target, +10 on all checks against it.</p><p class="echo">Echoes: investigator</p></div>
+  </section>
+
+  <section class="group"><h2>Magic</h2>
+    <div class="cls"><div class="head"><span class="name">Arcanist</span><span class="stats">Intellect / Resolve</span><span class="tag new">new</span></div>
+      <p class="feel">The scholar-mage. Learns spells from study and has more of them than anyone.</p>
+      <p class="trait">Spellbook: one extra skill offered at each skill pick.</p><p class="echo">Echoes: wizard</p></div>
+    <div class="cls"><div class="head"><span class="name">Elementalist</span><span class="stats">Intellect / Vigor</span><span class="tag new">new</span></div>
+      <p class="feel">Fire, frost, lightning, stone, wind or water, thrown hard. The classic battle-mage.</p>
+      <p class="trait">Attuned: choose Flame, Frost, Storm, Stone, Wind or Tide at awakening; spells of that element cost 20 % less mana and get +5.</p><p class="echo">Echoes: elementalist, evoker</p></div>
+    <div class="cls"><div class="head"><span class="name">Wildblood</span><span class="stats">Presence / Vigor</span><span class="tag new">new</span></div>
+      <p class="feel">Magic in the blood, not the book. Raw, strong, and paid for in their own body.</p>
+      <p class="trait">Surge: may spend HP instead of mana to cast.</p><p class="echo">Echoes: sorcerer</p></div>
+    <div class="cls"><div class="head"><span class="name">Cantor</span><span class="stats">Presence / Intellect</span><span class="tag kept">kept</span></div>
+      <p class="feel">The voice. Song and speech that steady friends, rattle enemies and talk a room round.</p>
+      <p class="trait">Carrying Voice: Song skills cost 20 % less mana and reach everyone who can hear.</p><p class="echo">Echoes: bard</p></div>
+    <div class="cls"><div class="head"><span class="name">Votary</span><span class="stats">Resolve / Presence</span><span class="tag new">new</span></div>
+      <p class="feel">A god's priest. Heals, wards and calls on a sworn god's favour.</p>
+      <p class="trait">Channel: healing and warding skills cost 20 % less; Divine Favour opens at Standing 50, not 60.</p><p class="echo">Echoes: cleric</p></div>
+    <div class="cls"><div class="head"><span class="name">Hexer</span><span class="stats">Intellect / Presence</span><span class="tag new">new</span></div>
+      <p class="feel">Curses, bargains and quiet spite. Makes enemies weaker instead of themselves stronger.</p>
+      <p class="trait">Malediction: once per fight, curse one foe: −10 on all its checks.</p><p class="echo">Echoes: witch, warlock</p></div>
+    <div class="cls"><div class="head"><span class="name">Gravewalker</span><span class="stats">Resolve / Presence</span><span class="tag kept">kept</span></div>
+      <p class="feel">The speaker for the dead. Talks with spirits and works death and ancestor magic.</p>
+      <p class="trait">Ancestral Voice: may question the spirits of the dead; Death and Spirit skills cost 20 % less.</p><p class="echo">Echoes: oracle, necromancer</p></div>
+  </section>
+
+  <section class="group"><h2>Wilderness</h2>
+    <div class="cls"><div class="head"><span class="name">Wildkin</span><span class="stats">Vigor / Resolve</span><span class="tag kept">kept, stats changed</span></div>
+      <p class="feel">The beast-bonded. Fights beside an animal companion that grows as they do.</p>
+      <p class="trait">Bonded Beast: a beast companion that levels with the character.</p><p class="echo">Echoes: beastmaster, hunter</p></div>
+    <div class="cls"><div class="head"><span class="name">Greenwarden</span><span class="stats">Resolve / Intellect</span><span class="tag new">new</span></div>
+      <p class="feel">The druid proper. Plants, weather and healing, strongest far from walls.</p>
+      <p class="trait">Old Growth: +10 on checks in the wild; Growth and Life skills cost 20 % less.</p><p class="echo">Echoes: druid</p></div>
+    <div class="cls"><div class="head"><span class="name">Skinchanger</span><span class="stats">Vigor / Agility</span><span class="tag new">new</span></div>
+      <p class="feel">Takes a beast's shape when words run out. Teeth, claws, a nose that never lies.</p>
+      <p class="trait">Beast Form: once per fight, take a beast shape: +10 on physical checks, no spells or speech until it ends.</p><p class="echo">Echoes: shapeshifter</p></div>
+  </section>
+
+  <section class="group"><h2>Craft</h2>
+    <div class="cls"><div class="head"><span class="name">Hearthwright</span><span class="stats">Intellect / Resolve</span><span class="tag kept">kept</span></div>
+      <p class="feel">The maker. Brews, builds and mends, and turns shards and scraps into something useful.</p>
+      <p class="trait">Kitcraft: +10 on crafting checks; fuses shards from 2 fragments instead of 3.</p><p class="echo">Echoes: alchemist</p></div>
+    <div class="cls"><div class="head"><span class="name">Runesmith</span><span class="stats">Vigor / Intellect</span><span class="tag new">new</span></div>
+      <p class="feel">Forge and inscription. Makes weapons and armour, then writes power into them.</p>
+      <p class="trait">Rune-Etch: once a day, inscribe a rune on an item: +5 on checks that use it until the next rest.</p><p class="echo">Echoes: smith-warrior, artificer</p></div>
+    <div class="cls"><div class="head"><span class="name">Gearwright</span><span class="stats">Intellect / Agility</span><span class="tag new">new</span></div>
+      <p class="feel">Traps, devices and clever machines. Wins by preparing the ground.</p>
+      <p class="trait">Contraption: prepare one device per rest (trap, flare, lockbreaker, grapple); a placed device counts as a Terrain Overcome Condition.</p><p class="echo">Echoes: tinker, artificer</p></div>
+  </section>
+
+  <section class="group"><h2>Which gods favour which classes</h2>
+    <div class="gods"><table>
+      <tr><th>God</th><th>Favoured classes (+5 on checks with the god's affinities)</th></tr>
+      <tr><td>Veshra</td><td>Oathknight, Cantor, Fistsworn</td></tr>
+      <tr><td>Kaul</td><td>Sellsword, Warden, Runesmith, Elementalist</td></tr>
+      <tr><td>Ysmere</td><td>Wayfinder, Hearthwright, Wildblood, Elementalist</td></tr>
+      <tr><td>Maru-Ghen</td><td>Gravewalker, Votary, Greenwarden</td></tr>
+      <tr><td>Ilvane</td><td>Arcanist, Spellblade, Inquest</td></tr>
+      <tr><td>Drovash</td><td>Cutpurse, Hexer, Gearwright</td></tr>
+      <tr><td>Hurrow</td><td>Wildkin, Reaver, Skinchanger</td></tr>
+    </table></div>
+  </section>
+
+  <section class="group notes"><h2>What changes, and what doesn't</h2>
+    <ul>
+      <li>Six classes stay (two with new stat pairs), Blade-sworn becomes Sellsword, Wager-bound is cut, and fifteen are new. Each primary stat leads at least three classes, so no stat is a dead end.</li>
+      <li>No gunpowder classes: Caldrenne has none.</li>
+      <li>Level 10 evolutions for every class come later, with the M3.5 content batches. A <strong>class-design</strong> skill would keep new classes and evolutions consistent: a checklist for role, stat pair, one trait of fixed size, god and affinity ties, data fields and tests.</li>
+      <li>Ddraig's game is at the Dual Offer, so he picks from the new list.</li>
+    </ul>
+  </section>
+</div>

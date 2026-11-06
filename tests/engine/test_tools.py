@@ -53,7 +53,7 @@ def fresh(seed: int = 1, gods: tuple[str, str] = ("drovash", "veshra")) -> Simul
 def sworn(seed: int = 1) -> Simulation:
     sim = fresh(seed)
     resolve_offer(sim, "drovash")
-    choose_class(sim, "wager_bound")
+    choose_class(sim, "cutpurse")
     choose_profession(sim, "merchant")
     return sim
 
@@ -242,7 +242,7 @@ def test_eng07_xp_levels_up_with_class_gains_and_a_free_point() -> None:
     assert sim.state.level == 2
     assert sim.state.xp == 175 - xp_to_next(1)
     assert sim.state.stats["agility"] == before["agility"] + 2
-    assert sim.state.stats["presence"] == before["presence"] + 1
+    assert sim.state.stats["intellect"] == before["intellect"] + 1  # Cutpurse: Agility / Intellect.
     allocate_point(sim, "resolve")
     assert sim.state.stats["resolve"] == before["resolve"] + 1
     with pytest.raises(Rejected):
