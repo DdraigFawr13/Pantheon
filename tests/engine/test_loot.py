@@ -1,4 +1,4 @@
-"""Rewards the engine sizes (ENG-09, D-045): tier-scaled XP, foes brought down, loot, coin, items and gear."""
+"""Rewards the engine sizes (ENG-09, D-046): tier-scaled XP, foes brought down, loot, coin, items and gear."""
 
 from pathlib import Path
 from typing import Any

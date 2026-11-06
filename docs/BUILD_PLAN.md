@@ -133,11 +133,11 @@ M1a to M1c are merged; M1d to M1f are built on PR #19 (`claude/m1-build`). Order
 - Calendar (1 Seedtide 1,140 AS start, Blank Days), `advance_time`, clocks (one segment per season, neglect rule), petitions as hooks.
 - Tests: `hypothesis` generates action sequences; replay equals live state; bounds hold.
 
-**M1d Combat and death**. Built on `m1d-combat` (D-039), merged into PR #19 with nine solo fight traits (D-043) and fights in session play. The other traits and real foe tables wait for M3.5.
+**M1d Combat and death**. Built on `m1d-combat` (D-039), merged into PR #19 with nine solo fight traits (D-044) and fights in session play. The other traits and real foe tables wait for M3.5.
 - Exchanges, enemy intents as data, skill costs and cooldowns, pool regeneration, overspend and Injury roll (D-009), Downed, Last Breath per hostile exchange, Reckoning escalation (fourth is final).
 
-**M1e Reward tables v0** (ENG-09, G-08). Built on PR #19 with the owner's numbers (D-045): tier-scaled XP, foe XP, loot, coin, five canon items and gear.
-- `rewards.yaml`: XP per kind scaled by tier to hit D-014 pacing; Standing deltas; damage by outcome and rarity; Tier 1 loot tables. A small simulation script checks that the tables reach Tier 2 in about 7 hours of typical play (D-045; estimate inputs in `scripts/pacing_sim.py`).
+**M1e Reward tables v0** (ENG-09, G-08). Built on PR #19 with the owner's numbers (D-046): tier-scaled XP, foe XP, loot, coin, five canon items and gear.
+- `rewards.yaml`: XP per kind scaled by tier to hit D-014 pacing; Standing deltas; damage by outcome and rarity; Tier 1 loot tables. A small simulation script checks that the tables reach Tier 2 in about 7 hours of typical play (D-046; estimate inputs in `scripts/pacing_sim.py`).
 
 **M1f Dev CLI**. Built on PR #19.
 - `pantheon roll`, `pantheon sheet`, `pantheon log`, no LLM. `pantheon fork N` came early, with M1c.

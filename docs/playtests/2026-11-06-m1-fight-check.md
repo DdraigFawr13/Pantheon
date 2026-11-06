@@ -4,7 +4,7 @@ An engine check by the build session, not the owner's playtest: `pantheon sessio
 
 Findings:
 - Exchange 3 rolled a success against the hound's guarded stance, which takes one hit off, so the hound took none. The summary said "takes 0 hit"; it now says "takes no hit".
-- One two-foe fight at Level 1 gave 438 XP and two levels (D-045's numbers). LitRPG-fast, as approved; watch it in play.
+- One two-foe fight at Level 1 gave 438 XP and two levels (D-046's numbers). LitRPG-fast, as approved; watch it in play.
 - The character attuned to Storm without a Storm affinity (its affinities were Tide and Iron). Canon does not say Attuned needs the affinity; noted for the owner.
 
 ```text

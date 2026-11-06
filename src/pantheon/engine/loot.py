@@ -1,4 +1,4 @@
-"""Rewards the engine sizes: XP by tier, XP for foes brought down, loot rolls, coin and items (ENG-09, D-045).
+"""Rewards the engine sizes: XP by tier, XP for foes brought down, loot rolls, coin and items (ENG-09, D-046).
 
 The narrator names the kind of a reward; every amount here comes from `world/data/rewards.yaml` and
 `world/data/items.yaml`, and every roll from the `loot` stream (GAME-01).
@@ -50,7 +50,7 @@ def foe_xp(state: GameState, data: GameData, foe: Foe) -> int:
 
 
 def foes_down_xp(sim: Simulation) -> None:
-    """At a fight's end: XP for each foe brought down, outside the narrator's per-turn cap (D-045)."""
+    """At a fight's end: XP for each foe brought down, outside the narrator's per-turn cap (D-046)."""
     state, data = sim.state, sim.rules.data
     if state.fight is None or state.level == 0:
         return

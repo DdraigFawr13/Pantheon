@@ -1,4 +1,4 @@
-"""Class traits the engine runs (D-043). Each is data in `world/data/combat.yaml`; this module reads it.
+"""Class traits the engine runs (D-044). Each is data in `world/data/combat.yaml`; this module reads it.
 
 Every bonus here feeds the same check calculation as the odds on screen (GAME-02), so a trait shows on
 an option before the player picks it.

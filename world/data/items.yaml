@@ -1,5 +1,5 @@
 # Tier 1 items with prices from world/economy.md (12 cp = 1 sp, 20 sp = 1 gp). Effects approved with M1e
-# (G-08, D-045); more items wait for canon (G-29).
+# (G-08, D-046); more items wait for canon (G-29).
 - {id: healing_tonic, name: Healing tonic, kind: consumable, value_cp: 24, heal_percent: 25}
 - {id: dagger, name: Dagger, kind: weapon, value_cp: 36, attack_bonus: 5}
 - {id: sword, name: Sword, kind: weapon, value_cp: 180, attack_bonus: 10}

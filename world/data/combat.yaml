@@ -20,7 +20,7 @@ overspend_limit_percent: 50
 injury_chance_per_percent: 2
 last_breath_marks: 3
 final_reckoning: 4
-# Class traits the engine runs in fights, keyed by class id (D-043). The numbers are the trait text in
+# Class traits the engine runs in fights, keyed by class id (D-044). The numbers are the trait text in
 # classes.yaml; the other classes' traits are story text until their systems exist.
 traits:
   sellsword: {name: Momentum, attack_bonus_per_success: 5, attack_bonus_cap: 15}

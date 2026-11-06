@@ -108,7 +108,7 @@ def choose_profession(sim: Simulation, profession: str) -> None:
 
 
 def choose_attunement(sim: Simulation, element: str) -> None:
-    """Attuned (D-043): the Elementalist picks the element its spells favour, once."""
+    """Attuned (D-044): the Elementalist picks the element its spells favour, once."""
     trait = trait_of(sim.state, sim.rules.data)
     if trait is None or not needs_attunement(sim.state, sim.rules.data):
         raise Rejected("no attunement choice is due")

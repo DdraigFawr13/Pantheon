@@ -78,7 +78,7 @@ class CheckRequest:
     challenge_tier: int
     approach: Approach
     overcome: OvercomeClaim | None = None
-    bonus: int = 0  # Class traits and the like, added after the formula (D-043).
+    bonus: int = 0  # Class traits and the like, added after the formula (D-044).
 
 
 @dataclass(frozen=True, slots=True)

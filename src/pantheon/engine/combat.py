@@ -96,7 +96,7 @@ def _blow_percent(sim: Simulation, foe: Foe) -> int:
         percent = max(0, percent - trait.curse_damage_percent)  # Malediction: the cursed foe's blows weaken.
     armour = sim.rules.data.item_of(sim.state.equipped.get("armour", ""))
     if armour is not None:
-        percent = max(0, percent - armour.block_percent)  # Armour takes the edge off every blow (D-045).
+        percent = max(0, percent - armour.block_percent)  # Armour takes the edge off every blow (D-046).
     return percent
 
 
@@ -164,7 +164,7 @@ def resolve_exchange(
         hits = table.attack_hits[outcome.value]
         trait = trait_of(state, sim.rules.data)
         if trait and state.fight.ambush and not state.fight.opened:
-            hits *= trait.ambush_hit_multiplier  # Opening: the unseen first strike (D-043).
+            hits *= trait.ambush_hit_multiplier  # Opening: the unseen first strike (D-044).
         if next(i for i in table.intents if i.id == foe.intent).guards:
             hits = max(0, hits - 1)
         hits = min(hits, foe.hits_left)

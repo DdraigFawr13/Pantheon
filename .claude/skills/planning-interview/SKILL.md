@@ -48,7 +48,7 @@ To read answers: one `ArtifactData` `list` on the collection with `query.limit: 
 ## After each round
 
 1. Read the answers and every note with its answer. A note can qualify or overrule the option chosen, and a note on an unanswered question still counts. Look for contradictions between answers, scope that can't fit the stated time, and choices that break each other. A contradiction is the first question of the next round, quoting both answers.
-2. When Morgan asks for "show me", "mockups" or "samples", make the next round visual: wireframes as `info` cards built from CSS boxes, and style samples drawn on a canvas. Remember that a phone screen is not the target device, and say so.
+2. When Morgan asks for "show me", "mockups" or "samples", make the next round visual: wireframes as `info` cards built from CSS boxes, and style samples drawn on a canvas. Remember that a phone screen is not the target device, and say so. For a project with a UI, the design stage runs `ui-style` (taste board, style doc) and then `ui-mockups` for the key screens before the final page.
 3. Start every later round with an `info` recap of what is settled. Keep proposals visibly separate from decisions (WS-03).
 
 ## The review round

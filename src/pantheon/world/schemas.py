@@ -236,7 +236,7 @@ class Intent(_Strict):
 
 
 class Trait(_Strict):
-    """A class trait the engine runs in fights, as plain effects a class can combine (D-043)."""
+    """A class trait the engine runs in fights, as plain effects a class can combine (D-044)."""
 
     name: str
     attack_bonus_per_success: int = Field(default=0, ge=0)

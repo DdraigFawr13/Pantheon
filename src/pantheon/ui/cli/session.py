@@ -534,7 +534,7 @@ class Session:
             self.console.print(f'Next: `session begin "{text}"`')
 
     def gear(self, verb: str, what: str) -> None:
-        """Player commands for gear: use a consumable, equip a weapon or armour, or take one off (D-045)."""
+        """Player commands for gear: use a consumable, equip a weapon or armour, or take one off (D-046)."""
         self.no_pending()
         sim = self.command_sim()
         handlers = {"use": use_item, "equip": equip_item, "unequip": unequip_item}

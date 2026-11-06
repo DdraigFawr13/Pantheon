@@ -6,14 +6,17 @@ Updated: 2026-11-06. A fresh session must be able to continue from this file alo
 
 **M1d, M1e and M1f are built on draft PR #19** (`claude/m1-build`), which merges #16 (D-039) onto main and supersedes it. M1 is complete there, pending the owner's approval to merge (GIT-07).
 
+In parallel: PR #20 merged master v4.11.0 (D-043) and two audits, `docs/audit/2026-11-06-repo.md` (42 findings) and `docs/audit/2026-11-06-tests.md` (28 findings); the owner accepted every recommendation. Another session fixes them on `ccr-2a3ebc70-8wd8jg` (play-guard holes F1 and F2 first). Whichever of #19 and the audit-fix PR merges second merges `main` in and re-runs the checks (GIT-04).
+
 ## Just done
 
 - 2026-11-03 Master upgrade to v4.4.0 (D-040), PR #17 merged.
+- 2026-11-06 Master upgrade to v4.11.0 (D-043) and the repo and tests audits, PR #20 merged.
 - 2026-11-06 M1.7 (D-041): `pantheon session` runs each turn step as a command; `/play` skill; `play-guard` hook (Bash only `uv run pantheon session` and `scripts/saves.sh`, public reads only); saves as a text dump on the `saves` branch; the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b) shows story, Character, Journal and Gear tabs from `session screen` JSON and sends taps to the session as comments.
 - 2026-11-06 D-042: 25 base classes with traits and blurbs (`world/data/classes.yaml`, power_tiers.md table, gods' favoured classes); `class-design` skill; roster page https://claude.ai/artifact/96Gk7pos2FRTar4ezcyRfS.
 - 2026-11-06 First session play, five turns: `docs/playtests/2026-11-06-session-play.md`. The owner: "the game works and the fundamentals are fun", the writing needs work and maybe shortening to move quicker ("we can get to that later"). Ddraig Fawr (he/him), Elementalist attuned to Storm, Enchanter, sworn to Ysmere; timeline `ddb27b36` on the `saves` branch.
-- 2026-11-06 M1d on PR #19: #16 merged in (only doc conflicts; its tests moved from the cut Wager-bound to Warden). The owner chose the nine solo fight traits (D-043): data in `world/data/combat.yaml` `traits`, read by `engine/traits.py`, a `bonus` on `CheckRequest` so odds and roll agree, `choose attunement <element>` for the Elementalist. Session play runs fights: a picked fight option rolls `fight_move` before the prose, a Downed turn runs the foes' exchange, `session tool --file`, a /play Fights section, and a fight panel on the game page (republished, version 8). Owner's direction: LitRPG pacing and tone (D-044).
-- 2026-11-06 M1e on PR #19 (D-045, owner-approved numbers, XP 15 % above the first draft): tier-scaled XP; foe XP and body loot when fights end; `grant_loot` (cache, bounty), `adjust_inventory`, `adjust_currency`; five canon items in `world/data/items.yaml`; weapons, armour, tonics; `session use/equip/unequip`; the second Reckoning takes carried gear. `scripts/pacing_sim.py` estimates 7.0 h to Tier 2, so D-014 and `world/power_tiers.md` now say about 7 hours. Game page Gear tab (version 9). M1f: `pantheon roll`, `sheet`, `log`. Scripted fight check: `docs/playtests/2026-11-06-m1-fight-check.md`. The owner's save loads; its first prompt is `choose attunement`.
+- 2026-11-06 M1d on PR #19: #16 merged in (only doc conflicts; its tests moved from the cut Wager-bound to Warden). The owner chose the nine solo fight traits (D-044): data in `world/data/combat.yaml` `traits`, read by `engine/traits.py`, a `bonus` on `CheckRequest` so odds and roll agree, `choose attunement <element>` for the Elementalist. Session play runs fights: a picked fight option rolls `fight_move` before the prose, a Downed turn runs the foes' exchange, `session tool --file`, a /play Fights section, and a fight panel on the game page (republished, version 8). Owner's direction: LitRPG pacing and tone (D-045).
+- 2026-11-06 M1e on PR #19 (D-046, owner-approved numbers, XP 15 % above the first draft): tier-scaled XP; foe XP and body loot when fights end; `grant_loot` (cache, bounty), `adjust_inventory`, `adjust_currency`; five canon items in `world/data/items.yaml`; weapons, armour, tonics; `session use/equip/unequip`; the second Reckoning takes carried gear. `scripts/pacing_sim.py` estimates 7.0 h to Tier 2, so D-014 and `world/power_tiers.md` now say about 7 hours. Game page Gear tab (version 9). M1f: `pantheon roll`, `sheet`, `log`. Scripted fight check: `docs/playtests/2026-11-06-m1-fight-check.md`. The owner's save loads; its first prompt is `choose attunement`.
 
 ## Next
 
@@ -46,4 +49,4 @@ Updated: 2026-11-06. A fresh session must be able to continue from this file alo
 
 ## Decisions since the last plan update
 
-- 2026-11-06 D-007 to D-045 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037 to D-039, D-043 Assumed).
+- 2026-11-06 D-007 to D-046 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037 to D-039, D-044 Assumed).
