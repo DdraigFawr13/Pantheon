@@ -25,6 +25,10 @@ SUGGEST = json.dumps(
 CLIMB = json.dumps({"stat": "agility", "difficulty": "hard", "challenge_tier": 0, "stakes": "a fall"})
 
 
+# A fixed seed: `--seed 0` means "draw a random one", which made these tests roll new dice every run.
+SEED = 42
+
+
 class Game:
     def __init__(self, tmp_path: Path, capsys: Any) -> None:
         self.db = tmp_path / "game.db"
@@ -47,7 +51,7 @@ class Game:
             assert tid is not None
             return db.load_state(tid), db.last_turn(tid)
 
-    def create(self, seed: int = 0) -> None:
+    def create(self, seed: int = SEED) -> None:
         code, out = self(
             "create",
             "--name",
@@ -62,7 +66,7 @@ class Game:
         assert code == 0, out
         assert "Next: `session begin`" in out
 
-    def opening(self, *, create: bool = True, seed: int = 0) -> None:
+    def opening(self, *, create: bool = True, seed: int = SEED) -> None:
         if create:
             self.create(seed)
         assert self("begin")[0] == 0
@@ -70,7 +74,7 @@ class Game:
         assert self("tool", "suggest_actions", SUGGEST)[0] == 0
         assert self("commit")[0] == 0
 
-    def sworn(self, seed: int = 0) -> None:
+    def sworn(self, seed: int = SEED) -> None:
         self.opening(seed=seed)
         state, _ = self.state()
         code, out = self("choose", "offer", state.opening_gods[0])
@@ -137,7 +141,10 @@ def test_session_check_rolls_before_prose_and_replays_the_same_dice_ENG_04(game:
     game("tool", "suggest_actions", SUGGEST)
     code, out = game("commit")
     assert code == 0
-    assert f"{first_roll['outcome'].replace('_', ' ')}***" in out
+    outcome = first_roll["outcome"].replace("_", " ") + (
+        " + complication" if first_roll["complication"] else ""
+    )
+    assert f"{outcome}***" in out
     with Database.open(game.db) as db:
         tid = db.latest_timeline()
         assert tid is not None
