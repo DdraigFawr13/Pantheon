@@ -31,6 +31,11 @@ INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',8,2,'flag_set','{"
 INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',9,2,'hook_registered','{"description": "Maru-Ghen''s response to being refused", "due_condition": "within the next few days, through a Vessel or an omen", "id": 3, "source_choice": "Dual Offer: ysmere", "turn": 2}');
 INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',10,2,'hook_registered','{"description": "Ysmere''s answer to the Oath", "due_condition": "within the next few days, through a Vessel or an omen", "id": 4, "source_choice": "Dual Offer: ysmere", "turn": 2}');
 INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',11,2,'hook_registered','{"description": "A rival who survived the fall swore Last Rest to Maru-Ghen", "due_condition": "when the player next deals with Rifters or that god''s people", "id": 5, "source_choice": "Dual Offer: ysmere", "turn": 2}');
+INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',12,2,'class_chosen','{"class_id": "elementalist"}');
+INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',13,2,'profession_chosen','{"profession": "enchanter"}');
+INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',14,2,'hook_registered','{"description": "The Rifter crew sack that fell into the Stair with Ddraig, which the Tallyhouse wants found", "due_condition": "when Ddraig returns to the Stair or the Tallyhouse asks again", "id": 6, "source_choice": "", "turn": 2}');
+INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',15,2,'hook_registered','{"description": "The Elementalist attunement left blank on the Ledger, Storm or Tide, the player to choose", "due_condition": "when Ddraig first calls on magic or chooses it outright", "id": 7, "source_choice": "", "turn": 2}');
+INSERT INTO "event" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',16,2,'actions_suggested','{"actions": [{"check": null, "cost": "registration costs silver you barely have", "label": "Go with Dunmore and register at the Tallyhouse", "tag": null, "violent": false}, {"check": {"approach": "other", "challenge_tier": 1, "difficulty": "hard", "overcome": null, "skill": null, "stakes": "a fall back into the rift", "stat": "agility"}, "cost": "the Stair is still settling", "label": "Climb back down the hole for the crew sack", "tag": "agility", "violent": false}, {"check": null, "cost": null, "label": "Walk over and talk to the dusty Rifter", "tag": null, "violent": false}, {"check": {"approach": "other", "challenge_tier": 1, "difficulty": "routine", "overcome": null, "skill": null, "stakes": "a wild spark in a crowd", "stat": "intellect"}, "cost": "a crowd is watching", "label": "Reach for the storm and see what answers", "tag": "Elementalist", "violent": false}]}');
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT INTO "meta" VALUES('schema_version','2');
 CREATE TABLE rng_checkpoint (
@@ -138,4 +143,33 @@ The two voices did not like sharing the dark. Ddraig could feel it, a pressure f
 There was time, just, to ask them something. Ask what each one actually wanted in return. Ask why a clerk was worth the trouble. Or try a bargain, which the clerk''s apprentice in Ddraig suspected neither god would take kindly.
 
 Both voices waited, and the air got thinner.',0,0,0,0);
+INSERT INTO "turn" VALUES('ddb27b3630ea4a4d9c8aede6bb389706',2,'[I swear the Turning Tide Oath to Ysmere. The Ledger opens. Narrate the aftermath.]','"The Tide," Ddraig said. "I''ll take the Tide."
+
+"Obviously," Ysmere said, delighted, the way a very large person is delighted to win at cards. "The gravedigger will sulk for a century. Let him. Hold still, darling, this part tickles."
+
+It did not tickle. It felt like being picked up and put down a little to the left of where he had been. Then a page opened behind his eyes, written in his own handwriting.
+
+**Ddraig Fawr. Human. Tier 1, Level 1. Elementalist. Enchanter.**
+**HP 70/70. Mana 63/63. Stamina 59/59.**
+**Affinities: Storm 1, Tide 1. Oath: Turning Tide.**
+
+Under the class there was one more line. *Attuned:* and then nothing, like a form somebody had forgotten to finish.
+
+Ddraig read it twice, because he was a clerk and you always check the sum. Elementalist meant throwing the weather at people. He had two weathers to choose from. Storm, which he had been born with and which had never done anything but make his hair stand up before thunder. Or Tide, which a goddess had handed him thirty seconds ago and which came with strings.
+
+*Pick the one you know, or the one your new boss likes. Classic clerk problem.*
+
+"You''ll know the rain before it knows itself," Ysmere went on. "Tomorrow, by the way. And you''ll keep moving. No roots, darling. Roots are how people end up under mills."
+
+The stone above him shifted. Grey light came through, then a hand, then a broad face with a Registrar''s chain around the neck.
+
+"Got a live one!" the face shouted. "Clerk! Can you climb?"
+
+He could. Vigor 30 was finally useful. He came up into the ruins of the mill with half of Cinder Ford standing around the hole. Registrar Hale Dunmore, who signed his wages, looked at him with the narrow expression of a man several tiers up who could tell when somebody''s tier had just changed.
+
+Across the rubble a Rifter he did not know sat on a broken beam, grey with dust, watching him. She did not look surprised.
+
+Dunmore lowered his voice. "You came out of that with a Ledger. Register before someone else decides what you are. And the crew''s sack went down with you. The Tallyhouse will want it."
+
+Registering meant fees and questions. The sack meant going back toward the hole.',0,0,0,0);
 COMMIT;
