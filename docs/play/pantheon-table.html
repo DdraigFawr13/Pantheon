@@ -25,15 +25,21 @@ body { background: radial-gradient(120% 60% at 50% 0%, var(--glow), transparent 
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--page); }
 .wrap { max-width: 680px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 header.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--page); border-bottom: 1px solid var(--line); }
-header .wrap { padding-block: 10px; display: grid; gap: 6px; }
+header .wrap { padding-block: 12px 0; display: grid; gap: 10px; }
 .who { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .who h1 { font: 700 1.25rem/1.1 var(--display); margin: 0; letter-spacing: .02em; }
 .who button { font: 600 .78rem var(--mono); color: var(--brass); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
-.meta { font: .78rem/1.3 var(--mono); color: var(--muted); }
-.bars { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
-.meter { display: grid; grid-template-columns: 3.2em 1fr auto; gap: 8px; align-items: center; font: .74rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-.meter .track { height: 7px; background: var(--line); border-radius: 4px; overflow: hidden; }
-.meter .fill { height: 100%; border-radius: 4px; background: var(--c, var(--brass)); transition: width .4s ease; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font: .74rem/1.2 var(--mono); color: var(--muted); }
+.meta span { white-space: nowrap; }
+.meta .chip { font: 700 .74rem var(--display); letter-spacing: .06em; color: var(--brass); border: 1px solid color-mix(in srgb, var(--brass) 45%, transparent); background: var(--brass-soft); border-radius: 999px; padding: 2px 10px; }
+.meta .sep { opacity: .5; }
+.bars { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+.meter { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "label value" "track track"; gap: 3px 8px; font: .7rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter > span:first-child { grid-area: label; font: 700 .72rem var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.meter > span:last-child { grid-area: value; color: var(--ink); }
+.meter .track { grid-area: track; }
+.meter .track { height: 8px; background: color-mix(in srgb, var(--line) 80%, transparent); border-radius: 999px; overflow: hidden; box-shadow: inset 0 1px 2px rgb(0 0 0 / .25); }
+.meter .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, color-mix(in srgb, var(--c, var(--brass)) 70%, black), var(--c, var(--brass))); box-shadow: 0 0 8px color-mix(in srgb, var(--c, var(--brass)) 45%, transparent); transition: width .4s ease; }
 main { padding-block: 18px 40px; display: grid; gap: 18px; }
 .empty { color: var(--muted); font-style: italic; }
 .story p { margin: 0 0 .9em; max-width: 65ch; }
@@ -85,7 +91,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .stat .fill { height: 100%; background: var(--brass); }
 .sheet .close { justify-self: end; }
 .panel { display: grid; gap: 14px; }
-.tabs { display: flex; gap: 4px; overflow-x: auto; }
+.tabs { margin-top: 2px; display: flex; gap: 4px; overflow-x: auto; }
 .tabs button { font: 700 .82rem var(--display); letter-spacing: .06em; color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px 5px; cursor: pointer; white-space: nowrap; }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--brass); }
 .card { border: 1px solid var(--line); border-radius: 8px; background: var(--page); padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
@@ -118,7 +124,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .card { box-shadow: 0 1px 0 var(--line); }
 .card h3::after { content: ""; display: block; height: 1px; margin-top: 6px; background: linear-gradient(90deg, var(--brass), transparent); opacity: .6; }
 @media (prefers-reduced-motion: reduce) { .choice { transition: none; } .choice:hover { transform: none; } }
-@media (max-width: 420px) { .bars { grid-template-columns: 1fr; } }
+
 </style>
 
 <header class="bar"><div class="wrap">
@@ -202,8 +208,10 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     $("create").hidden = true; $("tabs").hidden = false;
     renderCharacter(s); renderJournal(s); renderGear(s); showTab(tab);
     $("name").textContent = s.name || "Pantheon";
-    const progress = s.level ? `Tier ${s.tier} · Level ${s.level}` : "Unwritten";
-    $("meta").textContent = [s.date, s.class || null, progress, `Turn ${s.turn}`].filter(Boolean).join(" · ");
+    const meta = $("meta"); meta.replaceChildren();
+    if (s.class) meta.append(el("span", "chip", s.class));
+    meta.append(el("span", "chip", s.level ? `Tier ${s.tier} · Level ${s.level}` : "Unwritten"));
+    meta.append(el("span", null, `${s.date} · Turn ${s.turn}`));
     const bars = $("bars"); bars.replaceChildren(
       meter("HP", s.hp, s.max_hp, "var(--blood)"),
       ...(s.level ? [meter("XP", s.xp, s.xp_next, "var(--brass)")] : [meter("Mana", s.max_mana, s.max_mana, "var(--mana)")]),
