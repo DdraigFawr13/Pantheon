@@ -1,9 +1,51 @@
-# world/power_tiers.md, Classes: the eight base classes.
-- {id: blade_sworn, name: Blade-sworn, primary: vigor, secondary: agility}
-- {id: warden, name: Warden, primary: resolve, secondary: vigor}
-- {id: cantor, name: Cantor, primary: presence, secondary: intellect}
-- {id: wayfinder, name: Wayfinder, primary: agility, secondary: intellect}
-- {id: hearthwright, name: Hearthwright, primary: intellect, secondary: resolve, fragments_to_fuse: 2}
-- {id: wager_bound, name: Wager-bound, primary: agility, secondary: presence}
-- {id: gravewalker, name: Gravewalker, primary: resolve, secondary: presence}
-- {id: wildkin, name: Wildkin, primary: vigor, secondary: agility}
+# world/power_tiers.md, Classes: the eight base classes. Traits copy the Classes table; blurbs are a one-line
+# feel for the class on the character page (owner's request, 2026-11-06).
+- id: blade_sworn
+  name: Blade-sworn
+  primary: vigor
+  secondary: agility
+  trait: "Momentum: each successful exchange in a fight adds +5 to the next attack, up to +15"
+  blurb: The front-line fighter. Hits hard, keeps hitting, and gets better the longer a fight runs.
+- id: warden
+  name: Warden
+  primary: resolve
+  secondary: vigor
+  trait: "Bulwark: may take a blow aimed at an ally within reach"
+  blurb: The protector. Stands in front of others and takes the hit so they don't have to.
+- id: cantor
+  name: Cantor
+  primary: presence
+  secondary: intellect
+  trait: "Carrying Voice: Song skills cost 20 % less mana and reach everyone who can hear"
+  blurb: The voice. Magic through song and speech that steadies friends, rattles enemies and talks a room round.
+- id: wayfinder
+  name: Wayfinder
+  primary: agility
+  secondary: intellect
+  trait: "Pathsense: never lost; acts before enemy intents resolve in the first exchange"
+  blurb: The scout and guide. Quick, clever, never lost, and always first to move.
+- id: hearthwright
+  name: Hearthwright
+  primary: intellect
+  secondary: resolve
+  fragments_to_fuse: 2
+  trait: "Kitcraft: +10 on crafting checks; fuses shards from 2 fragments instead of 3"
+  blurb: The maker. Builds, brews and mends, and turns shards and scraps into something useful.
+- id: wager_bound
+  name: Wager-bound
+  primary: agility
+  secondary: presence
+  trait: "Double or Nothing: before a check, may stake it: success upgrades one step, failure downgrades one step"
+  blurb: The gambler. Lives on luck and nerve, and can bet a roll to make it better or worse.
+- id: gravewalker
+  name: Gravewalker
+  primary: resolve
+  secondary: presence
+  trait: "Ancestral Voice: may question the spirits of the dead; Death and Spirit skills cost 20 % less"
+  blurb: The speaker for the dead. Talks with spirits and works death and ancestor magic.
+- id: wildkin
+  name: Wildkin
+  primary: vigor
+  secondary: agility
+  trait: "Bonded Beast: a beast companion that levels with the character"
+  blurb: The beast-bonded. Fights beside an animal companion that grows as they do.
