@@ -89,7 +89,7 @@ def without_trait(sim: Simulation, check: dict[str, Any]) -> int:
     return chance(plain, check)
 
 
-def test_only_the_nine_solo_fight_traits_run() -> None:
+def test_eng13_only_the_nine_solo_fight_traits_run() -> None:
     assert set(DATA.combat.traits) == {
         "sellsword",
         "reaver",
@@ -105,7 +105,7 @@ def test_only_the_nine_solo_fight_traits_run() -> None:
     assert all(names[k] == t.name for k, t in DATA.combat.traits.items())
 
 
-def test_momentum_builds_on_clean_attacks_to_its_cap_and_resets_on_a_miss() -> None:
+def test_eng13_momentum_builds_on_clean_attacks_to_its_cap_and_resets_on_a_miss() -> None:
     sim = steady(fight(of_class("sellsword")), hits=99)
     for expected in (5, 10, 15, 15):
         sim.state.wounds = 0
@@ -117,7 +117,7 @@ def test_momentum_builds_on_clean_attacks_to_its_cap_and_resets_on_a_miss() -> N
     assert sim.state.fight is not None and sim.state.fight.momentum == 0
 
 
-def test_momentum_shows_in_the_odds_of_the_next_attack() -> None:
+def test_eng13_momentum_shows_in_the_odds_of_the_next_attack() -> None:
     sim = fight(of_class("sellsword"))
     base = chance(sim, ATTACK)
     assert sim.state.fight is not None
@@ -128,7 +128,7 @@ def test_momentum_shows_in_the_odds_of_the_next_attack() -> None:
     )
 
 
-def test_blood_up_below_half_hp() -> None:
+def test_eng13_blood_up_below_half_hp() -> None:
     sim = fight(of_class("reaver"))
     attack, guard = chance(sim, ATTACK), chance(sim, {"move": "guard", "stat": "vigor"})
     sim.state.wounds = sim.state.max_hp // 2 + 1
@@ -136,7 +136,7 @@ def test_blood_up_below_half_hp() -> None:
     assert chance(sim, {"move": "guard", "stat": "vigor"}) == guard - 10
 
 
-def test_still_centre_guards_with_the_better_of_agility_and_resolve_and_saves_stamina() -> None:
+def test_eng13_still_centre_guards_with_the_better_of_agility_and_resolve_and_saves_stamina() -> None:
     sim = fight(of_class("fistsworn", "kick"))
     guard = {"move": "guard", "stat": "presence"}
     assert chance(sim, guard) == chance(sim, {"move": "guard", "stat": "agility"})
@@ -144,7 +144,7 @@ def test_still_centre_guards_with_the_better_of_agility_and_resolve_and_saves_st
     assert skill_cost(sim.state, sim.rules.data, STORM_BOLT) == 20  # Mana is not discounted.
 
 
-def test_opening_doubles_the_first_unseen_strike_only() -> None:
+def test_eng13_opening_doubles_the_first_unseen_strike_only() -> None:
     sim = steady(fight(of_class("cutpurse"), ambush=True))
     plain = without_trait(sim, ATTACK)
     assert chance(sim, ATTACK) == plain + 10
@@ -154,19 +154,19 @@ def test_opening_doubles_the_first_unseen_strike_only() -> None:
     assert chance(sim, {**ATTACK, "target": "f2"}) == without_trait(sim, {**ATTACK, "target": "f2"})
 
 
-def test_no_opening_without_an_ambush() -> None:
+def test_eng13_no_opening_without_an_ambush() -> None:
     sim = steady(fight(of_class("cutpurse")))
     assert resolve_exchange(sim, "attack", "f1", Outcome.SUCCESS)["hits"] == 1
 
 
-def test_studied_mark_from_the_second_exchange() -> None:
+def test_eng13_studied_mark_from_the_second_exchange() -> None:
     sim = fight(of_class("inquisitor"))
     first = chance(sim, ATTACK)
     resolve_exchange(sim, "guard", None, Outcome.SUCCESS)
     assert chance(sim, ATTACK) == first + 10
 
 
-def test_attunement_is_a_choice_due_for_an_elementalist_only() -> None:
+def test_eng13_attunement_is_a_choice_due_for_an_elementalist_only() -> None:
     sim = of_class("elementalist")
     assert needs_attunement(sim.state, DATA)
     with pytest.raises(Rejected):
@@ -180,7 +180,7 @@ def test_attunement_is_a_choice_due_for_an_elementalist_only() -> None:
     assert replay(sim.events).attunement == "storm"
 
 
-def test_attuned_spells_cost_less_and_land_surer_in_and_out_of_fights() -> None:
+def test_eng13_attuned_spells_cost_less_and_land_surer_in_and_out_of_fights() -> None:
     sim = of_class("elementalist", "storm_bolt", "fire_bolt")
     choose_attunement(sim, "storm")
     outside = {"stat": "intellect", "difficulty": "routine", "challenge_tier": 1}
@@ -198,7 +198,7 @@ def test_attuned_spells_cost_less_and_land_surer_in_and_out_of_fights() -> None:
     assert rolled["bonuses"] == [["Attuned", 5]]
 
 
-def test_surge_pays_mana_in_hp_but_never_to_zero() -> None:
+def test_eng13_surge_pays_mana_in_hp_but_never_to_zero() -> None:
     sim = fight(of_class("wildblood", "storm_bolt"))
     hp, mana = sim.state.hp, sim.state.mana
     move = {"move": "guard", "stat": "intellect", "skill": "storm_bolt", "pay_with_hp": True}
@@ -214,7 +214,7 @@ def test_surge_pays_mana_in_hp_but_never_to_zero() -> None:
     assert not apply_tool(fight(of_class("warden", "storm_bolt")), "fight_move", move).accepted
 
 
-def test_malediction_curses_one_foe_once_per_fight() -> None:
+def test_eng13_malediction_curses_one_foe_once_per_fight() -> None:
     sim = fight(of_class("hexer"))
     plain = chance(sim, ATTACK)
     cursing = {**ATTACK, "trait": True}
@@ -228,7 +228,7 @@ def test_malediction_curses_one_foe_once_per_fight() -> None:
     assert not apply_tool(sim, "fight_move", {**ATTACK, "target": "f2", "trait": True}).accepted
 
 
-def test_a_cursed_foe_hits_softer() -> None:
+def test_eng13_a_cursed_foe_hits_softer() -> None:
     sim = fight(of_class("hexer"))
     assert sim.state.fight is not None
     for foe in sim.state.fight.foes:
@@ -244,7 +244,7 @@ def test_a_cursed_foe_hits_softer() -> None:
     assert cursed.state.wounds < plain
 
 
-def test_beast_form_lasts_the_fight_and_bars_skills() -> None:
+def test_eng13_beast_form_lasts_the_fight_and_bars_skills() -> None:
     sim = fight(of_class("skinchanger", "kick"))
     guard = {"move": "guard", "stat": "agility"}
     plain = chance(sim, guard)
@@ -260,12 +260,12 @@ def test_beast_form_lasts_the_fight_and_bars_skills() -> None:
     assert not apply_tool(sim, "fight_move", {**guard, "trait": True}).accepted
 
 
-def test_a_class_without_a_fight_trait_cannot_call_one() -> None:
+def test_eng13_a_class_without_a_fight_trait_cannot_call_one() -> None:
     sim = fight(of_class("warden"))
     assert not apply_tool(sim, "fight_move", {**ATTACK, "trait": True}).accepted
 
 
-def test_an_evolved_class_keeps_its_base_trait() -> None:
+def test_eng13_an_evolved_class_keeps_its_base_trait() -> None:
     sim = of_class("sellsword")
     blademaster = Evolution(
         id="blademaster", name="Blademaster", from_class="sellsword", primary="vigor", secondary="agility"
