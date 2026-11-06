@@ -654,3 +654,86 @@ def test_d050_the_game_page_gets_the_preview(game: Game, tmp_path: Path) -> None
     assert screen["preview"]["text"].startswith("Agility check, hard: ")
     assert screen["preview"]["stakes"] == "a fall"
     assert screen["options"] == []  # Outside a fight, no option list (D-050).
+
+
+def _rolled_turn(game: Game) -> None:
+    """A sworn turn whose Hard climb has rolled, ready for prose."""
+    game.sworn()
+    assert game("begin", "I climb the slick wall")[0] == 0
+    assert game("tool", "request_check", CLIMB)[0] == 0
+    assert game("go")[0] == 0
+
+
+def _events(game: Game, kind: str) -> list[dict[str, Any]]:
+    with Database.open(game.db) as db:
+        tid = db.latest_timeline()
+        assert tid is not None
+        return [e["payload"] for e in db.events(tid) if e["type"] == kind]
+
+
+def test_nar06_session_drops_a_tool_after_its_two_retries(game: Game) -> None:
+    _rolled_turn(game)
+    assert "Prose accepted" in game.narrate("Wren climbed.\n\n<<CHECK>>\n\nThe wall held.")[1]
+    bad = json.dumps({"kind": "enormous", "reason": "the climb"})
+    assert "Rejected (2 retries left)" in game("tool", "grant_xp", bad)[1]
+    assert "Rejected (1 retry left)" in game("tool", "grant_xp", bad)[1]
+    assert "grant_xp is dropped for this turn" in game("tool", "grant_xp", bad)[1]
+    out = game("tool", "grant_xp", json.dumps({"kind": "minor", "reason": "the climb"}))[1]
+    assert "dropped for this turn" in out  # Not applied after the drop, even when valid.
+    game("tool", "suggest_actions", SUGGEST)
+    assert game("commit")[0] == 0
+    assert [p["tool"] for p in _events(game, "tool_call_dropped")] == ["grant_xp"]
+    assert game.state()[0].xp == 0  # The dropped call was never applied.
+
+
+def test_nar06_session_commits_without_suggestions_when_suggest_actions_is_dropped(game: Game) -> None:
+    _rolled_turn(game)
+    game.narrate("Wren climbed.\n\n<<CHECK>>\n\nShe could go higher <<ODDS 3>>.")
+    for _ in range(3):
+        game("tool", "suggest_actions", json.dumps({"actions": []}))
+    code, out = game("commit")
+    assert code == 0, out
+    state, turn = game.state()
+    assert turn == 2 and state.suggested == []
+    assert [p["tool"] for p in _events(game, "tool_call_dropped")] == ["suggest_actions"]
+    with Database.open(game.db) as db:
+        tid = db.latest_timeline()
+        assert tid is not None
+        assert "<<ODDS" not in db.recent_turns(tid, 1)[0][1]
+
+
+def test_nar07_session_commits_a_fallback_turn_after_three_rejected_narrations(game: Game) -> None:
+    _rolled_turn(game)
+    before = game.state()[0].suggested
+    for attempt in range(3):
+        if attempt:
+            assert game("commit")[0] == 1  # Not yet: the narrator still has a retry.
+        game.narrate("Wren climbed 99 feet.\n\n<<CHECK>>")
+    code, out = game("commit")
+    assert code == 0, out
+    state, turn = game.state()
+    assert state.suggested == before  # The previous suggestions stay (NAR-07).
+    with Database.open(game.db) as db:
+        tid = db.latest_timeline()
+        assert tid is not None
+        row = db.conn.execute(
+            "SELECT narration, is_fallback FROM turn WHERE timeline_id = ? AND turn = ?", (tid, turn)
+        ).fetchone()
+    assert row[1] == 1 and "99" not in row[0] and "a fall:" in row[0]
+    assert len(_events(game, "check_resolved")) == 1
+
+
+def test_nar07_session_prose_accepted_after_three_refusals_still_commits_normally(game: Game) -> None:
+    _rolled_turn(game)
+    for _ in range(3):
+        game.narrate("Wren climbed 99 feet.\n\n<<CHECK>>")
+    assert "Prose accepted" in game.narrate("Wren climbed.\n\n<<CHECK>>\n\nThe wall held.")[1]
+    game("tool", "suggest_actions", SUGGEST)
+    assert game("commit")[0] == 0
+    with Database.open(game.db) as db:
+        tid = db.latest_timeline()
+        assert tid is not None
+        row = db.conn.execute(
+            "SELECT is_fallback FROM turn WHERE timeline_id = ? ORDER BY turn DESC LIMIT 1", (tid,)
+        ).fetchone()
+    assert row[0] == 0

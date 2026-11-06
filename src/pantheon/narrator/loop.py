@@ -149,12 +149,10 @@ class _Turn:
         return reply
 
     def run_tools(self, reply: LLMReply, offered: set[str]) -> list[dict[str, Any]]:
-        """Apply each call and build its result. A call rejected too often is dropped and logged (NAR-06)."""
+        """Apply each call and build its result. A tool refused on every try is dropped (NAR-06)."""
         results = []
         for call in reply.tool_calls:
-            if self.rejections[call.name] >= self.max_retries:
-                self.sim.emit("tool_call_dropped", {"tool": call.name, "args": call.args})
-                self.log.append(f"dropped {call.name}")
+            if self.rejections[call.name] > self.max_retries:  # Dropped on an earlier call this turn.
                 payload: dict[str, Any] = {
                     "status": "dropped",
                     "reason": "too many rejections; carry on without it",
@@ -174,6 +172,10 @@ class _Turn:
                 else:
                     self.rejections[call.name] += 1
                     self.log.append(f"rejected {call.name}: {result.reason}")
+                    if self.rejections[call.name] > self.max_retries:  # First try and every retry failed.
+                        self.sim.emit("tool_call_dropped", {"tool": call.name, "args": call.args})
+                        self.log.append(f"dropped {call.name}")
+                        payload["status"] = "dropped"
             results.append({"type": "tool_result", "tool_use_id": call.id, "content": json.dumps(payload)})
         return results
 

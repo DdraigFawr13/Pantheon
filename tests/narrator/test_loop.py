@@ -216,6 +216,14 @@ def test_nar06_rejections_retry_at_most_twice_then_drop_and_log() -> None:
     assert "rejected" in contents[0] and "rejected" in contents[1]
 
 
+def test_nar06_the_second_retry_is_tried_and_kept_when_valid() -> None:
+    bad = tools(call("grant_xp", kind="enormous", reason="x"))
+    good = tools(call("grant_xp", kind="minor", reason="x"))
+    outcome, _ = run([CHECK, LLMReply(text=PROSE), bad, bad, good, SUGGEST], max_rounds=4)
+    assert outcome.state.xp > 0
+    assert not [t for t, _ in outcome.events if t == "tool_call_dropped"]
+
+
 def test_nar06_a_rejected_check_can_be_retried() -> None:
     bad = tools(call("request_check", stat="luck", difficulty="hard", challenge_tier=1))
     outcome, _ = run([bad, CHECK, LLMReply(text=PROSE), SUGGEST])

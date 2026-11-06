@@ -54,6 +54,7 @@ from pantheon.engine.tools import (
 )
 from pantheon.engine.traits import needs_attunement, trait_of
 from pantheon.narrator.assemble import REMINDER, assemble, due_material, state_view
+from pantheon.narrator.fallback import render as render_fallback
 from pantheon.narrator.loop import (
     DOWNED_NOTE,
     FIGHT_REFEREE_PROMPT,
@@ -86,6 +87,7 @@ from pantheon.world.schemas import Item
 
 PLAYING = ".playing"
 ODDS_MARKER = re.compile(r"<<ODDS (\d+)>>")  # Where the engine prints an approach's odds (D-050).
+STRAY_MARKER = re.compile(r"\s*<<ODDS \d+>>")  # Removed when no actions are left to give odds for.
 _RECENT_SHOWN = 2
 
 
@@ -104,6 +106,11 @@ class Pending:
     calls: list[dict[str, Any]] = field(default_factory=list)
     narration: str | None = None
     preview: dict[str, Any] | None = None  # A typed action's check, shown but not rolled (D-050).
+    rejections: dict[str, int] = field(default_factory=dict)  # Per tool, and "prose" (NAR-06).
+    dropped: list[dict[str, Any]] = field(default_factory=list)  # Calls given up on, recorded at commit.
+
+    def dropped_names(self) -> set[str]:
+        return {str(call["name"]) for call in self.dropped}
 
     @property
     def talk_only(self) -> bool:
@@ -250,13 +257,42 @@ class Session:
         """The tools this step allows, by the same rules as the API loop (D-031)."""
         if pending.narration is None and run.downed:
             return ()  # The foes' exchange ran by itself (D-039).
-        return turn_tools(
+        names = turn_tools(
             run.sim.state,
             pending.player_input,
             rolled=pending.chosen_check is not None or bool(run.outcomes),
             narrated=pending.narration is not None,
             checked=bool(run.sim.checks),
         )
+        return tuple(n for n in names if n not in pending.dropped_names())
+
+    @property
+    def retries(self) -> int:
+        return self.config.max_tool_retries
+
+    def reject(self, pending: Pending, key: str, reason: str, args: Any = None) -> str:
+        """Count one rejection in the turn in progress; `abandon` clears the count (NAR-06).
+
+        A call gets its first try and `retries` more. The rejection after the last retry drops the tool
+        for the turn, and commit records it. Returns the message for the narrator.
+        """
+        count = pending.rejections[key] = pending.rejections.get(key, 0) + 1
+        left = self.retries + 1 - count
+        if key != "prose" and left <= 0 and key not in pending.dropped_names():
+            pending.dropped.append({"name": key, "args": args})
+        self.save_pending(pending)
+        if key in pending.dropped_names():
+            return f"Rejected: {reason}. {self.dropped_note(key)}"
+        if left <= 0:
+            return f"Not accepted: {reason}."
+        return f"Rejected ({left} {'retry' if left == 1 else 'retries'} left): {reason}."
+
+    def dropped_note(self, name: str) -> str:
+        return f"{name} is dropped for this turn (NAR-06); carry on without it."
+
+    def fallback_due(self, pending: Pending) -> bool:
+        """The prose was refused on its first try and every retry, so the engine writes the turn (NAR-07)."""
+        return pending.narration is None and pending.rejections.get("prose", 0) > self.retries
 
     def begin(self, player_input: str, option: int | None) -> None:
         self.no_pending()
@@ -340,7 +376,7 @@ class Session:
                 out(f"Step: `session tool {names[0]} --file data/tool.json` if it rolls, else the prose.")
             out("Step: write the prose to data/narration.md, then `session narrate data/narration.md`.")
             return
-        if run.sim.suggested:
+        if run.sim.suggested or "suggest_actions" in pending.dropped_names():
             out(f"Options recorded. Other tools now: {', '.join(names)}. Then `session commit`.")
             return
         out(escape(SCRIBE_PROMPT if len(names) > 1 else SUGGEST_PROMPT))
@@ -353,10 +389,17 @@ class Session:
         pending = self.need_pending()
         run = self.replay(pending)
         names = self.offered(pending, run)
+        if name in pending.dropped_names():
+            self.console.print(f"[yellow]{escape(self.dropped_note(name))}[/yellow]")
+            self.next_step(pending, run)
+            return
         try:
             args = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise SessionError(f"The arguments are not JSON: {exc}") from exc
+            if name not in names:
+                raise SessionError(f"The arguments are not JSON: {exc}") from exc
+            note = self.reject(pending, name, f"the arguments are not JSON: {exc}")
+            raise SessionError(note) from exc
         if name not in names:
             raise SessionError(f"{name} is not available now. Tools now: {', '.join(names) or 'none'}.")
         if (
@@ -370,7 +413,7 @@ class Session:
             try:
                 check_preview(run.sim.state, self.world.data, locked)
             except (Rejected, ValueError, KeyError, TypeError) as exc:
-                self.console.print(f"[yellow]Rejected: {escape(str(exc))}[/yellow]")
+                self.console.print(f"[yellow]{escape(self.reject(pending, name, str(exc), args))}[/yellow]")
                 return
             if self.needs_preview(locked):
                 pending.preview = locked
@@ -383,7 +426,10 @@ class Session:
         before = len(run.sim.events)
         result = apply_tool(run.sim, name, args)
         if not result.accepted:
-            self.console.print(f"[yellow]Rejected: {escape(result.reason)}[/yellow]")  # NAR-06: nothing kept.
+            note = self.reject(pending, name, result.reason, args)  # NAR-06: nothing kept, retries counted.
+            self.console.print(f"[yellow]{escape(note)}[/yellow]")
+            if name in pending.dropped_names():
+                self.next_step(pending, run)
             return
         pending.calls.append({"name": name, "args": args})
         self.save_pending(pending)
@@ -409,7 +455,13 @@ class Session:
         if run.outcomes and CHECK_MARKER not in text:
             problems.append(f"put {CHECK_MARKER} on its own line where the check's result lands")
         if problems:
+            self.reject(pending, "prose", "")
             self.console.print("[yellow]Not accepted: " + escape("; ".join(problems)) + ".[/yellow]")
+            if self.fallback_due(pending):
+                self.console.print(
+                    f"The prose was refused {self.retries + 1} times (NAR-07). `session commit` now saves "
+                    "a fallback turn in the engine's words, or `narrate` once more."
+                )
             return
         replacing = pending.narration is not None
         pending.narration = place_notices(text, run.sim.events)
@@ -420,12 +472,23 @@ class Session:
     def commit(self) -> None:
         pending = self.need_pending()
         run = self.replay(pending)
-        if pending.narration is None:
+        fallback = self.fallback_due(pending)
+        if pending.narration is None and not fallback:
             raise SessionError("Write and `narrate` the prose before committing.")
-        if not run.sim.suggested:
+        no_options = "suggest_actions" in pending.dropped_names()
+        if not fallback and not run.sim.suggested and not no_options:
             raise SessionError("Call suggest_actions before committing: the player needs options.")
-        narration, shown = self.stamp_odds(pending.narration, run.sim.state)
-        record = TurnRecord(pending.turn, pending.player_input, narration, False, 0, 0, 0)
+        for call in pending.dropped:  # NAR-06: the failure is logged with the turn.
+            run.sim.emit("tool_call_dropped", {"tool": call["name"], "args": call["args"]})
+        shown: list[int] = []
+        if pending.narration is None:
+            narration = render_fallback(run.sim)  # The previous suggestions stay (NAR-07).
+        elif not run.sim.suggested:
+            run.sim.emit("actions_suggested", {"actions": []})  # Old actions would no longer fit.
+            narration = STRAY_MARKER.sub("", pending.narration)
+        else:
+            narration, shown = self.stamp_odds(pending.narration, run.sim.state)
+        record = TurnRecord(pending.turn, pending.player_input, narration, fallback, 0, 0, 0)
         self.db.commit_turn(pending.timeline, record, run.sim.events, run.sim.rng.state(), run.sim.state)
         self.pending_path.unlink()
         self._write_side(self.shown_path, pending.timeline, pending.turn, {"shown": shown})

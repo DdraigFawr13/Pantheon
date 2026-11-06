@@ -43,6 +43,8 @@ Player commands without a turn (`sheet`, `hooks`, `inspect N`) answer in the sam
 4. Scribe: only what the scene really did (`grant_xp`, `apply_effect`, `adjust_standing`, `register_hook`, `advance_time`, and the rest it lists), then always `suggest_actions` with 3 to 4 options, in the order the closing thought numbered them.
 5. `session commit`, then `scripts/saves.sh push`.
 
+Retries (NAR-06, NAR-07): each tool and the prose get a first try and 2 retries a turn; the reply counts them. A tool refused a third time is dropped for the turn and commit records it; with `suggest_actions` dropped the turn commits with no new options. Prose refused three times lets `session commit` save the engine's fallback turn. Fix what the rejection names rather than spending retries.
+
 ## Fights (D-039, D-045)
 
 - A fight starts when the story makes one: in the scribe step, `start_fight` with 1 to 4 foes (`name`, `tier`, `threat` minion, standard or elite) and `ambush: true` if the character struck first, unseen. One exchange is one turn.
