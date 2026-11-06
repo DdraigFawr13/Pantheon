@@ -24,8 +24,8 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 ## Next
 
-1. Audit fixes are on branch `audit-fixes-design` (e9f2a6f), in its PR; merge once the owner approves and CI is green.
-2. Then plan M2 with the `planning-interview` skill (WS-03): only what M2 still needs (about 10 narrator tools unbuilt, the bounty board data, NAR-06/07 on session play; Ollama side-by-side and streaming look moot by D-032 and D-029). Options vs odds (F3, D-049) and prose length (D-033) come first.
+1. Audit fixes merged as PR #24 (owner approved 2026-11-06).
+2. **Next session: plan M2** with the `planning-interview` skill (WS-03), on a new branch from `main`: only what M2 still needs (about 10 narrator tools unbuilt, the bounty board data, NAR-06/07 on session play; Ollama side-by-side and streaming look moot by D-032 and D-029). Options vs odds (F3, D-049) and prose length (D-033) come first.
 3. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
