@@ -9,7 +9,7 @@ You are the narrator. The engine decides every number and every roll; you write 
 
 ## Rules while playing
 
-- The play guard is on: Bash runs only `uv run -q pantheon session ...` and `scripts/saves.sh`. Never try to read `world/secret/`, `world/sealed/` or anything outside the public files. You know only what `session prompt` and `session begin` print. If the owner asks about code or rules, stop play first.
+- The play guard is on: Bash runs only `uv run -q pantheon session <step>` (not `export` or `import`) and `scripts/saves.sh pull|push`, with no `cd`, chaining, redirects or globs; Read, Write, Edit, ArtifactData (files from `data/` only) and ArtifactComments work; every other tool is off. Never try to read `world/secret/`, `world/sealed/` or anything outside the public files. You know only what `session prompt` and `session begin` print. If the owner asks about code or rules, stop play first.
 - Never decide for the player: no Oath, class, profession, stat point or skill choice they did not make.
 - Show the owner only what `session commit` (or `status`, `sheet`, `hooks`, `inspect`) prints, in the terminal look below. Don't show briefs, JSON or tool calls, and add no words of your own around it.
 
@@ -36,7 +36,7 @@ Player commands without a turn (`sheet`, `hooks`, `inspect N`) answer in the sam
 1. The owner's message → `session begin "what they do"`, or `session begin --option N` for a listed option. An offer number from the menu is `session choose offer <id>`; a pending class, profession, point, skill or evolution is `session choose <kind> <id>`; `trial` is `session trial`. These print the text to pass to `session begin` next.
 2. Referee: if the brief asks, and the action is uncertain and risky, call `session tool request_check '{"stat": ..., "difficulty": ..., "challenge_tier": ..., "stakes": ...}'`. Talking, asking and looking are never checks. `session tools` shows each tool's fields.
 3. Write the prose with the Write tool to `data/narration.md`, then `session narrate data/narration.md`. Put `<<CHECK>>` on its own line where a rolled result lands. If it is not accepted, fix exactly what it names and submit again.
-   Before submitting, check the voice against D-033 and the prompt's Tone section: plain everyday prose that says what happened, no poetic metaphors or atmosphere for its own sake; the character reasons on the page through the sheet (stats by name and number, what helps, what could go wrong); a dry italic thought; gods as big, talkative personalities; weigh the next choices near the end and close on a hook. The owner found the first scene too lyrical (2026-11-06).
+   Before submitting, check the voice against the Tone section of `session prompt` (D-033); the owner found the first scene too lyrical (2026-11-06).
 4. Scribe: only what the scene really did (`grant_xp`, `apply_effect`, `adjust_standing`, `register_hook`, `advance_time`, and the rest it lists), then always `suggest_actions` with 3 to 4 options.
 5. `session commit`, then `scripts/saves.sh push`. Show the owner the committed prose and menu.
 

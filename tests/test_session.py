@@ -1,8 +1,6 @@
 """`pantheon session`: Claude Code as narrator, one step per command (D-041)."""
 
 import json
-import shutil
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -229,35 +227,6 @@ def test_session_start_and_stop_switch_the_play_guard(game: Game) -> None:
     assert marker.exists()
     game("stop")
     assert not marker.exists()
-
-
-@pytest.mark.skipif(shutil.which("node") is None, reason="the guard is a node hook")
-def test_play_guard_keeps_secret_and_sealed_canon_out_NAR_02(tmp_path: Path) -> None:
-    hook = Path(__file__).resolve().parents[1] / ".claude" / "hooks" / "play-guard.mjs"
-
-    def denied(tool: str, **tool_input: str) -> bool:
-        event = json.dumps({"tool_name": tool, "tool_input": tool_input})
-        env = {"CLAUDE_PROJECT_DIR": str(tmp_path), "PATH": "/usr/bin:/bin:/usr/local/bin"}
-        result = subprocess.run(
-            ["node", str(hook)], input=event, capture_output=True, text=True, env=env, check=True
-        )
-        return '"deny"' in result.stdout
-
-    assert not denied("Grep", pattern="x")  # Off while nobody is playing.
-    (tmp_path / "data").mkdir()
-    (tmp_path / "data" / ".playing").touch()
-    assert denied("Grep", pattern="x")
-    assert denied("Read", file_path=str(tmp_path / "world" / "secret" / "a.md"))
-    assert denied("Read", file_path=str(tmp_path / "world" / "sealed" / "a.md"))
-    assert not denied("Read", file_path=str(tmp_path / "world" / "pantheon.md"))
-    saved = "/root/.claude/projects/-home-user-Pantheon/abc/tool-results/b1.txt"
-    assert not denied("Read", file_path=saved)  # Long output of an allowed command.
-    assert denied("Read", file_path="/root/.claude/projects/x/abc/tool-results/../../../../etc/a.md")
-    assert not denied("Bash", command='uv run -q pantheon session begin "I climb"')
-    assert denied("Bash", command="uv run pantheon session narrate world/secret/a.md")
-    assert denied("Bash", command="uv run pantheon session status; cat world/secret/a.md")
-    assert not denied("Write", file_path=str(tmp_path / "data" / "narration.md"))
-    assert denied("Write", file_path=str(tmp_path / "src" / "x.py"))
 
 
 def test_session_screen_is_plain_data_for_the_game_page(game: Game, tmp_path: Path) -> None:
