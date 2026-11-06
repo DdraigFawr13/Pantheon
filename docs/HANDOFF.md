@@ -12,7 +12,7 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 ## Just done
 
-- 2026-11-06 Design audit of M1d to M1f (owner chose design only): `docs/audit/2026-11-06-design.md`, 28 findings (3 strongly recommended: M2 plan stale, architecture section 3 stale, tapped options undecided). Draft PR #23. Owner replies on https://claude.ai/artifact/LTdN7KfXMgpQMa8f6BXsVU (collection `audit-2026-11-06`); Outcome is Pending.
+- 2026-11-06 Design audit of M1d to M1f (owner chose design only): `docs/audit/2026-11-06-design.md`, 28 findings (3 strongly recommended: M2 plan stale, architecture section 3 stale, tapped options undecided). PR #23. Owner: "Do as you recommend": all 28 accepted, recommendations taken (Outcome in the report).
 
 - 2026-11-03 Master upgrade to v4.4.0 (D-040), PR #17 merged.
 - 2026-11-06 Master upgrade to v4.11.0 (D-043) and the repo and tests audits, PR #20 merged; audit fixes, PR #21 merged.
@@ -24,9 +24,10 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 ## Next
 
-1. When the owner says "audit replies done": read the replies, fill the report's Outcome, push to PR #23, add accepted items here. Then plan M2 with the `planning-interview` skill (WS-03) on branch `m2-narrator-loop` (cut from a5d788c): scope only what M2 still needs (survey: about 10 narrator tools unbuilt, the bounty board data, session-path NAR-06/07; side-by-side Ollama and streaming look moot by D-032 and D-029), with options-vs-odds (F3) and prose length first.
-2. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
-3. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
+1. Audit fixes on a new branch from `main` (after PR #23 merges): the doc, DECISIONS, canon-gap (G-36 Attuned, shard sale, Unwritten tier path, prices by tier), sim and test findings in `docs/audit/2026-11-06-design.md` Outcome. F1, F3 and F4 belong to M2 planning; F7 and F19 wait for the owner's fight playtest.
+2. Then plan M2 with the `planning-interview` skill (WS-03): only what M2 still needs (about 10 narrator tools unbuilt, the bounty board data, NAR-06/07 on session play; Ollama side-by-side and streaming look moot by D-032 and D-029). Options vs odds (F3, D-049) and prose length (D-033) come first.
+3. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
+4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
 
 ## Open questions
