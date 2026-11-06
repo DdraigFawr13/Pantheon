@@ -10,6 +10,11 @@ INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',3,0,'hook_register
 INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',4,0,'oath_offered','{"god": "maru_ghen", "oath": "last_rest"}');
 INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',5,0,'oath_offered','{"god": "ysmere", "oath": "turning_tide"}');
 INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',6,1,'actions_suggested','{"actions": [{"check": null, "cost": null, "label": "Ask the slow voice what it wants in return", "tag": null, "violent": false}, {"check": null, "cost": null, "label": "Ask the warm voice why a clerk is worth it", "tag": null, "violent": false}, {"check": null, "cost": "both gods may take offence", "label": "Try to bargain the gods against each other", "tag": null, "violent": false}, {"check": null, "cost": "the air keeps running out", "label": "Tally the air left and stay silent", "tag": null, "violent": false}]}');
+INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',7,2,'oath_sworn','{"affinity": "tide", "affinity_rank": 1, "god": "ysmere", "level": 1, "oath": "turning_tide"}');
+INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',8,2,'flag_set','{"key": "opening.dual_offer_resolved", "reason": "the Dual Offer", "value": true}');
+INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',9,2,'hook_registered','{"description": "Maru-Ghen''s response to being refused", "due_condition": "within the next few days, through a Vessel or an omen", "id": 3, "source_choice": "Dual Offer: ysmere", "turn": 2}');
+INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',10,2,'hook_registered','{"description": "Ysmere''s answer to the Oath", "due_condition": "within the next few days, through a Vessel or an omen", "id": 4, "source_choice": "Dual Offer: ysmere", "turn": 2}');
+INSERT INTO "event" VALUES('83daee68adab426b89abc2c28256ccb9',11,2,'hook_registered','{"description": "A rival who survived the fall swore Last Rest to Maru-Ghen", "due_condition": "when the player next deals with Rifters or that god''s people", "id": 5, "source_choice": "Dual Offer: ysmere", "turn": 2}');
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT INTO "meta" VALUES('schema_version','2');
 CREATE TABLE rng_checkpoint (
