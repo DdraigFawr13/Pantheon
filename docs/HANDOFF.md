@@ -25,7 +25,7 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 ## Next
 
 1. Audit fixes merged as PR #24 (owner approved 2026-11-06).
-2. **In progress (branch `claude/plan-m2`): plan M2.** Round 1 form published 2026-11-06: https://claude.ai/artifact/S1M8kTeHdi6pX1njM7FXvA (collection `m2round1`; owner says "round 1 done"). Covers F3 options vs odds, D-033 prose length, the pacing direction, a keep list of the remaining M2 work, and the acceptance path. Found: the bounty board is planned twice (M2 item 7 and M3.5 batch 4). Then review round, final page, write-spec. Planned with the `planning-interview` skill (WS-03), on a new branch from `main`: only what M2 still needs (about 10 narrator tools unbuilt, the bounty board data, NAR-06/07 on session play; Ollama side-by-side and streaming look moot by D-032 and D-029). Options vs odds (F3, D-049) and prose length (D-033) come first.
+2. **In progress (branch `claude/plan-m2`): plan M2** (`planning-interview`). Round 1 form is out (link below, collection `m2round1`); wait for "round 1 done". Then the review round, the final page and write-spec. Found: the bounty board is planned twice (M2 item 7, M3.5 batch 4).
 3. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
