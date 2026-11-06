@@ -1,6 +1,6 @@
 # M2b Reliability
 
-- **Status:** Approved 2026-11-06 (built from the approved M2 plan, D-052 (2); assumptions in D-053)
+- **Status:** Shipped 2026-11-06 (PR #28; assumptions accepted as D-053)
 - **Planned in:** M2 round 1 (https://claude.ai/artifact/S1M8kTeHdi6pX1njM7FXvA), review and round 2 (https://claude.ai/artifact/LcHA2Zu4vbVaX4jYuhdBEP), approved in chat 2026-11-06. **Decisions:** D-049 (1), D-050, D-051, D-052 (2), D-053 (this slice's assumptions).
 
 ## Problem
