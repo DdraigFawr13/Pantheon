@@ -4,7 +4,7 @@ Updated: 2026-11-06. A fresh session must be able to continue from this file alo
 
 ## Phase
 
-M1.7 (D-041, session play) and the 25-class roster (D-042) are on draft PR #18, branch `ccr-2cd1b9d3-xt21f0`, waiting for the owner's approval to merge. M1a to M1c are merged. **Next: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main` after #18 merges.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18.
+M1.7 and D-042 are merged (PR #18). **M1d is built on draft PR #19, branch `claude/m1-build`**, which merges #16 (D-039) onto main and supersedes it. Next: M1e, then M1f, on the same branch.
 
 ## Just done
 
@@ -12,16 +12,15 @@ M1.7 (D-041, session play) and the 25-class roster (D-042) are on draft PR #18, 
 - 2026-11-06 M1.7 (D-041): `pantheon session` runs each turn step as a command; `/play` skill; `play-guard` hook (Bash only `uv run pantheon session` and `scripts/saves.sh`, public reads only); saves as a text dump on the `saves` branch; the Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b) shows story, Character, Journal and Gear tabs from `session screen` JSON and sends taps to the session as comments.
 - 2026-11-06 D-042: 25 base classes with traits and blurbs (`world/data/classes.yaml`, power_tiers.md table, gods' favoured classes); `class-design` skill; roster page https://claude.ai/artifact/96Gk7pos2FRTar4ezcyRfS.
 - 2026-11-06 First session play, five turns: `docs/playtests/2026-11-06-session-play.md`. The owner: "the game works and the fundamentals are fun", the writing needs work and maybe shortening to move quicker ("we can get to that later"). Ddraig Fawr (he/him), Elementalist attuned to Storm, Enchanter, sworn to Ysmere; timeline `ddb27b36` on the `saves` branch.
+- 2026-11-06 M1d on PR #19: #16 merged in (only doc conflicts; its tests moved from the cut Wager-bound to Warden). The owner chose the nine solo fight traits (D-043): data in `world/data/combat.yaml` `traits`, read by `engine/traits.py`, a `bonus` on `CheckRequest` so odds and roll agree, `choose attunement <element>` for the Elementalist. Session play runs fights: a picked fight option rolls `fight_move` before the prose, a Downed turn runs the foes' exchange, `session tool --file`, a /play Fights section, and a fight panel on the game page (republished, version 8). Owner's direction: LitRPG pacing and tone (D-044).
 
 ## Next (the M1 build session)
 
-1. Owner merges #18 (GIT-07). Cut a branch from `main`. Read BUILD_PLAN "M1: Engine core" for M1d to M1f.
-2. **M1d combat:** bring PR #16 onto current `main` (merge `main` into `m1d-combat`, resolve, re-run checks; never force-push it, GIT-03), or rebuild it from its diff if that is cleaner. Then add session support: `start_fight`, `fight_move` and `end_fight` in `session tool` and `/play`; a chosen `fight_move` rolls before prose like `request_check`; show foe intents and the fight on the page's screen JSON. D-039 lists what #16 left out.
-3. **M1e rewards and loot:** `world/data/rewards.yaml` and Tier 1 loot tables (ENG-09, G-08); items, coin changes and an inventory, so the page's Gear tab shows real things; the pacing simulation script. Canon numbers need `canon:` commits and the owner's approval.
-4. **M1f dev CLI:** `pantheon roll`, `pantheon sheet`, `pantheon log`.
-5. Class traits (D-042) are text only; decide with the owner which to implement in M1d (combat traits) and which wait.
-6. Small fixes found in play: let `session tool` read its JSON from a file (`--file data/tool.json`), so the guard's no-`;` rule and shell quoting stop breaking tool calls; record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
-7. After M1: report requirements met, deferred and defects; offer an audit (VER-09); republish the plan page (D-018).
+1. **M1e rewards and loot** on `claude/m1-build`: `world/data/rewards.yaml` and Tier 1 loot tables (ENG-09, G-08); items, coin changes and an inventory, so the page's Gear tab shows real things; the pacing simulation script. Tune to D-044 inside D-014. Canon numbers need the owner's approval and `canon:` commits.
+2. **M1f dev CLI:** `pantheon roll`, `pantheon sheet`, `pantheon log`.
+3. The owner's save (Ddraig, Elementalist) will be asked `choose attunement` first; the story already says Storm.
+4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
+5. After M1: report requirements met, deferred and defects; offer an audit (VER-09); republish the plan page (D-018); a playtest with a fight to `docs/playtests/`.
 
 ## Open questions
 
@@ -46,4 +45,4 @@ M1.7 (D-041, session play) and the 25-class roster (D-042) are on draft PR #18, 
 
 ## Decisions since the last plan update
 
-- 2026-11-06 D-007 to D-038, D-040 to D-042 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037, D-038 Assumed).
+- 2026-11-06 D-007 to D-044 in `docs/DECISIONS.md` (D-022, D-023, D-027, D-028, D-030, D-031, D-037 to D-039, D-043 Assumed).
