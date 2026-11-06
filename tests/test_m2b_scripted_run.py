@@ -72,6 +72,8 @@ def assert_reliable(db_path: Path, *, dropped: set[str]) -> list[dict[str, Any]]
     assert {e["payload"]["tool"] for e in events if e["type"] == "tool_call_dropped"} == dropped  # NAR-06
     assert [t["turn"] for t in turns if t["fallback"]] == [7]  # NAR-07
     assert any(_ODDS.search(t["narration"]) for t in turns)  # D-050: odds in a closing thought.
+    taken = [e for e in events if e["turn"] == 3 and e["type"] == "check_resolved"]
+    assert len(taken) == 1 and taken[0]["payload"]["difficulty"] == "hard"  # One roll, after the yes.
     for turn in turns:
         print(f"\n--- Turn {turn['turn']}{' (fallback)' if turn['fallback'] else ''}: {turn['input']}")
         print(turn["narration"])
@@ -201,6 +203,7 @@ def test_m2b_scripted_ten_turns_in_session_play(tmp_path: Path, capsys: Any) -> 
     for _ in range(3):
         game("tool", "suggest_actions", json.dumps({"actions": []}))
     step("commit")
+    assert game.state()[0].suggested == []
 
     step("begin", "I draw on the hound")  # 9: the fight starts.
     game.narrate(scene())
@@ -214,5 +217,6 @@ def test_m2b_scripted_ten_turns_in_session_play(tmp_path: Path, capsys: Any) -> 
     step("commit")
 
     turns = assert_reliable(game.db, dropped={"adjust_standing", "suggest_actions"})
+    assert turns[7]["narration"].endswith("She could follow the light.")  # Marker and its space gone.
     assert "(Agility " in turns[1]["narration"]
     assert "The Ledger records only this" in turns[6]["narration"]

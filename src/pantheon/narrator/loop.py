@@ -173,6 +173,8 @@ class _Turn:
                     if "outcome" in result.data:
                         self.outcomes.append(result.data["outcome"])
                         self.details += [result.data["summary"]] if "summary" in result.data else []
+                elif call.name not in offered:  # Not this step's tool: refused, not counted (D-053).
+                    self.log.append(f"rejected {call.name}: {result.reason}")
                 else:
                     self.rejections[call.name] += 1
                     self.log.append(f"rejected {call.name}: {result.reason}")
@@ -240,6 +242,7 @@ class _Turn:
     def gate(self, reply: LLMReply) -> LLMReply | None:
         """Lock each proposed check to its stat's first terms; stop at one that needs a preview (D-050)."""
         assert self.locks is not None
+        trial = dict(self.locks)  # Kept only if nothing stops, so an unrolled check fixes no stat.
         calls = []
         for call in reply.tool_calls:
             if call.name == "request_check":
@@ -248,12 +251,13 @@ class _Turn:
                 except (Rejected, ValueError, KeyError, TypeError):
                     calls.append(call)
                     continue
-                locked = lock(self.locks, call.args)
+                locked = lock(trial, call.args)
                 if needs_preview(locked):
-                    self.preview = locked
+                    self.preview = lock(self.locks, call.args)  # Only the previewed stat is fixed.
                     return None
                 call = replace(call, args=locked)
             calls.append(call)
+        self.locks.update(trial)
         return replace(reply, tool_calls=tuple(calls))
 
     def narrate(self, messages: list[dict[str, Any]]) -> str | None:

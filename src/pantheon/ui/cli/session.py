@@ -384,7 +384,7 @@ class Session:
             out("Step: write the prose to data/narration.md, then `session narrate data/narration.md`.")
             return
         if run.sim.suggested or "suggest_actions" in pending.dropped_names():
-            out(f"Options recorded. Other tools now: {', '.join(names)}. Then `session commit`.")
+            out(f"Options recorded. Other tools now: {', '.join(names) or 'none'}. Then `session commit`.")
             return
         out(escape(SCRIBE_PROMPT if len(names) > 1 else SUGGEST_PROMPT))
         out(f"Tools now: {', '.join(names)}. `session tools` shows their fields.")
@@ -405,7 +405,7 @@ class Session:
         except json.JSONDecodeError as exc:
             if name not in names:
                 raise SessionError(f"The arguments are not JSON: {exc}") from exc
-            note = self.reject(pending, name, f"the arguments are not JSON: {exc}")
+            note = self.reject(pending, name, f"the arguments are not JSON: {exc}", {"raw": raw})
             raise SessionError(note) from exc
         if name not in names:
             raise SessionError(f"{name} is not available now. Tools now: {', '.join(names) or 'none'}.")
@@ -480,6 +480,10 @@ class Session:
     def commit(self) -> None:
         pending = self.need_pending()
         run = self.replay(pending)
+        if pending.preview is not None:
+            raise SessionError(
+                "A preview is waiting for the player: `session go` or `session abandon` first."
+            )
         fallback = self.fallback_due(pending)
         if pending.narration is None and not fallback:
             raise SessionError("Write and `narrate` the prose before committing.")

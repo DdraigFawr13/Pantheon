@@ -747,3 +747,23 @@ def test_nar08_session_a_refused_check_does_not_fix_its_stats_terms(game: Game) 
     routine = json.loads(CLIMB) | {"difficulty": "routine"}
     code, out = game("tool", "request_check", json.dumps(routine))
     assert code == 0 and "Preview:" not in out and "Engine check" in out  # Rolled at once (D-051).
+
+
+def test_nar08_session_commit_waits_for_an_unanswered_preview(game: Game) -> None:
+    game.sworn()
+    game("begin", "I climb the slick wall")
+    for _ in range(3):
+        game.narrate("Wren climbed 99 feet.")
+    assert "Preview:" in game("tool", "request_check", CLIMB)[1]
+    code, out = game("commit")
+    assert code == 1 and "session go" in out
+
+
+def test_nar06_session_a_json_error_drop_keeps_the_raw_arguments(game: Game) -> None:
+    _rolled_turn(game)
+    game.narrate("Wren climbed.\n\n<<CHECK>>\n\nThe wall held.")
+    for _ in range(3):
+        game("tool", "grant_xp", "{not json")
+    game("tool", "suggest_actions", SUGGEST)
+    assert game("commit")[0] == 0
+    assert [p["args"] for p in _events(game, "tool_call_dropped")] == [{"raw": "{not json"}]

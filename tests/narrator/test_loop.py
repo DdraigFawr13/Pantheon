@@ -531,3 +531,32 @@ def test_d050_loop_stamps_the_closing_thought_odds() -> None:
     assert "(no roll)" in outcome.narration and "(Agility " in outcome.narration
     assert "<<ODDS" not in outcome.narration and "or fly." in outcome.narration
     assert any("ODDS 7" in line for line in outcome.log)
+
+
+def test_nar06_a_tool_not_offered_is_refused_without_counting() -> None:
+    early = tools(call("suggest_actions", actions=ACTIONS))  # Not offered in the referee step.
+    outcome, _ = run([early, early, early, LLMReply(text=PROSE), SUGGEST])
+    assert not [t for t, _ in outcome.events if t == "tool_call_dropped"]
+    assert len(outcome.state.suggested) == len(ACTIONS)
+
+
+def test_nar06_the_third_rejection_answers_dropped_and_later_calls_are_not_applied() -> None:
+    bad = tools(call("grant_xp", kind="enormous", reason="x"))
+    good = tools(call("grant_xp", kind="minor", reason="x"))
+    outcome, client = run([CHECK, LLMReply(text=PROSE), bad, bad, bad, good, SUGGEST], max_rounds=5)
+    assert '"status": "dropped"' in str(client.calls[5]["messages"][-1]["content"])
+    assert outcome.state.xp == 0
+
+
+def test_nar08_a_routine_check_beside_a_previewed_one_fixes_nothing() -> None:
+    locks: dict[str, dict[str, Any]] = {}
+    routine = {**HARD_CLIMB, "stat": "presence", "difficulty": "routine"}
+    both = LLMReply(tool_calls=(call("request_check", 1, **routine), call("request_check", 2, **HARD_CLIMB)))
+    outcome, _ = run([both], locks=locks)
+    assert outcome.preview is not None and set(locks) == {"agility"}
+
+
+def test_nar08_a_previewed_check_refused_at_the_roll_rolls_nothing_else() -> None:
+    gone = {**HARD_CLIMB, "challenge_tier": 99}
+    outcome, client = run([LLMReply(text=PROSE), SUGGEST], locks={}, chosen_check=gone, previewed=True)
+    assert outcome.state.checks_made == 0 and len(client.calls) == 2  # No referee ran.
