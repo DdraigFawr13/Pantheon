@@ -23,7 +23,7 @@ Each reply looks like the terminal game, copied from the command's output, never
 4. The status line in italics. Outside a fight, no option list: the odds are already in the prose. In a fight, the moves as a numbered list with the tag and odds in bold: `1. **[AGILITY 59%]** Strike the ash hound`. Oath choices show their terms on an indented line.
 5. Last line: `*Type what you do · sheet · hooks*` (in a fight: `*Type a number or your own words · sheet · hooks · inspect 2*`).
 
-A preview (`Preview: Agility check, hard: 38%` and its stakes) is shown as `**Before you act:** Agility check, hard: 38%. At stake: the sack.` and the line `*Go, or do something else.*`
+Only a Hard check or harder stops at a preview; a Routine one rolls at once, and its notice shows the chance and roll (D-051). A preview (`Preview: Agility check, hard: 38%` and its stakes) is shown as `**Before you act:** Agility check, hard: 38%. At stake: the sack.` and the line `*Go, or do something else.*`
 
 Player commands without a turn (`sheet`, `hooks`, `inspect N`) answer in the same look, then repeat the options.
 

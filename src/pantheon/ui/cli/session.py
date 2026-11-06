@@ -290,7 +290,11 @@ class Session:
             raise SessionError("Say what the player does, or pass --option N.")
         pending = Pending(tid, self.db.last_turn(tid) + 1, player_input, None if preview_only else chosen)
         if preview_only and chosen is not None:
-            pending.preview = self._locked(pending, chosen)
+            locked = self._locked(pending, chosen)
+            if self.needs_preview(locked):
+                pending.preview = locked
+            else:
+                pending.chosen_check = locked  # A Routine check rolls at once (D-051).
         run = self.replay(pending)
         if chosen is not None and not run.outcomes and not run.downed:
             pending.chosen_check = None  # The check no longer applies; the referee may roll a fresh one.
@@ -368,7 +372,11 @@ class Session:
             except (Rejected, ValueError, KeyError, TypeError) as exc:
                 self.console.print(f"[yellow]Rejected: {escape(str(exc))}[/yellow]")
                 return
-            pending.preview = locked
+            if self.needs_preview(locked):
+                pending.preview = locked
+            else:
+                pending.chosen_check = locked  # A Routine check rolls at once, odds in its notice (D-051).
+                run = self.replay(pending)
             self.save_pending(pending)
             self.next_step(pending, run)
             return
@@ -446,6 +454,11 @@ class Session:
             }
         self._write_side(self.previews_path, pending.timeline, pending.turn, {**seen, stat: check})
         return check
+
+    @staticmethod
+    def needs_preview(check: dict[str, Any]) -> bool:
+        """Only Hard checks or harder wait for the player to go ahead; Routine ones roll at once (D-051)."""
+        return check.get("difficulty") != "routine"
 
     def chance(self, state: GameState, check: dict[str, Any]) -> str:
         """The odds as the player sees them, from the same calculation as the roll (D-036)."""
