@@ -10,6 +10,8 @@ PR #20 merged: master v4.11.0 (D-043) and two audits, `docs/audit/2026-11-06-rep
 
 PR #21 merged: every audit finding fixed or recorded (each report's Outcome names the commit). The play guard denies by default (D-044); 539 tests in 15 s, 98.51 % coverage; mypy strict on all of `src/pantheon`. Still open from the audit: canon gaps G-28 to G-32 (the owner answers them); MEM-01 to MEM-04 have no tests until M3.
 
+D-045: a due hook or a moved clock always gets one suggested action leading back to it (prompt rule; M4's beat scheduler enforces it later). Open with the owner: replacing tap options with free text plus an odds preview (see Open questions).
+
 **Next: build the rest of M1 (M1d, M1e, M1f) on a new branch cut from `main`.** M1d combat already exists as draft PR #16 (`m1d-combat`, D-039), cut from main before #17 and #18; D-039 exists only on that branch until it merges.
 
 ## Just done
@@ -31,6 +33,8 @@ PR #21 merged: every audit finding fixed or recorded (each report's Outcome name
 7. After M1: report requirements met, deferred and defects; offer an audit (VER-09); republish the plan page (D-018).
 
 ## Open questions
+
+- Odds without option menus: the owner likes seeing check odds before acting but wants to drop tapped options. Proposed: a `session preview` step that shows the odds of a typed action before it rolls (workshop in progress, 2026-11-06).
 
 - Prose length and pace: the owner may want shorter scenes (D-033 says 200 to 400 words). Ask before changing D-033.
 - Reward, loot and evolution numbers are engine data to tune (G-08). What does training give (G-27)?
