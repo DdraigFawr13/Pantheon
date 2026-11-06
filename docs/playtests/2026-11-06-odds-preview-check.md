@@ -1,4 +1,4 @@
-# Scripted check: odds without an option menu (D-049), 2026-11-06
+# Scripted check: odds without an option menu (D-050), 2026-11-06
 
 A scripted session run with seed 42 and the test character Wren (saltborn, Wayfinder). The narrator's prose is placeholder text; every percentage, roll and outcome is the engine's own output, copied from the commands below. The run checks two things: the closing thought gets its odds at commit, and a typed action is previewed before it rolls. This is not the owner's playtest; the owner's next session play is.
 

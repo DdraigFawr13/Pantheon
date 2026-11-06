@@ -305,9 +305,9 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Decision:** When the due material lists a due hook, or a clock that has moved or filled, one of the 3 to 4 suggested actions leads toward that thread in the scene's own terms, and the closing weighing of choices names it. It is one action per turn, only while something is due, and the player may ignore it. This is a narrator-prompt rule (`prompts/narrator.md`, Choice design), so it relies on the narrator; M4's beat scheduler and engine-evaluated due hooks are where the engine enforces it.
 - **Why:** options grow from the current scene, so picking a side path made every next menu about that side path, and nothing pulled the player back to open threads. The owner noticed this in past play.
 
-## D-049 Odds without an option menu: odds in the closing thought, and a preview for typed actions
+## D-050 Odds without an option menu: odds in the closing thought, and a preview for typed actions
 
-- **Status:** Accepted (2026-11-06; owner, on the mock-up https://claude.ai/artifact/8jXbpgTg7zXjRk7bhfWZxb: "let's go with c for now and potentially switch to a in the future"). Settles design audit F3.
+- **Status:** Accepted (2026-11-06; owner, on the mock-up https://claude.ai/artifact/8jXbpgTg7zXjRk7bhfWZxb: "let's go with c for now and potentially switch to a in the future"). Settles design audit F3 (the audit named it D-049; PR #24 took that number).
 - **Decision:** In session play outside a fight, there is no numbered option menu.
   - The scene's closing thought marks the approaches the character weighs with `<<ODDS n>>`, and at commit the engine prints each one's odds there, such as "(Agility 38%)" or "(no roll)". The odds come from `check_preview`, the same calculation as the roll (D-036).
   - A typed action that needs a roll is previewed first (`Preview: Agility check, hard: 38%`). `session go` rolls exactly that check; `session abandon` backs off with nothing rolled. Within a turn, a stat's first preview fixes its difficulty and tier, so rewording the same approach cannot reshop the odds; a different stat gets its own.

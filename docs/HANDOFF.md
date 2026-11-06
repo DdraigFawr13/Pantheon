@@ -8,7 +8,7 @@ M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are me
 
 **M1 is complete: M1d, M1e and M1f merged as PR #19** (owner approved 2026-11-06), which brought in #16 (D-039); #16 is closed as superseded. **Next: M2 (narrator loop)**, starting with an M1 audit offer (VER-09) and the owner's playtest with a fight.
 
-D-048: a due hook or a moved clock always gets one suggested action leading back to it (prompt rule; M4's beat scheduler enforces it later). D-049 (design audit F3): no option menu outside fights; the closing thought carries the odds, a typed action that rolls is previewed first (`session go`); the owner may move to preview-only (shape A) later. Mock-up: https://claude.ai/artifact/8jXbpgTg7zXjRk7bhfWZxb
+D-048: a due hook or a moved clock always gets one suggested action leading back to it (prompt rule; M4's beat scheduler enforces it later). D-050 (design audit F3): no option menu outside fights; the closing thought carries the odds, a typed action that rolls is previewed first (`session go`); the owner may move to preview-only (shape A) later. Mock-up: https://claude.ai/artifact/8jXbpgTg7zXjRk7bhfWZxb
 
 ## Just done
 
@@ -25,7 +25,7 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 ## Next
 
 1. Audit fixes on a new branch from `main` (after PR #23 merges): the doc, DECISIONS, canon-gap (G-36 Attuned, shard sale, Unwritten tier path, prices by tier), sim and test findings in `docs/audit/2026-11-06-design.md` Outcome. F1, F3 and F4 belong to M2 planning; F7 and F19 wait for the owner's fight playtest.
-2. Then plan M2 with the `planning-interview` skill (WS-03): only what M2 still needs (about 10 narrator tools unbuilt, the bounty board data, NAR-06/07 on session play; Ollama side-by-side and streaming look moot by D-032 and D-029). Options vs odds is settled (D-049); prose length (D-033) comes first.
+2. Then plan M2 with the `planning-interview` skill (WS-03): only what M2 still needs (about 10 narrator tools unbuilt, the bounty board data, NAR-06/07 on session play; Ollama side-by-side and streaming look moot by D-032 and D-029). Options vs odds is settled (D-050); prose length (D-033) comes first.
 3. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.

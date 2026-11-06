@@ -85,7 +85,7 @@ from pantheon.world.loader import World, load_world
 from pantheon.world.schemas import Item
 
 PLAYING = ".playing"
-ODDS_MARKER = re.compile(r"<<ODDS (\d+)>>")  # Where the engine prints an approach's odds (D-049).
+ODDS_MARKER = re.compile(r"<<ODDS (\d+)>>")  # Where the engine prints an approach's odds (D-050).
 _RECENT_SHOWN = 2
 
 
@@ -103,7 +103,7 @@ class Pending:
     chosen_check: dict[str, Any] | None = None
     calls: list[dict[str, Any]] = field(default_factory=list)
     narration: str | None = None
-    preview: dict[str, Any] | None = None  # A typed action's check, shown but not rolled (D-049).
+    preview: dict[str, Any] | None = None  # A typed action's check, shown but not rolled (D-050).
 
     @property
     def talk_only(self) -> bool:
@@ -148,7 +148,7 @@ class Session:
 
     @property
     def shown_path(self) -> Path:
-        """Which suggested actions had their odds printed in the last scene (D-049)."""
+        """Which suggested actions had their odds printed in the last scene (D-050)."""
         return self.db_path.with_name(self.db_path.stem + ".shown.json")
 
     def _side(self, path: Path, tid: str, turn: int) -> dict[str, Any]:
@@ -433,7 +433,7 @@ class Session:
         self.pending_path.unlink(missing_ok=True)
         self.console.print("The turn in progress is dropped; nothing was saved from it.")
 
-    # Odds without an option menu (D-049).
+    # Odds without an option menu (D-050).
 
     def _locked(self, pending: Pending, check: dict[str, Any]) -> dict[str, Any]:
         """A stat's first preview this turn fixes its difficulty and tier, so rewording cannot reshop them."""
@@ -1162,7 +1162,7 @@ def add_parser(sub: Any) -> None:
     narrate.add_argument("file")
     steps.add_parser("commit", help="save the turn and show the options")
     steps.add_parser("abandon", help="drop the turn in progress")
-    steps.add_parser("go", help="roll the previewed check the player accepted (D-049)")
+    steps.add_parser("go", help="roll the previewed check the player accepted (D-050)")
     choose = steps.add_parser(
         "choose", help="a player choice: offer, class, profession, point, skill, evolution"
     )

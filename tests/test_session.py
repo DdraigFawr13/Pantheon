@@ -131,7 +131,7 @@ def test_session_check_rolls_before_prose_and_replays_the_same_dice_ENG_04(game:
     code, out = game("begin", "I climb the slick wall")
     assert "request_check" in out
     code, out = game("tool", "request_check", CLIMB)
-    assert code == 0 and "Preview: Agility check, hard" in out  # A typed action shows its odds first (D-049).
+    assert code == 0 and "Preview: Agility check, hard" in out  # A typed action shows its odds first (D-050).
     code, out = game("go")
     assert code == 0
     first_roll = json.loads(out.split("Engine check: ")[1].split("\n")[0])
@@ -176,7 +176,7 @@ def test_session_tool_rejections_change_nothing_NAR_06(game: Game) -> None:
     code, out = game("tool", "suggest_actions", json.dumps({"actions": []}))
     assert "Rejected" in out
     code, out = game.narrate("Again.")
-    assert code == 0 and "Prose replaced" in out  # Prose may be rewritten until commit (D-049).
+    assert code == 0 and "Prose replaced" in out  # Prose may be rewritten until commit (D-050).
     assert game.state()[1] == 0  # Nothing was saved (NAR-06).
     assert game.state()[0].suggested == []
 
@@ -259,7 +259,7 @@ def test_session_screen_is_plain_data_for_the_game_page(game: Game, tmp_path: Pa
     screen = json.loads(out.read_text(encoding="utf-8"))
     assert screen["turn"] == 1 and screen["name"] == "Wren"
     assert screen["prose"] and not screen["in_progress"]
-    assert screen["options"] == []  # No option list outside a fight (D-049); the scene names the approaches.
+    assert screen["options"] == []  # No option list outside a fight (D-050); the scene names the approaches.
     assert [o["n"] for o in screen["offers"]] == [4, 5, 6]
     assert screen["preview"] is None
     assert all("[" not in line for line in screen["ledger"])  # No terminal markup reaches the page.
@@ -540,11 +540,11 @@ def test_wld02_playing_never_writes_to_world(game: Game) -> None:
     assert fingerprint() == before
 
 
-# D-049: odds without an option menu. A typed action that rolls is previewed first; the scene's closing
+# D-050: odds without an option menu. A typed action that rolls is previewed first; the scene's closing
 # thought carries the odds of the approaches the narrator marks; nothing rolls at odds the player did not see.
 
 
-def test_d049_a_typed_risky_action_shows_its_odds_before_it_rolls(game: Game) -> None:
+def test_d050_a_typed_risky_action_shows_its_odds_before_it_rolls(game: Game) -> None:
     game.sworn()
     game("begin", "I climb the slick wall")
     code, out = game("tool", "request_check", CLIMB)
@@ -561,7 +561,7 @@ def test_d049_a_typed_risky_action_shows_its_odds_before_it_rolls(game: Game) ->
     assert engine["chance"] == shown  # The roll uses exactly the previewed odds (D-036).
 
 
-def test_d049_backing_off_rolls_nothing_and_rewording_keeps_the_odds(game: Game) -> None:
+def test_d050_backing_off_rolls_nothing_and_rewording_keeps_the_odds(game: Game) -> None:
     game.sworn()
     game("begin", "I climb the slick wall")
     _, first = game("tool", "request_check", CLIMB)
@@ -580,7 +580,7 @@ def test_d049_backing_off_rolls_nothing_and_rewording_keeps_the_odds(game: Game)
     assert "Presence check, routine" in third  # A different approach gets its own odds.
 
 
-def test_d049_the_closing_thought_carries_the_odds_and_there_is_no_menu(game: Game) -> None:
+def test_d050_the_closing_thought_carries_the_odds_and_there_is_no_menu(game: Game) -> None:
     game.sworn()
     game("begin", "[I swear. Narrate the aftermath.]")
     game.narrate("Wren could climb the broken stair <<ODDS 3>> or ask the voice what it wanted <<ODDS 1>>.")
@@ -595,7 +595,7 @@ def test_d049_the_closing_thought_carries_the_odds_and_there_is_no_menu(game: Ga
     assert "Engine check" in out  # Its odds were in the scene, so it rolls at once.
 
 
-def test_d049_an_approach_whose_odds_were_not_shown_is_previewed_first(game: Game) -> None:
+def test_d050_an_approach_whose_odds_were_not_shown_is_previewed_first(game: Game) -> None:
     game.sworn()
     game("begin", "[I swear. Narrate the aftermath.]")
     game.narrate("The Ledger opened in Wren's head like a door left ajar.")  # It marks no approach.
@@ -606,7 +606,7 @@ def test_d049_an_approach_whose_odds_were_not_shown_is_previewed_first(game: Gam
     assert "Engine check" not in out and "Preview" in out and "Agility check, hard" in out
 
 
-def test_d049_a_marker_for_a_missing_approach_is_refused_at_commit(game: Game) -> None:
+def test_d050_a_marker_for_a_missing_approach_is_refused_at_commit(game: Game) -> None:
     game.sworn()
     game("begin", "[I swear. Narrate the aftermath.]")
     game.narrate("Wren could climb <<ODDS 9>>.")
@@ -617,7 +617,7 @@ def test_d049_a_marker_for_a_missing_approach_is_refused_at_commit(game: Game) -
     assert game("commit")[0] == 0
 
 
-def test_d049_the_game_page_gets_the_preview(game: Game, tmp_path: Path) -> None:
+def test_d050_the_game_page_gets_the_preview(game: Game, tmp_path: Path) -> None:
     game.sworn()
     game("begin", "I climb the slick wall")
     game("tool", "request_check", CLIMB)
@@ -626,4 +626,4 @@ def test_d049_the_game_page_gets_the_preview(game: Game, tmp_path: Path) -> None
     screen = json.loads(out.read_text(encoding="utf-8"))
     assert screen["preview"]["text"].startswith("Agility check, hard: ")
     assert screen["preview"]["stakes"] == "a fall"
-    assert screen["options"] == []  # Outside a fight, no option list (D-049).
+    assert screen["options"] == []  # Outside a fight, no option list (D-050).
