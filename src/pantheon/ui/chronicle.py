@@ -10,13 +10,15 @@ from __future__ import annotations
 
 import html
 import io
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
+from typing import Any
 
 from rich.console import Console
 from rich.text import Text
 
 from pantheon.engine.calendar import date_of, format_date
+from pantheon.engine.loot import format_cp
 from pantheon.engine.state import GameState
 from pantheon.storage.db import Database
 from pantheon.ui.cli.app import ledger_lines, sheet
@@ -46,6 +48,7 @@ class Chronicle:
     open_threads: list[str]
     settled_threads: list[str]
     sheet: str
+    tally: list[tuple[str, str]] = field(default_factory=list)
 
 
 def plain(markup: str) -> str:
@@ -58,7 +61,8 @@ def build(db: Database, world: World, timeline_id: str) -> Chronicle:
     assert world.data is not None
     state = db.load_state(timeline_id)
     by_turn: dict[int, list[str]] = defaultdict(list)
-    for event in db.events(timeline_id):
+    events = db.events(timeline_id)
+    for event in events:
         by_turn[event["turn"]].extend(
             plain(line) for line in ledger_lines([(event["type"], event["payload"])])
         )
@@ -77,7 +81,40 @@ def build(db: Database, world: World, timeline_id: str) -> Chronicle:
         open_threads=[h.description for h in state.hooks if not h.resolved],
         settled_threads=[h.description for h in state.hooks if h.resolved],
         sheet=console.export_text().rstrip(),
+        tally=tally(events, len(entries)),
     )
+
+
+def tally(events: list[dict[str, Any]], turns: int) -> list[tuple[str, str]]:
+    """The run in numbers, each one counted from recorded events (GAME-04)."""
+    checks = [e["payload"] for e in events if e["type"] == "check_resolved"]
+    outcomes = Counter(str(c["outcome"]).replace("_", " ") for c in checks)
+    xp = sum(int(e["payload"]["amount"]) for e in events if e["type"] == "xp_gained")
+    hurt = sum(
+        int(e["payload"]["amount"])
+        for e in events
+        if e["type"] == "effect_applied" and e["payload"]["kind"] == "damage"
+    )
+    fights = sum(1 for e in events if e["type"] == "fight_ended")
+    won = sum(1 for e in events if e["type"] == "fight_ended" and e["payload"]["result"] == "won")
+    coin = sum(int(e["payload"]["delta_cp"]) for e in events if e["type"] == "currency_changed")
+    rows = [("Turns", str(turns))]
+    if checks:
+        rolled = ", ".join(f"{n} {o}" for o, n in outcomes.most_common())
+        rows.append(("Checks", f"{len(checks)} ({rolled})"))
+        luckiest = min((c for c in checks if not c.get("automatic")), key=lambda c: c["roll"], default=None)
+        if luckiest is not None:
+            rows.append(
+                ("Best roll", f"{luckiest['roll']} ({luckiest['stat']} check at {luckiest['chance']}%)")
+            )
+    rows.append(("XP earned", str(xp)))
+    if hurt:
+        rows.append(("HP lost", str(hurt)))
+    if fights:
+        rows.append(("Fights", f"{fights}, {won} won"))
+    if coin:
+        rows.append(("Coin", f"{'+' if coin > 0 else '-'}{format_cp(abs(coin))}"))
+    return rows
 
 
 def _subtitle(state: GameState, world: World) -> str:
@@ -116,6 +153,7 @@ def render_markdown(chronicle: Chronicle) -> str:
     out += [f"- Open: {t}" for t in chronicle.open_threads] + [
         f"- Settled: {t}" for t in chronicle.settled_threads
     ]
+    out += ["", "## The tally", ""] + [f"- {k}: {v}" for k, v in chronicle.tally]
     out += ["", "## The Ledger now", "", "```", chronicle.sheet, "```", ""]
     return "\n".join(out)
 
@@ -152,6 +190,7 @@ def render_html(chronicle: Chronicle) -> str:
     before = ""
     if prologue:
         before = f'<h2>Before the first turn</h2><section><ul class="ledger">{prologue}</ul></section>'
+    tally_rows = "".join(f"<tr><th>{e(k)}</th><td>{e(v)}</td></tr>" for k, v in chronicle.tally)
     contents = " ".join(f'<a href="#t{x.turn}">{x.turn}</a>' for x in chronicle.entries)
     return f"""<!doctype html>
 <html lang="en">
@@ -202,6 +241,10 @@ ul.ledger, ul.threads {{ list-style: none; padding: 0; margin: 0; font: .8rem/1.
 ul.ledger li {{ padding-left: 1.2em; text-indent: -1.2em; overflow-wrap: anywhere; }}
 ul.threads li::before {{ content: "◆ "; color: var(--brass); }}
 ul.threads li.done {{ text-decoration: line-through; opacity: .6; }}
+table.tally {{ border-collapse: collapse; width: 100%; font: .8rem/1.7 var(--mono); margin: 8px 0; }}
+table.tally th {{ text-align: left; color: var(--brass); font-weight: 600; padding-right: 12px;
+  white-space: nowrap; }}
+table.tally td {{ color: var(--muted); }}
 pre {{ font: .74rem/1.45 var(--mono); background: var(--page); border: 1px solid var(--line);
   border-radius: 12px; padding: 12px; overflow-x: auto; }}
 footer {{ font: .72rem var(--mono); color: var(--muted); text-align: center; margin-top: 40px; }}
@@ -218,6 +261,8 @@ footer {{ font: .72rem var(--mono); color: var(--muted); text-align: center; mar
 {chr(10).join(turns)}
 <h2>Threads</h2>
 <section><ul class="threads">{threads}{settled}</ul></section>
+<h2>The tally</h2>
+<section><table class="tally">{tally_rows}</table></section>
 <h2>The Ledger now</h2>
 <pre>{e(chronicle.sheet)}</pre>
 <footer>Timeline {e(chronicle.timeline)} · every number above was decided by the engine</footer>

@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 
+from pantheon.engine.loot import format_cp
 from pantheon.ui.cli.app import main
 from tests.test_session import Game
 
@@ -36,7 +37,36 @@ def test_chronicle_markdown_matches_the_playtest_shape(game: Game, capsys: Any) 
     assert "The Ledger opened in Wren's head." in out
     assert "`▸ Oath sworn:" in out  # The engine's events, as the Ledger shows them.
     assert "## Threads" in out and "- Open: Complication:" in out
+    assert "## The tally" in out and "- Turns: 2" in out and "- XP earned:" in out
     assert "## The Ledger now" in out and "Purse:" in out
+
+
+def test_chronicle_tally_counts_only_recorded_events() -> None:
+    from pantheon.ui.chronicle import tally
+
+    events = [
+        {
+            "type": "check_resolved",
+            "payload": {"outcome": "triumph", "roll": 3, "stat": "intellect", "chance": 58},
+        },
+        {
+            "type": "check_resolved",
+            "payload": {"outcome": "failure", "roll": 90, "stat": "vigor", "chance": 40},
+        },
+        {"type": "check_resolved", "payload": {"outcome": "success", "stat": "vigor", "automatic": True}},
+        {"type": "xp_gained", "payload": {"amount": 10, "reason": "the climb"}},
+        {"type": "xp_gained", "payload": {"amount": 5, "reason": "the sack"}},
+        {"type": "effect_applied", "payload": {"kind": "damage", "amount": 4, "reason": "a bite"}},
+        {"type": "effect_applied", "payload": {"kind": "heal", "amount": 2, "reason": "a tonic"}},
+        {"type": "fight_ended", "payload": {"result": "won"}},
+        {"type": "currency_changed", "payload": {"delta_cp": -14, "reason": "the toll"}},
+    ]
+    rows = dict(tally(events, 7))
+    assert rows["Turns"] == "7" and rows["XP earned"] == "15" and rows["HP lost"] == "4"
+    assert rows["Checks"] == "3 (1 triumph, 1 failure, 1 success)"
+    assert rows["Best roll"] == "3 (intellect check at 58%)"
+    assert rows["Fights"] == "1, 1 won" and rows["Coin"] == "-" + format_cp(14)
+    assert dict(tally([], 0)) == {"Turns": "0", "XP earned": "0"}
 
 
 def test_chronicle_html_is_a_page_written_to_a_file(game: Game, capsys: Any, tmp_path: Path) -> None:
