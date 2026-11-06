@@ -25,6 +25,7 @@ from rich.text import Text
 
 from pantheon.config import Config, load_config
 from pantheon.engine.calendar import clock_value, date_of, format_date
+from pantheon.engine.checks import Outcome
 from pantheon.engine.combat import downed_exchange, intent_label
 from pantheon.engine.commands import (
     CharacterChoices,
@@ -44,6 +45,7 @@ from pantheon.engine.tools import (
     ToolResult,
     apply_tool,
     attempt_trial,
+    check_preview,
     equip_item,
     resolve_offer,
     tool_definition,
@@ -83,6 +85,7 @@ from pantheon.world.loader import World, load_world
 from pantheon.world.schemas import Item
 
 PLAYING = ".playing"
+ODDS_MARKER = re.compile(r"<<ODDS (\d+)>>")  # Where the engine prints an approach's odds (D-050).
 _RECENT_SHOWN = 2
 
 
@@ -100,6 +103,7 @@ class Pending:
     chosen_check: dict[str, Any] | None = None
     calls: list[dict[str, Any]] = field(default_factory=list)
     narration: str | None = None
+    preview: dict[str, Any] | None = None  # A typed action's check, shown but not rolled (D-050).
 
     @property
     def talk_only(self) -> bool:
@@ -136,6 +140,28 @@ class Session:
     @property
     def marker(self) -> Path:
         return self.db_path.parent / PLAYING
+
+    @property
+    def previews_path(self) -> Path:
+        """This turn's previews, kept across `abandon` so rewording an action cannot reshop its odds."""
+        return self.db_path.with_name(self.db_path.stem + ".previews.json")
+
+    @property
+    def shown_path(self) -> Path:
+        """Which suggested actions had their odds printed in the last scene (D-050)."""
+        return self.db_path.with_name(self.db_path.stem + ".shown.json")
+
+    def _side(self, path: Path, tid: str, turn: int) -> dict[str, Any]:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return data.get("values", {}) if data.get("at") == [tid, turn] else {}
+
+    def _write_side(self, path: Path, tid: str, turn: int, values: dict[str, Any]) -> None:
+        temp = path.with_name(path.name + ".tmp")
+        temp.write_text(json.dumps({"at": [tid, turn], "values": values}), encoding="utf-8")
+        os.replace(temp, path)
 
     def load_pending(self) -> Pending | None:
         if not self.pending_path.exists():
@@ -244,17 +270,27 @@ class Session:
                 "The player must choose first (`session choose <kind> <id>`): " + "; ".join(due)
             )
         chosen = None
+        preview_only = False
         if option is not None:
             if not 1 <= option <= len(state.suggested):
                 raise SessionError(f"There is no option {option}.")
             action = state.suggested[option - 1]
             chosen = action.check
+            last = self.db.last_turn(tid)
+            if (
+                chosen is not None
+                and state.fight is None
+                and option not in self._side(self.shown_path, tid, last).get("shown", [])
+            ):
+                preview_only = True  # Its odds were never on screen, so the player sees them before it rolls.
             player_input = f"{action.label} ({action.tag})" if action.tag and not chosen else action.label
         if not player_input:
             player_input = OPENING_INPUT if self.db.last_turn(tid) == 0 else ""
         if not player_input:
             raise SessionError("Say what the player does, or pass --option N.")
-        pending = Pending(tid, self.db.last_turn(tid) + 1, player_input, chosen)
+        pending = Pending(tid, self.db.last_turn(tid) + 1, player_input, None if preview_only else chosen)
+        if preview_only and chosen is not None:
+            pending.preview = self._locked(pending, chosen)
         run = self.replay(pending)
         if chosen is not None and not run.outcomes and not run.downed:
             pending.chosen_check = None  # The check no longer applies; the referee may roll a fresh one.
@@ -288,6 +324,10 @@ class Session:
             elif run.outcomes:
                 note = ", then ".join(OUTCOME_MEANINGS[o] for o in run.outcomes)
                 out(escape(NARRATE_OUTCOME.format(outcomes=note)))
+        if pending.preview is not None:
+            self.show_preview(pending)
+            out("Step: show the player the preview and wait. `session go` rolls it; `abandon` backs off.")
+            return
         names = self.offered(pending, run)
         if pending.narration is None:
             referee = {"fight_move": FIGHT_REFEREE_PROMPT, "request_check": REFEREE_PROMPT}
@@ -315,6 +355,23 @@ class Session:
             raise SessionError(f"The arguments are not JSON: {exc}") from exc
         if name not in names:
             raise SessionError(f"{name} is not available now. Tools now: {', '.join(names) or 'none'}.")
+        if (
+            name == "request_check"
+            and not run.fighting
+            and pending.chosen_check is None
+            and not pending.calls
+        ):
+            assert self.world.data is not None
+            locked = self._locked(pending, args)
+            try:
+                check_preview(run.sim.state, self.world.data, locked)
+            except (Rejected, ValueError, KeyError, TypeError) as exc:
+                self.console.print(f"[yellow]Rejected: {escape(str(exc))}[/yellow]")
+                return
+            pending.preview = locked
+            self.save_pending(pending)
+            self.next_step(pending, run)
+            return
         before = len(run.sim.events)
         result = apply_tool(run.sim, name, args)
         if not result.accepted:
@@ -329,22 +386,27 @@ class Session:
 
     def narrate(self, path: Path) -> None:
         pending = self.need_pending()
-        if pending.narration is not None:
-            raise SessionError("This turn already has its prose. Record its consequences, then commit.")
+        if pending.preview is not None:
+            raise SessionError(
+                "A preview is waiting for the player: `session go` or `session abandon` first."
+            )
         run = self.replay(pending)
         text = strip_action_list(path.read_text(encoding="utf-8")).strip()
-        problems = ["the prose is empty"] if not text else prose_problems(text, run.allowed)
+        # The engine fills the markers in at commit; they are not the narrator's numbers.
+        bare = ODDS_MARKER.sub("", text)
+        problems = ["the prose is empty"] if not text else prose_problems(bare, run.allowed)
         recent = [n for _, n in self.db.recent_turns(pending.timeline, self.config.recent_turns)]
-        if repeats_earlier_turn(text, recent):
+        if repeats_earlier_turn(bare, recent):
             problems.append("it repeats earlier narration; answer what the player just did with new events")
         if run.outcomes and CHECK_MARKER not in text:
             problems.append(f"put {CHECK_MARKER} on its own line where the check's result lands")
         if problems:
             self.console.print("[yellow]Not accepted: " + escape("; ".join(problems)) + ".[/yellow]")
             return
+        replacing = pending.narration is not None
         pending.narration = place_notices(text, run.sim.events)
         self.save_pending(pending)
-        self.console.print("Prose accepted.")
+        self.console.print("Prose replaced." if replacing else "Prose accepted.")
         self.next_step(pending, run)
 
     def commit(self) -> None:
@@ -354,12 +416,14 @@ class Session:
             raise SessionError("Write and `narrate` the prose before committing.")
         if not run.sim.suggested:
             raise SessionError("Call suggest_actions before committing: the player needs options.")
-        record = TurnRecord(pending.turn, pending.player_input, pending.narration, False, 0, 0, 0)
+        narration, shown = self.stamp_odds(pending.narration, run.sim.state)
+        record = TurnRecord(pending.turn, pending.player_input, narration, False, 0, 0, 0)
         self.db.commit_turn(pending.timeline, record, run.sim.events, run.sim.rng.state(), run.sim.state)
         self.pending_path.unlink()
-        self.console.print(escape(pending.narration))
+        self._write_side(self.shown_path, pending.timeline, pending.turn, {"shown": shown})
+        self.console.print(escape(narration))
         for line in ledger_lines(run.sim.events):
-            if line not in pending.narration:
+            if line not in narration:
                 self.console.print(f"  {line}")
         if any(type_ == "level_up" for type_, _ in run.sim.events):
             self.console.print(sheet(run.sim.state, self.world))
@@ -368,6 +432,80 @@ class Session:
     def abandon(self) -> None:
         self.pending_path.unlink(missing_ok=True)
         self.console.print("The turn in progress is dropped; nothing was saved from it.")
+
+    # Odds without an option menu (D-050).
+
+    def _locked(self, pending: Pending, check: dict[str, Any]) -> dict[str, Any]:
+        """A stat's first preview this turn fixes its difficulty and tier, so rewording cannot reshop them."""
+        seen = self._side(self.previews_path, pending.timeline, pending.turn)
+        stat = str(check.get("stat", ""))
+        if stat in seen:
+            return {
+                **check,
+                **{k: seen[stat][k] for k in ("difficulty", "challenge_tier") if k in seen[stat]},
+            }
+        self._write_side(self.previews_path, pending.timeline, pending.turn, {**seen, stat: check})
+        return check
+
+    def chance(self, state: GameState, check: dict[str, Any]) -> str:
+        """The odds as the player sees them, from the same calculation as the roll (D-036)."""
+        assert self.world.data is not None
+        odds = check_preview(state, self.world.data, check)
+        if odds.shown is not None:
+            return f"{odds.shown}%"
+        return "sure" if odds.outcome is Outcome.SUCCESS else "no chance"
+
+    def preview_text(self, state: GameState, check: dict[str, Any]) -> str:
+        return f"{str(check['stat']).capitalize()} check, {check['difficulty']}: {self.chance(state, check)}"
+
+    def show_preview(self, pending: Pending) -> None:
+        assert pending.preview is not None
+        state = self.db.load_state(pending.timeline)
+        stakes = pending.preview.get("stakes")
+        self.console.print(f"Preview: {escape(self.preview_text(state, pending.preview))}")
+        if stakes:
+            self.console.print(f"  At stake: {escape(str(stakes))}. Nothing has been rolled yet.")
+
+    def screen_preview(self) -> dict[str, Any] | None:
+        pending = self.load_pending()
+        if pending is None or pending.preview is None:
+            return None
+        state = self.db.load_state(pending.timeline)
+        return {
+            "text": self.preview_text(state, pending.preview),
+            "stakes": pending.preview.get("stakes", ""),
+        }
+
+    def go(self) -> None:
+        """The player saw the preview and goes ahead: roll exactly the previewed check."""
+        pending = self.need_pending()
+        if pending.preview is None:
+            raise SessionError("No preview is waiting. Start a turn with `session begin`.")
+        pending.chosen_check, pending.preview = pending.preview, None
+        run = self.replay(pending)
+        self.save_pending(pending)
+        self.next_step(pending, run)
+
+    def stamp_odds(self, narration: str, state: GameState) -> tuple[str, list[int]]:
+        """Print each marked approach's odds where the narrator put it, by the same sum as the roll."""
+        suggested = state.suggested
+        shown: list[int] = []
+
+        def odds(match: re.Match[str]) -> str:
+            number = int(match.group(1))
+            if not 1 <= number <= len(suggested):
+                raise SessionError(
+                    f"The prose names {match.group(0)}, but suggest_actions has {len(suggested)} actions. "
+                    "Fix the marker and `narrate` again."
+                )
+            shown.append(number)
+            check = suggested[number - 1].check
+            if check is None:
+                return "(no roll)"
+            name, chance = self.preview_text(state, check).split(" check, ")[0], self.chance(state, check)
+            return f"({name} {chance})"
+
+        return ODDS_MARKER.sub(odds, narration), sorted(set(shown))
 
     # What the player sees between turns.
 
@@ -478,16 +616,17 @@ class Session:
         show_fight(state, self.world, self.console)
         if state.trial_ready:
             out("[bold]An Ascension Trial is ready.[/bold] The player may face it (`session trial`).")
-        for number, action in enumerate(state.suggested, 1):
-            odds = odds_text(state, self.world, action)
-            tag = f"[bold]\\[{action.tag.upper()}{odds}][/bold] " if action.tag else ""
-            out(f"  {number}. {tag}{escape(action.label)}")
+        if state.fight is not None:  # A fight's moves stay on the menu beside the foes' intents (D-039).
+            for number, action in enumerate(state.suggested, 1):
+                odds = odds_text(state, self.world, action)
+                tag = f"[bold]\\[{action.tag.upper()}{odds}][/bold] " if action.tag else ""
+                out(f"  {number}. {tag}{escape(action.label)}")
         offers = offer_choices(state, self.world)
         terms = offer_terms(state, self.world)
         for number, (choice_id, label) in enumerate(offers, len(state.suggested) + 1):
             out(f"  {number}. [bold]{label}[/bold] (`session choose offer {choice_id}`)")
             out(f"     [dim]{escape(terms[choice_id])}[/dim]")
-        out("  [dim]Or type your own.[/dim]")
+        out("  [dim]Type what you do.[/dim]" if state.fight is None else "  [dim]Or type your own.[/dim]")
 
     def status(self) -> None:
         tid = self.db.latest_timeline()
@@ -592,7 +731,7 @@ class Session:
         current = self.world.data.class_of(state.class_id)
         terms = offer_terms(state, self.world)
         options = []
-        for number, action in enumerate(state.suggested, 1):
+        for number, action in enumerate(state.suggested if state.fight is not None else [], 1):
             odds = odds_text(state, self.world, action).strip()
             options.append(
                 {
@@ -667,6 +806,7 @@ class Session:
             "turn": last,
             "version": len(logged),  # Grows with every saved change, so the page knows its move was taken.
             "in_progress": self.pending_path.exists(),
+            "preview": self.screen_preview(),
             "date": format_date(date_of(state.day)),
             "name": state.name,
             "people": state.people,
@@ -1022,6 +1162,7 @@ def add_parser(sub: Any) -> None:
     narrate.add_argument("file")
     steps.add_parser("commit", help="save the turn and show the options")
     steps.add_parser("abandon", help="drop the turn in progress")
+    steps.add_parser("go", help="roll the previewed check the player accepted (D-050)")
     choose = steps.add_parser(
         "choose", help="a player choice: offer, class, profession, point, skill, evolution"
     )
@@ -1106,6 +1247,8 @@ def _dispatch(session: Session, args: argparse.Namespace) -> None:
             session.commit()
         case "abandon":
             session.abandon()
+        case "go":
+            session.go()
         case "choose":
             session.choose(args.kind, args.choice)
         case "trial":

@@ -107,6 +107,8 @@ Built right after M1a, before the rest of M1, so the plan's top risks are tested
 
 `pantheon session` runs each step of a turn as its own command, so this Claude Code session is the narrator and play costs nothing beyond the subscription. The `/play` skill holds the steps; the play guard keeps secret and sealed canon out of the narrator's context; `scripts/saves.sh` keeps the save on the `saves` branch. `pantheon play` with Haiku stays.
 
+Odds without an option menu (D-050): the closing thought carries each approach's odds, and a typed action that rolls is previewed first (`session go` or back off). Mock-up: `mockups/odds-without-menus.html`.
+
 **You test:** say "play" in a Claude Code session on this repo, create a character, and play the opening and a few scenes.
 
 ## M1: Engine core (4 to 6 sessions)

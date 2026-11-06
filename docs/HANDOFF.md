@@ -8,7 +8,7 @@ M1.7 (D-041) and the 25-class roster (D-042) merged as PR #18. M1a to M1c are me
 
 **M1 is complete: M1d, M1e and M1f merged as PR #19** (owner approved 2026-11-06), which brought in #16 (D-039); #16 is closed as superseded. **Next: M2 (narrator loop)**, starting with an M1 audit offer (VER-09) and the owner's playtest with a fight.
 
-D-048: a due hook or a moved clock always gets one suggested action leading back to it (prompt rule; M4's beat scheduler enforces it later). Open with the owner: replacing tap options with free text plus an odds preview (see Open questions).
+D-048: a due hook or a moved clock always gets one suggested action leading back to it (prompt rule; M4's beat scheduler enforces it later). D-050 (design audit F3): no option menu outside fights; the closing thought carries the odds, a typed action that rolls is previewed first (`session go`); the owner may move to preview-only (shape A) later. Mock-up: https://claude.ai/artifact/8jXbpgTg7zXjRk7bhfWZxb
 
 ## Just done
 
@@ -24,14 +24,12 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 ## Next
 
 1. Audit fixes merged as PR #24 (owner approved 2026-11-06).
-2. **In progress (branch `claude/plan-m2`, draft PR #26): plan M2** (`planning-interview`). Round 1 answered (hints, odds before a roll, 150 to 250 words). The review page with round 2 is out (link below, collection `m2review1`); wait for "review done". Then the final page and write-spec.
+2. **In progress (branch `claude/plan-m2`, draft PR #26): plan M2** (`planning-interview`). Round 1 and the review are answered; the owner approved the recommendations. PR #25 (D-050) merged meanwhile and had already settled options vs odds differently, so the owner is asked which holds before anything is written. Then write-spec.
 3. Owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
 5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
 
 ## Open questions
-
-- Odds without option menus: the owner likes seeing check odds before acting but wants to drop tapped options. Proposed: a `session preview` step that shows the odds of a typed action before it rolls (workshop in progress, 2026-11-06).
 
 - Prose length and pace: the owner may want shorter scenes (D-033 says 200 to 400 words). Ask before changing D-033.
 - Reward, loot and evolution numbers are engine data to tune (G-08). What does training give (G-27)?

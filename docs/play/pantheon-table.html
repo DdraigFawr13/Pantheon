@@ -87,6 +87,13 @@ h2 { font: 700 .95rem var(--display); letter-spacing: .08em; color: var(--muted)
 .choice .terms { font: .78rem/1.4 var(--mono); color: var(--muted); }
 .choice.oath { border-color: var(--brass); }
 .detail { grid-column: 1 / -1; font: .78rem/1.45 var(--mono); color: var(--muted); border-top: 1px dashed var(--line); padding: 8px 12px; white-space: pre-line; }
+.preview { border: 1px solid var(--brass); background: var(--brass-soft); border-radius: 8px; padding: 12px; display: grid; gap: 8px; }
+.preview .label { font: 700 .74rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.preview .pwhat { font: 600 .95rem/1.4 var(--mono); }
+.preview .pwhy { font: .92rem/1.4 var(--prose); color: var(--muted); }
+.preview .prow { display: flex; gap: 8px; flex-wrap: wrap; }
+.preview button { min-height: 44px; min-width: 104px; }
+.preview .back { font: 700 .95rem var(--display); letter-spacing: .05em; background: var(--page); color: var(--ink); border: 1px solid var(--brass); border-radius: 8px; padding: 0 16px; cursor: pointer; }
 form.own { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 form.own input { font: 1rem var(--prose); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--page); color: var(--ink); min-width: 0; }
 form.own button, .primary { font: 700 .95rem var(--display); letter-spacing: .05em; background: var(--brass); color: var(--page); border: 0; border-radius: 8px; padding: 0 16px; cursor: pointer; }
@@ -177,12 +184,13 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   <section class="fight" id="fight" hidden aria-live="polite"></section>
   <ul class="ledger" id="ledger" hidden></ul>
   <section class="due" id="due" hidden></section>
+  <section class="preview" id="preview" hidden aria-live="polite"></section>
   <section id="actions" hidden>
     <h2>What do you do?</h2>
     <div class="choices" id="choices"></div>
   </section>
   <form class="own" id="own" autocomplete="off">
-    <input id="ownText" maxlength="300" placeholder="Or write your own action" aria-label="Your own action">
+    <input id="ownText" maxlength="300" placeholder="What do you do?" aria-label="Your own action">
     <button type="submit" id="ownBtn">Do it</button>
   </form>
   </div>
@@ -293,6 +301,18 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
       if (s.trial_ready) choices.append(choiceRow({ label: "Face the Ascension Trial", tag: "TRIAL", odds: "", n: null }, "Pantheon trial"));
     }
     $("actions").hidden = blocked || !choices.children.length;
+    const preview = $("preview"); preview.replaceChildren();
+    if (s.preview) {
+      preview.append(el("div", "label", "Before you act"), el("div", "pwhat", s.preview.text));
+      if (s.preview.stakes) preview.append(el("div", "pwhy", `At stake: ${s.preview.stakes}. Nothing has been rolled yet.`));
+      const row = el("div", "prow");
+      const go = el("button", "primary", "Go"); go.type = "button";
+      const back = el("button", "back", "Back off"); back.type = "button";
+      go.addEventListener("click", () => send("Pantheon go", go));
+      back.addEventListener("click", () => send("Pantheon back off", back));
+      row.append(go, back); preview.append(row);
+    }
+    preview.hidden = !s.preview;
     $("own").hidden = blocked;
     if (sentAt !== null && s.version !== sentAt && !s.in_progress) sentAt = null;
     status();
@@ -318,7 +338,8 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     return row;
   }
 
-  function busy() { return sentAt !== null || (screen && screen.in_progress); }
+  // A preview waits for the player inside a turn, so its Go and Back off stay usable (D-050).
+  function busy() { return sentAt !== null || (screen && screen.in_progress && !screen.preview); }
 
   function status(note) {
     const st = $("state");

@@ -312,3 +312,17 @@ The requirements themselves live in `docs/SPEC.md` section 2 and the technology 
 - **Status:** Accepted (2026-11-06; owner: "Do as you recommend" on `docs/audit/2026-11-06-design.md`)
 - **Decision:** (1) NAR-06 and NAR-07 apply to session play as well as `pantheon play`: rejections are capped and dropped calls recorded (F4); built in M2. (2) Fight length is a tuning item for the owner's fight playtest; D-039's hits and guard rule stay until then (F7). (3) D-039 and D-045 become Accepted, or list changes, after that playtest (F19). (4) Three trait readings are named as Assumed under D-045 (F20). (5) Combat gets ENG-12 and class traits ENG-13 in SPEC; their tests carry the IDs (F5). (6) Numbers live in data files only, with tests where canon text repeats them: `combat.yaml` against the trait text, `items.yaml` against `world/economy.md` (F13, F16). (7) Whether options stay is settled first in the M2 planning interview, as its own entry (F3).
 - **Why:** the audit found the M2 plan and architecture out of date, several facts in more than one home, and canon questions with no gap entry.
+
+## D-050 Odds without an option menu: odds in the closing thought, and a preview for typed actions
+
+- **Status:** Accepted (2026-11-06; owner, on the mock-up https://claude.ai/artifact/8jXbpgTg7zXjRk7bhfWZxb: "let's go with c for now and potentially switch to a in the future"). Settles design audit F3 (the audit named it D-049; PR #24 took that number).
+- **Decision:** In session play outside a fight, there is no numbered option menu.
+  - The scene's closing thought marks the approaches the character weighs with `<<ODDS n>>`, and at commit the engine prints each one's odds there, such as "(Agility 38%)" or "(no roll)". The odds come from `check_preview`, the same calculation as the roll (D-036).
+  - A typed action that needs a roll is previewed first (`Preview: Agility check, hard: 38%`). `session go` rolls exactly that check; `session abandon` backs off with nothing rolled. Within a turn, a stat's first preview fixes its difficulty and tier, so rewording the same approach cannot reshop the odds; a different stat gets its own.
+  - A suggested action whose odds the last scene did not print is previewed when picked, so nothing rolls at odds the player did not see.
+  - `suggest_actions` is still required (NAR-03). It is now the engine's record of the approaches, not a menu. D-048's way back is one of the approaches the closing thought names.
+  - Fights keep their numbered moves beside the foes' intents (D-039).
+  - The API path (`pantheon play`) keeps its menu for now.
+  - The game page shows a Go and Back off card for a preview, and no option list outside a fight.
+- **Assumed:** prose may be replaced before commit (`narrate` again), so a wrong marker can be fixed. A preview costs one extra step on risky typed actions only.
+- **Why:** the owner likes seeing the odds before acting, but found the option menu kept them on the listed paths. Shape A (preview only, no odds in the prose) stays the likely next step, if the closing thought still pulls too hard toward its listed approaches.
