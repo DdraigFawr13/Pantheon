@@ -12,6 +12,7 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 ## Just done
 
+- 2026-11-06 `pantheon play` gear commands (`use`, `equip`, `unequip`, no turn, D-047), the game page's Journal links to the chronicle, and the play skill refreshes the chronicle page at Stop.
 - 2026-11-06 `pantheon chronicle` and the `/chronicle` skill (D-054, Accepted; PR #29 merged, owner approved): the story so far from the save as Markdown (playtest shape) or a phone page; tests in `tests/test_chronicle.py`. Page URL under Pages.
 - 2026-11-06 Design audit of M1d to M1f (owner chose design only): `docs/audit/2026-11-06-design.md`, 28 findings (3 strongly recommended: M2 plan stale, architecture section 3 stale, tapped options undecided). PR #23. Owner: "Do as you recommend": all 28 accepted (D-049); 23 fixed in e9f2a6f. Re-run pacing sim: 9.9 h to the Tier 2 Trial against D-014's 7 h target, median fight 6 exchanges (estimates; owner's fight playtest decides any retune).
 
@@ -28,7 +29,7 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 2. **M2a merged as PR #27; M2b merged as PR #28** (owner approved 2026-11-06; D-053 Accepted): both play paths cap retries at a try plus 2, record dropped calls and fall back after three refused narrations; `pantheon play` has D-050's odds and preview through `engine/preview.py`. Spec `docs/specs/m2b-reliability.md` (shipped). **Next: M2c in a new session**: `write-spec` for the story tools (BUILD_PLAN M2c: `introduce_npc`, `introduce_location`, `offer_oath`, `test_burden`, `advance_clock` with allowed causes as a `canon:` round for the owner).
 3. After M2d, the owner plays a session with a fight: `choose attunement storm` comes first (the story already says Storm). Watch foe XP (two levels from one early fight in the scripted check) and loot rates.
 4. Record the turn-5 sack hook (Tam says the humming sack brought the Stair down; do not open it) at the start of the next play turn.
-5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); `pantheon play` (API path) has no gear commands; Attuned does not require the element's affinity.
+5. Known gaps: foe tables (G-33), more Tier 1 items (G-34), Codex descriptions (G-35); Attuned does not require the element's affinity.
 
 ## Open questions
 
@@ -49,7 +50,6 @@ D-048: a due hook or a moved clock always gets one suggested action leading back
 
 - Round 1: https://claude.ai/artifact/JSEqjnAXHhNCrWkR4fXdwQ
 - Review and round 2: https://claude.ai/artifact/RcPLtGKcnpqMVpqvQLtUtQ
-- Superseded final check: https://claude.ai/artifact/YQjWtqPffUopaDLGUJ7Ysg
 - Round 3 (the System): https://claude.ai/artifact/BwmhqfG5VXYAoR2hd4QwfC
 - Final plan (approved): https://claude.ai/artifact/4uyMuu6Xa6dHD2Y9fXQa1s
 - Style round 1: https://claude.ai/artifact/5fnPKcTrTudPap9ozbqjTV

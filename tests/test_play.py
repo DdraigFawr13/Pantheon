@@ -558,3 +558,31 @@ def test_d036_inspect_says_what_a_tag_rests_on_and_shows_sure_odds() -> None:
 
 def test_d037_the_ledger_marks_a_downed_character() -> None:
     assert any("Downed" in line for line in ledger_lines([("downed", {})]))
+
+
+def test_play_gear_commands_use_the_engine_and_need_no_turn_D_047(tmp_path: Path, capsys: Any) -> None:
+    """`use`, `equip` and `unequip` on `pantheon play`, the same engine commands session play has."""
+    _code, _state, tid = play(tmp_path, [*NEW_GAME, "1", "1", "1", "/quit"], [*talk(), *narration()])
+    db_path = tmp_path / "game.db"
+    with Database.open(db_path) as db:
+        db.commit_events(
+            tid,
+            db.last_turn(tid) + 1,
+            [("item_changed", {"item": "dagger", "quantity": 1, "reason": "found"})],
+            db.rng_state(tid),
+        )
+    capsys.readouterr()
+    code = main(
+        ["play", "--db", str(db_path), "--config", str(tmp_path / "none.toml")],
+        ask=scripted(["equip dagger", "use dagger", "unequip weapon", "equip sword", "/quit"]),
+        client=MockClient([]),
+    )
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "Equipped: dagger" in out
+    assert "not something to use up" in out
+    assert "Took off the weapon" in out
+    assert "sword" in out and "Equipped: sword" not in out  # Not owned: refused, nothing changes.
+    with Database.open(db_path) as db:
+        assert db.load_state(tid).equipped == {}
+        assert db.last_turn(tid) == 2  # Gear commands take no turn.

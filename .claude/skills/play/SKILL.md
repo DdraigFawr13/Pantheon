@@ -72,4 +72,6 @@ The Pantheon Table page (https://claude.ai/artifact/WoBEwUTajnMQTrPV1NBJ3b, sour
 
 `uv run -q pantheon session stop`, then `scripts/saves.sh push`. The guard is off again.
 
+Then refresh the story page with the `chronicle` skill (`uv run -q pantheon chronicle --format html --out data/chronicle.html`, published to the chronicle URL in `docs/HANDOFF.md` "Pages"), so the owner can read the session back on the phone.
+
 When the owner's play is written up in `docs/playtests/`, give the number of turns played and the start and end times from the chat, so `scripts/pacing_sim.py --turns-per-hour` can use a measured rate (D-047 (8)).

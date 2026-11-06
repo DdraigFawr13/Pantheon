@@ -128,6 +128,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .codexbar { display: grid; gap: 8px; }
 .codexbar input { font: 1rem var(--prose); padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--page); color: var(--ink); width: 100%; min-width: 0; }
 .subtabs { display: flex; flex-wrap: wrap; gap: 6px; }
+#tab-journal a { color: var(--brass); font: 600 .9rem var(--mono); }
 .subtabs button { font: 600 .78rem var(--mono); color: var(--muted); background: var(--page); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; white-space: nowrap; }
 .subtabs button[aria-selected="true"] { color: var(--brass); border-color: var(--brass); background: var(--brass-soft); }
 .codexlist { display: grid; gap: 14px; }
@@ -485,7 +486,11 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     standing.append(list(words(s.standing).map(([e, v]) => `${e[0].toUpperCase() + e.slice(1)} ${v > 0 ? "+" : ""}${v}`), "No one knows your name yet."));
     const rumours = card("Rumours");
     rumours.append(list(s.rumours || [], "No rumours heard."));
-    box.append(oaths, hooks, standing, rumours);
+    const chronicle = card("The chronicle", "Every turn so far, read from the save, after each session ends.");
+    const link = el("a", null, "Read the story so far");
+    link.href = "https://claude.ai/artifact/38YWQkoJp5EMmx7UDXVU2W"; link.target = "_blank"; link.rel = "noopener";
+    chronicle.append(link);
+    box.append(oaths, hooks, standing, rumours, chronicle);
     if ((s.clocks || []).length) {
       const clocks = card("What is moving in the world");
       (s.clocks || []).forEach((c) => {
