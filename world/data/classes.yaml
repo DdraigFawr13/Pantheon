@@ -48,8 +48,8 @@
   secondary: resolve
   trait: "Pathsense: never lost; acts before enemy intents resolve in the first exchange"
   blurb: "The scout and hunter. Never lost, always first to move, deadly at range."
-- id: inquest
-  name: Inquest
+- id: inquisitor
+  name: Inquisitor
   primary: intellect
   secondary: presence
   trait: "Studied Mark: after one exchange or scene observing a target, +10 on all checks against it"

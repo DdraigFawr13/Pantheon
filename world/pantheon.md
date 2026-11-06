@@ -63,7 +63,7 @@ Seven gods remain, called the **Hands**. Each holds a Seat in the divine council
 - **Symbol:** shuttered lantern. **Cult:** the Lantern Orders.
 - **Temperament:** cryptic. Every prophecy has a price. Rarely states a position.
 - **Wants:** publicly, nothing.
-- **Oath:** Kept Light. **Favoured affinities:** Light, Space. **Favoured classes:** Arcanist, Spellblade, Inquest.
+- **Oath:** Kept Light. **Favoured affinities:** Light, Space. **Favoured classes:** Arcanist, Spellblade, Inquisitor.
 
 ### Drovash, the Laughing Thief
 

@@ -86,7 +86,7 @@ At awakening (the first Oath, which sets Level 1) the character takes a **base c
 | Spellblade | Vigor / Intellect | **Edgecasting:** casts a spell through a weapon strike in the same exchange |
 | Cutpurse | Agility / Intellect | **Opening:** +10 and double damage on the first strike against an unaware foe |
 | Wayfinder | Agility / Resolve | **Pathsense:** never lost; acts before enemy intents resolve in the first exchange |
-| Inquest | Intellect / Presence | **Studied Mark:** after one exchange or scene observing a target, +10 on all checks against it |
+| Inquisitor | Intellect / Presence | **Studied Mark:** after one exchange or scene observing a target, +10 on all checks against it |
 | Arcanist | Intellect / Resolve | **Spellbook:** one extra skill offered at each skill pick |
 | Elementalist | Intellect / Vigor | **Attuned:** choose Flame, Frost, Storm, Stone, Wind or Tide at awakening; spells of that element cost 20 % less mana and get +5 |
 | Wildblood | Presence / Vigor | **Surge:** may spend HP instead of mana to cast |
